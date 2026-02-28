@@ -1,0 +1,12 @@
+{
+    "scraper_16":
+    {
+        "display_name": "Scraper",
+        "default_size": 16
+    },
+    "paraglider_22":
+    {
+        "display_name": "Mountain Wing",
+        "default_size": 22
+    }
+}

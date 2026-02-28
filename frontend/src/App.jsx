@@ -1,0 +1,183 @@
+import React, { useState } from 'react'
+import { useSoarData } from './hooks/useSoarData.js'
+import MapForecast   from './components/MapForecast.jsx'
+import PointForecast from './components/PointForecast.jsx'
+import Settings      from './components/Settings.jsx'
+
+const TABS = ['🗺 Map Forecast', '📍 Point Forecast', '⚙ Settings']
+
+const styles = {
+  app: {
+    minHeight: '100vh',
+    background: '#0f1117',
+    color: '#e0e0e0',
+    fontFamily: 'system-ui, -apple-system, sans-serif',
+  },
+  header: {
+    padding: '16px 20px 0',
+    borderBottom: '1px solid #2a2a3e',
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 700,
+    color: '#7eb8f7',
+    marginBottom: 12,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  tabBar: {
+    display: 'flex',
+    gap: 4,
+    marginBottom: 0,
+  },
+  tab: (active) => ({
+    padding: '8px 18px',
+    border: 'none',
+    borderRadius: '8px 8px 0 0',
+    cursor: 'pointer',
+    fontWeight: active ? 600 : 400,
+    fontSize: 14,
+    background: active ? '#1e1e2e' : 'transparent',
+    color: active ? '#7eb8f7' : '#888',
+    borderBottom: active ? '2px solid #7eb8f7' : '2px solid transparent',
+    transition: 'all 0.15s',
+  }),
+  controls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    padding: '12px 20px',
+    background: '#1e1e2e',
+    borderBottom: '1px solid #2a2a3e',
+    flexWrap: 'wrap',
+  },
+  select: {
+    background: '#2a2a3e',
+    color: '#e0e0e0',
+    border: '1px solid #3a3a5e',
+    borderRadius: 6,
+    padding: '6px 10px',
+    fontSize: 14,
+    cursor: 'pointer',
+  },
+  label: { fontSize: 13, color: '#aaa', marginRight: 4 },
+  badge: (color) => ({
+    padding: '3px 8px',
+    borderRadius: 4,
+    fontSize: 12,
+    background: color,
+    color: '#fff',
+    fontWeight: 600,
+  }),
+  content: { padding: '16px 20px' },
+  spinner: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '50vh',
+    gap: 12,
+    color: '#7eb8f7',
+  },
+}
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState(0)
+  const data = useSoarData()
+  const {
+    status, days, loading, error,
+    dateIdx, setDateIdx,
+  } = data
+
+  if (loading) return (
+    <div style={styles.app}>
+      <div style={styles.spinner}>
+        <div style={{ fontSize: 32 }}>🪂</div>
+        <div>Loading Soaralarm NL…</div>
+      </div>
+    </div>
+  )
+
+  if (error) return (
+    <div style={styles.app}>
+      <div style={styles.spinner}>
+        <div style={{ fontSize: 32 }}>⚠️</div>
+        <div>Could not reach API: {error}</div>
+        <div style={{ fontSize: 13, color: '#aaa' }}>Make sure the FastAPI backend is running on port 8000</div>
+      </div>
+    </div>
+  )
+
+  const forecastReady = status?.forecast_available && status?.measurements_available && !!data.displayForecast
+
+  return (
+    <div style={styles.app}>
+      {/* ── Header ── */}
+      <header style={styles.header}>
+        <div style={styles.title}>
+          🪂 Soaralarm NL
+          {status?.updating_forecast    && <span style={styles.badge('#e6a817')}>Updating forecast…</span>}
+          {status?.updating_measurements && <span style={styles.badge('#3a7bd5')}>Updating measurements…</span>}
+          {!forecastReady && !status?.updating_forecast &&
+            <span style={styles.badge('#e05c5c')}>No forecast data</span>}
+        </div>
+        <nav style={styles.tabBar}>
+          {TABS.map((t, i) => (
+            <button key={t} style={styles.tab(activeTab === i)} onClick={() => setActiveTab(i)}>{t}</button>
+          ))}
+        </nav>
+      </header>
+
+      {/* ── Date bar ── */}
+      {activeTab < 2 && (
+        <div style={styles.controls}>
+          <span style={styles.label}>Date:</span>
+          <select
+            style={styles.select}
+            value={dateIdx}
+            onChange={e => setDateIdx(Number(e.target.value))}
+          >
+            {days.map((d, i) => <option key={d} value={i}>{d}</option>)}
+          </select>
+          {status?.forecast_age_seconds != null && (
+            <span style={{ fontSize: 12, color: '#666' }}>
+              Forecast updated {Math.round(status.forecast_age_seconds / 60)} min ago
+            </span>
+          )}
+          <button
+            style={{ ...styles.badge('#3a7bd5'), cursor: 'pointer', border: 'none' }}
+            onClick={() => { data.refreshForecast(); data.refreshMeasure() }}
+            disabled={status?.updating_forecast}
+          >
+            ↻ Refresh
+          </button>
+        </div>
+      )}
+
+      {/* ── Tab content ── */}
+      <main style={styles.content}>
+        {activeTab === 0 && (
+          forecastReady
+            ? <MapForecast data={data} />
+            : <LoadingPanel msg="Fetching forecast data, please wait…" />
+        )}
+        {activeTab === 1 && (
+          forecastReady
+            ? <PointForecast data={data} />
+            : <LoadingPanel msg="Fetching forecast data, please wait…" />
+        )}
+        {activeTab === 2 && <Settings data={data} />}
+      </main>
+    </div>
+  )
+}
+
+function LoadingPanel({ msg }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '60px 20px', color: '#888' }}>
+      <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div>
+      <div>{msg}</div>
+    </div>
+  )
+}

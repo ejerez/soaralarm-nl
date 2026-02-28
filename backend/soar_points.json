@@ -1,0 +1,177 @@
+[
+    {
+        "lat": 51.492894,
+        "lon": 3.499841,
+        "offshore_lat": 51.486225,
+        "offshore_lon": 3.415339,
+        "name": "Zoutelande (Main Dune)",
+        "station": "vlaktevanderaan",
+        "heading": 222,
+        "head_range_good": [
+            -22.5,
+            22.5
+        ],
+        "head_range_cross": [
+            -50,
+            50
+        ],
+        "wind_range_paraglider_22": [
+            15,
+            30
+        ],
+        "wind_range_scraper_16": [
+            22,
+            45
+        ]
+    },
+    {
+        "lat": 52.502193,
+        "lon": 4.589126,
+        "offshore_lat": 52.503636,
+        "offshore_lon": 4.528322,
+        "name": "Wijk aan Zee (North)",
+        "station": "ijmuiden.havenhoofd.zuid",
+        "heading": 284,
+        "head_range_good": [
+            -22.5,
+            22.5
+        ],
+        "head_range_cross": [
+            -45,
+            45
+        ],
+        "wind_range_paraglider_22": [
+            18,
+            35
+        ],
+        "wind_range_scraper_16": [
+            25,
+            50
+        ]
+    },
+    {
+        "lat": 52.564313,
+        "lon": 4.608334,
+        "offshore_lat": 52.564746,
+        "offshore_lon": 4.538524,
+        "name": "Castricum aan Zee",
+        "station": "ijmuiden.havenhoofd.zuid",
+        "heading": 279,
+        "head_range_good": [
+            -22.5,
+            22.5
+        ],
+        "head_range_cross": [
+            -45,
+            45
+        ],
+        "wind_range_paraglider_22": [
+            18,
+            35
+        ],
+        "wind_range_scraper_16": [
+            25,
+            50
+        ]
+    },
+    {
+        "lat": 52.302953,
+        "lon": 4.475574,
+        "offshore_lat": 52.319222,
+        "offshore_lon": 4.421669,
+        "name": "Langevelderslag (Noordwijk)",
+        "station": "ijmuiden.havenhoofd.zuid",
+        "heading": 295,
+        "head_range_good": [
+            -22.5,
+            22.5
+        ],
+        "head_range_cross": [
+            -45,
+            45
+        ],
+        "wind_range_paraglider_22": [
+            18,
+            35
+        ],
+        "wind_range_scraper_16": [
+            25,
+            50
+        ]
+    },
+    {
+        "lat": 51.86684,
+        "lon": 4.052526,
+        "offshore_lat": 51.885594,
+        "offshore_lon": 3.946932,
+        "name": "Rockanje (South)",
+        "station": "stellendam.haringvlietsluizen.schuif1",
+        "heading": 237,
+        "head_range_good": [
+            -22.5,
+            22.5
+        ],
+        "head_range_cross": [
+            -45,
+            45
+        ],
+        "wind_range_paraglider_22": [
+            18,
+            35
+        ],
+        "wind_range_scraper_16": [
+            25,
+            50
+        ]
+    },
+    {
+        "lat": 51.74087,
+        "lon": 3.810101,
+        "offshore_lat": 51.778656,
+        "offshore_lon": 3.777647,
+        "name": "Renesse",
+        "station": "brouwersdam.brouwershavensegat.2",
+        "heading": 13,
+        "head_range_good": [
+            -22.5,
+            22.5
+        ],
+        "head_range_cross": [
+            -45,
+            45
+        ],
+        "wind_range_paraglider_22": [
+            25,
+            35
+        ],
+        "wind_range_scraper_16": [
+            30,
+            50
+        ]
+    },
+    {
+        "lat": 51.669569,
+        "lon": 3.704770,
+        "offshore_lat": 51.648549,
+        "offshore_lon": 3.628215,
+        "name": "Westenschouwen",
+        "station": "oosterschelde.4",
+        "heading": 215,
+        "head_range_good": [
+            -22.5,
+            22.5
+        ],
+        "head_range_cross": [
+            -45,
+            45
+        ],
+        "wind_range_paraglider_22": [
+            18,
+            35
+        ],
+        "wind_range_scraper_16": [
+            25,
+            50
+        ]
+    }
+]
