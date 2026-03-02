@@ -181,10 +181,7 @@ def get_display_forecast(
     t_end   = time.fromisoformat(time_end)
 
     svc = ForecastService(state["soar_points"])
-
-    # Re-process with wing context so future wing-specific logic can use it
-    processed = svc.process(raw, wing=wing, wing_size=wing_size)
-    disp = svc.display(processed, t_start, t_end)
+    disp = svc.display(raw, t_start, t_end, wing=wing, wing_size=wing_size)
     return {"model": model, "display": disp}
 
 

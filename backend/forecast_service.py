@@ -165,6 +165,8 @@ class ForecastService:
         forecast: List[List[Dict]],
         t_start: time_t = time_t(0, 0),
         t_end:   time_t = time_t(23, 59),
+        wing:      Optional[str] = None,
+        wing_size: Optional[int] = None,
     ) -> List[List[Dict]]:
         """
         Compute wind_pizza, good_hours, cross_hours, gantt for each day×point.
