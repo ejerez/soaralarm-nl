@@ -99,16 +99,14 @@ class ForecastService:
     def process(
         self,
         raw: List[Dict],
-        wing: Optional[str] = None,
-        wing_size: Optional[int] = None,
     ) -> List[List[Dict]]:
         """
         Process raw forecast into day×point structure.
 
         Args:
             raw:       Raw list returned by fetch_raw().
-            wing:      Wing model key (reserved for future wing-specific logic).
-            wing_size: Wing size in m² (reserved for future wing-specific logic).
+            selected_wings: List of {"key": str, "size": int} dicts chosen by
+                            the user.
 
         Returns:
             list[day] of list[point] of hourly dicts.
@@ -154,6 +152,35 @@ class ForecastService:
                 })
             forecast.append(day_data)
         return forecast
+    
+    @staticmethod
+    def effective_wind_range(
+        point: Dict,
+        selected_wings: List[Dict],
+        wings_config: Dict,
+    ) -> List[float]:
+        """
+        For each selected wing, look up wind_range_{key} in point, scale each
+        bound by sqrt(value * (default_size / selected_size)), then return
+        [min of all lower bounds, max of all upper bounds].
+        Falls back to [0, 999] if no wings match.
+        """
+        all_mins: List[float] = []
+        all_maxs: List[float] = []
+
+        for wing in selected_wings:
+            print(wing)
+            key       = wing["key"]
+            size      = float(wing["size"])
+            wr           = point["wind_range"][key]
+            default_size = float(wings_config[key]["default_size"])
+            ratio        = default_size / size
+            adj_min      = wr[0] * np.sqrt(ratio)
+            adj_max      = wr[1] * np.sqrt(ratio)
+            all_mins.append(adj_min)
+            all_maxs.append(adj_max)
+
+        return [min(all_mins), max(all_maxs)]
 
     # ── Display ──────────────────────────────────────────────────────────────
     def display(
@@ -161,7 +188,8 @@ class ForecastService:
         forecast: List[List[Dict]],
         t_start: time_t = time_t(0, 0),
         t_end:   time_t = time_t(23, 59),
-        selected_wings: Optional[List[Dict]] = None,
+        selected_wings: List[Dict] = [{"key":"scraper_16","size":16}],
+        wings_config:   Dict       = None,
     ) -> List[List[Dict]]:
         """
         Compute wind_pizza, good_hours, cross_hours, gantt for each day×point.
@@ -171,18 +199,21 @@ class ForecastService:
             t_start:        Start of the flyable-hours time window.
             t_end:          End of the flyable-hours time window.
             selected_wings: List of {"key": str, "size": int} dicts chosen by
-                            the user.  Passed through for future wing-specific
-                            computations (e.g. adjusting wind thresholds by
-                            wing size).  Currently stored on each result entry
-                            for reference.
+                            the user.
         """
-        wings = selected_wings or []
+
+        # Pre-compute effective wind range per point (constant across all days)
+        eff_ranges = [
+            self.effective_wind_range(pt, selected_wings, wings_config)
+            for pt in self.points
+        ]
 
         disp = []
         for day_idx, day in enumerate(forecast):
             day_disp = []
             for pt_idx, pf in enumerate(day):
                 point      = self.points[pt_idx]
+                wind_min, wind_max  = eff_ranges[pt_idx]
                 wind_pizza = [0.0, 0.0, 0.0]  # left-cross, good, right-cross
                 gantt      = []
                 prev       = None
@@ -204,21 +235,21 @@ class ForecastService:
                         in_window
                         and float(pf["precipitation"][i])  < 0.01
                         and float(pf["visibility"][i])     > 99
-                        and float(pf["wind_speed"][i])     > point["wind_range"][0]
-                        and float(pf["wind_gusts"][i])     < point["wind_range"][1]
+                        and float(pf["wind_speed"][i])     > wind_min
+                        and float(pf["wind_gusts"][i])     < wind_max
                     )
 
                     t_shifted = (t - timedelta(days=day_idx)).isoformat()
 
                     if flyable:
                         rel = float(pf["wind_direction"][i]) - point["heading"]
-                        if point["head_range"][0] < rel < -22.5:
+                        if point["head_range"]["cross"][0] < rel < point["head_range"]["good"][0]:
                             cat = "cross"
                             wind_pizza[0] += 1
-                        elif -22.5 <= rel <= 22.5:
+                        elif point["head_range"]["good"][0] <= rel <= point["head_range"]["good"][1]:
                             cat = "good"
                             wind_pizza[1] += 1
-                        elif 22.5 < rel < point["head_range"][1]:
+                        elif point["head_range"]["good"][1] < rel < point["head_range"]["cross"][1]:
                             cat = "cross"
                             wind_pizza[2] += 1
                         else:
@@ -241,7 +272,8 @@ class ForecastService:
                     "good_hours":    wind_pizza[1],
                     "cross_hours":   wind_pizza[0] + wind_pizza[2],
                     "gantt":         gantt,
-                    "selected_wings": wings,   # available for frontend / future use
+                    "wind_min":      wind_min,
+                    "wind_max":      wind_max
                 })
             disp.append(day_disp)
         return disp

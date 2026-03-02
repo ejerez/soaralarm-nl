@@ -162,7 +162,7 @@ def get_display_forecast(
     model:      str           = Query("soar_knmi", enum=["soar_knmi", "soar_ecmwf"]),
     time_start: str           = Query("00:00"),
     time_end:   str           = Query("23:59"),
-    wings:      Optional[str] = Query(None, description='JSON array of {key, size} objects'),
+    wings:      str           = Query(None, description='JSON array of {key, size} objects'),
 ):
     """Returns per-day, per-point display data (gantt, wind_pizza, hours)."""
     raw = state["forecast"].get(model)
@@ -181,7 +181,7 @@ def get_display_forecast(
             selected_wings = []
 
     svc  = ForecastService(state["soar_points"])
-    disp = svc.display(raw, t_start, t_end, selected_wings=selected_wings)
+    disp = svc.display(raw, t_start, t_end, selected_wings, state["wings"])
     return {"model": model, "display": disp}
 
 
