@@ -149,12 +149,12 @@ export default function PointForecast({ data }) {
             <Tooltip {...TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
 
-            {/* Flyable wind band */}
-            <ReferenceArea yAxisId="wind" y1={wind_range[0]} y2={wind_range[1]} fill="#1fd100" fillOpacity={0.08} />
+            {/* Flyable wind band — drawn first so series render on top */}
+            <ReferenceArea yAxisId="wind" y1={wind_range[0]} y2={wind_range[1]} fill="#1fd100" fillOpacity={0.15} />
 
-            <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"  name="Gusts"      fill="#d68800" stroke="#d68800" fillOpacity={0.3} dot={false} connectNulls />
-            <Area yAxisId="wind" type="monotone" dataKey="wind_speed"  name="Wind Speed" fill="#7eb8f7" stroke="#7eb8f7" fillOpacity={0.3} dot={false} connectNulls />
-            <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precip (mm)" fill="#5ab5f7" stroke="#5ab5f7" fillOpacity={0.2} dot={false} connectNulls />
+            <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"    name="Gusts"       fill="#d68800" stroke="#d68800" fillOpacity={0.3} dot={false} connectNulls />
+            <Area yAxisId="wind" type="monotone" dataKey="wind_speed"    name="Wind Speed"  fill="#7eb8f7" stroke="#7eb8f7" fillOpacity={0.3} dot={false} connectNulls />
+            <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precip (mm)" fill="#5ab5f7" stroke="#5ab5f7" fillOpacity={1}   dot={false} connectNulls />
             <Scatter yAxisId="wind" dataKey="meas_wind" name="Measured wind" fill="#ffffff" opacity={0.8} />
           </ComposedChart>
         </ResponsiveContainer>
@@ -180,8 +180,8 @@ export default function PointForecast({ data }) {
             <ReferenceLine y={heading} stroke="#666" strokeDasharray="4 2"
               label={{ value: `${heading}°`, fill: '#666', fontSize: 11 }} />
 
-            <Line type="monotone" dataKey="wind_dir"  name="Forecast dir" stroke="#ccc" dot={false} strokeWidth={2} connectNulls />
-            <Line type="linear"   dataKey="meas_dir"  name="Measured dir"  stroke="#ffffff" dot={false} strokeWidth={1.5} connectNulls />
+            <Line type="monotone" dataKey="wind_dir"  name="Forecast dir" stroke="#ccc"     dot={false} strokeWidth={2}   connectNulls />
+            <Line type="linear"   dataKey="meas_dir"  name="Measured dir"  stroke="#ffffff" dot={false} strokeWidth={1.5} connectNulls strokeDasharray="5 3" />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
