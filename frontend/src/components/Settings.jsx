@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
+
+const MAX_WINGS = 5
 
 const card = {
   background: '#1e1e2e',
@@ -18,7 +20,7 @@ const label = {
   fontWeight: 500,
 }
 
-const select = {
+const selectStyle = {
   background: '#2a2a3e',
   color: '#e0e0e0',
   border: '1px solid #3a3a5e',
@@ -28,14 +30,15 @@ const select = {
   cursor: 'pointer',
 }
 
-const input = {
+const inputStyle = {
   background: '#2a2a3e',
   color: '#e0e0e0',
   border: '1px solid #3a3a5e',
   borderRadius: 6,
   padding: '7px 10px',
   fontSize: 14,
-  width: 110,
+  width: 64,
+  textAlign: 'right',
 }
 
 const saveBtn = {
@@ -56,53 +59,119 @@ const savedMsg = {
   color: '#1fd100',
 }
 
+const iconBtn = (color = '#3a3a5e') => ({
+  background: color,
+  color: '#e0e0e0',
+  border: 'none',
+  borderRadius: 6,
+  width: 30,
+  height: 30,
+  fontSize: 16,
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexShrink: 0,
+  lineHeight: 1,
+})
+
+function WingRow({ entry, wings, isRemovable, onChange, onRemove }) {
+  const wingKeys = Object.keys(wings)
+
+  function handleKeyChange(e) {
+    const key = e.target.value
+    onChange({ key, size: wings[key]?.default_size ?? entry.size })
+  }
+
+  function handleSizeChange(e) {
+    const val = e.target.value
+    if (val === '' || /^\d+$/.test(val)) {
+      onChange({ ...entry, size: val === '' ? '' : Number(val) })
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+      <select
+        style={{ ...selectStyle, flex: 1 }}
+        value={entry.key}
+        onChange={handleKeyChange}
+        disabled={wingKeys.length === 0}
+      >
+        {wingKeys.map(k => (
+          <option key={k} value={k}>{wings[k].display_name}</option>
+        ))}
+      </select>
+
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="\d*"
+        style={inputStyle}
+        value={entry.size}
+        onChange={handleSizeChange}
+        placeholder="m²"
+        title="Wing size in m²"
+      />
+      <span style={{ fontSize: 13, color: '#666', whiteSpace: 'nowrap' }}>m²</span>
+
+      {isRemovable ? (
+        <button style={iconBtn('#3a2a2e')} onClick={onRemove} title="Remove wing">✕</button>
+      ) : (
+        // Spacer so all rows stay aligned
+        <div style={{ width: 30, flexShrink: 0 }} />
+      )}
+    </div>
+  )
+}
+
 export default function Settings({ data }) {
   const {
     model, setModel,
     timeStart, setTimeStart,
     timeEnd, setTimeEnd,
-    wing, setWing,
-    wingSize, setWingSize,
+    selectedWings, setSelectedWings,
     wings,
     status, refreshForecast, refetchDisplay,
   } = data
 
-  const [localModel, setLocalModel]   = useState(model)
-  const [localTs, setLocalTs]         = useState(timeStart)
-  const [localTe, setLocalTe]         = useState(timeEnd)
-  const [localWing, setLocalWing]     = useState(wing)
-  const [localWingSize, setLocalWingSize] = useState(wingSize ?? '')
-  const [saved, setSaved]             = useState(false)
+  const [localModel, setLocalModel] = useState(model)
+  const [localTs, setLocalTs]       = useState(timeStart)
+  const [localTe, setLocalTe]       = useState(timeEnd)
+  const [localWings, setLocalWings] = useState(selectedWings)
+  const [saved, setSaved]           = useState(false)
 
-  // When the wing dropdown changes, reset size to that wing's default
-  function handleWingChange(e) {
-    const key = e.target.value
-    setLocalWing(key)
-    if (wings[key]) {
-      setLocalWingSize(wings[key].default_size)
-    }
+  const wingKeys = Object.keys(wings)
+  const firstKey = wingKeys[0]
+
+  // Ensure there is always at least one row once wings catalogue is loaded
+  const rows = (localWings.length === 0 && firstKey)
+    ? [{ key: firstKey, size: wings[firstKey].default_size }]
+    : localWings
+
+  function updateRow(index, value) {
+    setLocalWings(rows.map((r, i) => (i === index ? value : r)))
   }
 
-  // Only allow integers in the size field
-  function handleSizeChange(e) {
-    const val = e.target.value
-    if (val === '' || /^\d+$/.test(val)) {
-      setLocalWingSize(val === '' ? '' : Number(val))
-    }
+  function removeRow(index) {
+    setLocalWings(rows.filter((_, i) => i !== index))
+  }
+
+  function addRow() {
+    if (rows.length >= MAX_WINGS || !firstKey) return
+    setLocalWings([...rows, { key: firstKey, size: wings[firstKey]?.default_size ?? 0 }])
   }
 
   function handleSave() {
+    const cleaned = rows.map(r => ({ key: r.key, size: Number(r.size) || 0 }))
     setModel(localModel)
     setTimeStart(localTs)
     setTimeEnd(localTe)
-    setWing(localWing)
-    setWingSize(localWingSize !== '' ? Number(localWingSize) : null)
+    setSelectedWings(cleaned)
     setSaved(true)
     refetchDisplay()
     setTimeout(() => setSaved(false), 2500)
   }
-
-  const wingKeys = Object.keys(wings)
 
   return (
     <div>
@@ -112,45 +181,48 @@ export default function Settings({ data }) {
         {/* Forecast Model */}
         <div style={field}>
           <label style={label}>Forecast Model</label>
-          <select style={{ ...select, width: '100%' }} value={localModel} onChange={e => setLocalModel(e.target.value)}>
+          <select
+            style={{ ...selectStyle, width: '100%' }}
+            value={localModel}
+            onChange={e => setLocalModel(e.target.value)}
+          >
             <option value="soar_knmi">KNMI Seamless</option>
             <option value="soar_ecmwf">ECMWF IFS (may pick onshore points)</option>
           </select>
         </div>
 
-        {/* Wing Model + Size */}
+        {/* Wings */}
         <div style={field}>
-          <label style={label}>Wing</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <select
-              style={{ ...select, flex: 1 }}
-              value={localWing}
-              onChange={handleWingChange}
-              disabled={wingKeys.length === 0}
-            >
-              {wingKeys.length === 0 && (
-                <option value="">Loading…</option>
-              )}
-              {wingKeys.map(key => (
-                <option key={key} value={key}>
-                  {wings[key].display_name}
-                </option>
-              ))}
-            </select>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="\d*"
-              style={{ ...input, width: 72 }}
-              value={localWingSize}
-              onChange={handleSizeChange}
-              placeholder="m²"
-              title="Wing size in m²"
+          <label style={label}>Wings</label>
+
+          {rows.map((entry, i) => (
+            <WingRow
+              key={i}
+              entry={entry}
+              wings={wings}
+              isRemovable={i > 0}
+              onChange={val => updateRow(i, val)}
+              onRemove={() => removeRow(i)}
             />
-            <span style={{ fontSize: 13, color: '#666', whiteSpace: 'nowrap' }}>m²</span>
-          </div>
-          <div style={{ fontSize: 12, color: '#666', marginTop: 6 }}>
-            Wing size defaults to the selected model's standard size.
+          ))}
+
+          {rows.length < MAX_WINGS && wingKeys.length > 0 && (
+            <button
+              style={{
+                ...iconBtn(),
+                width: 'auto',
+                padding: '5px 12px',
+                marginTop: 4,
+                fontSize: 13,
+                gap: 6,
+              }}
+              onClick={addRow}
+            >
+              + Add wing
+            </button>
+          )}
+          <div style={{ fontSize: 12, color: '#666', marginTop: 8 }}>
+            Up to {MAX_WINGS} wings. Size defaults to the model's standard size.
           </div>
         </div>
 
@@ -159,12 +231,12 @@ export default function Settings({ data }) {
           <label style={label}>Flyable Hours Time Window</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <input
-              type="time" style={input}
+              type="time" style={inputStyle}
               value={localTs} onChange={e => setLocalTs(e.target.value)}
             />
             <span style={{ color: '#666' }}>→</span>
             <input
-              type="time" style={input}
+              type="time" style={inputStyle}
               value={localTe} onChange={e => setLocalTe(e.target.value)}
             />
           </div>
@@ -180,8 +252,8 @@ export default function Settings({ data }) {
       {/* Status panel */}
       <div style={{ ...card, marginTop: 24 }}>
         <h3 style={{ color: '#ccc', marginBottom: 12, fontSize: 15 }}>Data Status</h3>
-        <Row label="Forecast"     age={status?.forecast_age_seconds}     stale={status?.forecast_stale}     updating={status?.updating_forecast} />
-        <Row label="Measurements" age={status?.measurement_age_seconds}  stale={status?.measurement_stale}  updating={status?.updating_measurements} />
+        <Row label="Forecast"     age={status?.forecast_age_seconds}    stale={status?.forecast_stale}    updating={status?.updating_forecast} />
+        <Row label="Measurements" age={status?.measurement_age_seconds} stale={status?.measurement_stale} updating={status?.updating_measurements} />
         <button
           style={{ ...saveBtn, background: '#2a2a3e', marginTop: 16 }}
           onClick={() => { refreshForecast(); refetchDisplay() }}
@@ -195,7 +267,7 @@ export default function Settings({ data }) {
 }
 
 function Row({ label, age, stale, updating }) {
-  const ageStr = age != null ? `${Math.round(age / 60)} min ago` : 'never'
+  const ageStr      = age != null ? `${Math.round(age / 60)} min ago` : 'never'
   const statusColor = updating ? '#e6a817' : stale ? '#e05c5c' : '#1fd100'
   const statusText  = updating ? 'Updating…' : stale ? 'Stale' : 'Fresh'
   return (

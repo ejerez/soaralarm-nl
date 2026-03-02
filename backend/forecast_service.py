@@ -51,12 +51,12 @@ class ForecastService:
             "forecast_days": 7,
         }
 
-        responses         = self._client.weather_api(self.BASE_URL, params=params)
+        responses          = self._client.weather_api(self.BASE_URL, params=params)
         offshore_responses = self._client.weather_api(self.BASE_URL, params=offshore_params)
 
         result = []
         for idx, (resp, off_resp) in enumerate(zip(responses, offshore_responses)):
-            hourly         = resp.Hourly()
+            hourly          = resp.Hourly()
             offshore_hourly = off_resp.Hourly()
 
             dates = pd.date_range(
@@ -66,8 +66,8 @@ class ForecastService:
                 inclusive="left",
             )
 
-            daily         = resp.Daily()
-            daily_dates   = pd.date_range(
+            daily       = resp.Daily()
+            daily_dates = pd.date_range(
                 start=pd.to_datetime(daily.Time(), unit="s", utc=True),
                 end=pd.to_datetime(daily.TimeEnd(), unit="s", utc=True),
                 freq=pd.Timedelta(seconds=daily.Interval()),
@@ -79,13 +79,13 @@ class ForecastService:
             result.append({
                 "id": idx,
                 "hourly": {
-                    "date":        [str(d) for d in dates],
-                    "temperature": hourly.Variables(0).ValuesAsNumpy().tolist(),
-                    "visibility":  hourly.Variables(1).ValuesAsNumpy().tolist(),
-                    "precipitation": hourly.Variables(2).ValuesAsNumpy().tolist(),
-                    "wind_speed":  offshore_hourly.Variables(0).ValuesAsNumpy().tolist(),
+                    "date":           [str(d) for d in dates],
+                    "temperature":    hourly.Variables(0).ValuesAsNumpy().tolist(),
+                    "visibility":     hourly.Variables(1).ValuesAsNumpy().tolist(),
+                    "precipitation":  hourly.Variables(2).ValuesAsNumpy().tolist(),
+                    "wind_speed":     offshore_hourly.Variables(0).ValuesAsNumpy().tolist(),
                     "wind_direction": offshore_hourly.Variables(1).ValuesAsNumpy().tolist(),
-                    "wind_gusts":  offshore_hourly.Variables(2).ValuesAsNumpy().tolist(),
+                    "wind_gusts":     offshore_hourly.Variables(2).ValuesAsNumpy().tolist(),
                 },
                 "daily": {
                     "date":    [str(d) for d in daily_dates],
@@ -107,21 +107,17 @@ class ForecastService:
 
         Args:
             raw:       Raw list returned by fetch_raw().
-            wing:      Wing model key from wings.json (e.g. "scraper_16").
-                       Reserved for future wing-specific computations.
-            wing_size: Wing size in m² chosen by the user.
-                       Reserved for future wing-specific computations.
+            wing:      Wing model key (reserved for future wing-specific logic).
+            wing_size: Wing size in m² (reserved for future wing-specific logic).
 
         Returns:
             list[day] of list[point] of hourly dicts.
         """
-        # Collect unique dates
         sample_dates = [pd.Timestamp(d).date() for d in raw[0]["daily"]["date"]]
         dates = sorted(set(sample_dates))
 
         forecast = []
         for date in dates:
-            # Per-point sunrise/sunset for this date
             daily_info = []
             for pt_raw in raw:
                 for i, d in enumerate(pt_raw["daily"]["date"]):
@@ -146,15 +142,15 @@ class ForecastService:
                     return [pt_raw["hourly"][key][i] for i, ok in enumerate(mask) if ok]
 
                 day_data.append({
-                    "sunrise":       sr.isoformat(),
-                    "sunset":        ss.isoformat(),
-                    "time":          [t.isoformat() for t, ok in zip(times, mask) if ok],
-                    "temperature":   _filter("temperature"),
-                    "visibility":    _filter("visibility"),
-                    "precipitation": _filter("precipitation"),
-                    "wind_speed":    _filter("wind_speed"),
+                    "sunrise":        sr.isoformat(),
+                    "sunset":         ss.isoformat(),
+                    "time":           [t.isoformat() for t, ok in zip(times, mask) if ok],
+                    "temperature":    _filter("temperature"),
+                    "visibility":     _filter("visibility"),
+                    "precipitation":  _filter("precipitation"),
+                    "wind_speed":     _filter("wind_speed"),
                     "wind_direction": _filter("wind_direction"),
-                    "wind_gusts":    _filter("wind_gusts"),
+                    "wind_gusts":     _filter("wind_gusts"),
                 })
             forecast.append(day_data)
         return forecast
@@ -165,12 +161,23 @@ class ForecastService:
         forecast: List[List[Dict]],
         t_start: time_t = time_t(0, 0),
         t_end:   time_t = time_t(23, 59),
-        wing:      Optional[str] = None,
-        wing_size: Optional[int] = None,
+        selected_wings: Optional[List[Dict]] = None,
     ) -> List[List[Dict]]:
         """
         Compute wind_pizza, good_hours, cross_hours, gantt for each day×point.
+
+        Args:
+            forecast:       Processed forecast (output of process()).
+            t_start:        Start of the flyable-hours time window.
+            t_end:          End of the flyable-hours time window.
+            selected_wings: List of {"key": str, "size": int} dicts chosen by
+                            the user.  Passed through for future wing-specific
+                            computations (e.g. adjusting wind thresholds by
+                            wing size).  Currently stored on each result entry
+                            for reference.
         """
+        wings = selected_wings or []
+
         disp = []
         for day_idx, day in enumerate(forecast):
             day_disp = []
@@ -230,10 +237,11 @@ class ForecastService:
                     gantt.append({"type": prev, "start": start, "end": last_time})
 
                 day_disp.append({
-                    "wind_pizza":   wind_pizza,
-                    "good_hours":   wind_pizza[1],
-                    "cross_hours":  wind_pizza[0] + wind_pizza[2],
-                    "gantt":        gantt,
+                    "wind_pizza":    wind_pizza,
+                    "good_hours":    wind_pizza[1],
+                    "cross_hours":   wind_pizza[0] + wind_pizza[2],
+                    "gantt":         gantt,
+                    "selected_wings": wings,   # available for frontend / future use
                 })
             disp.append(day_disp)
         return disp

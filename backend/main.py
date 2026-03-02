@@ -1,14 +1,13 @@
 import asyncio
+import json
 import pickle
 from datetime import datetime, time
 from json import load
-from os import path
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import FastAPI, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 
 from forecast_service import ForecastService
 from measurement_service import MeasurementService
@@ -34,38 +33,33 @@ state = {
     "updating_measurements": False,
 }
 
-FORECAST_PKL   = Path("forecast.pkl")
-MEASURE_PKL    = Path("measurements.pkl")
-POINTS_FILE    = Path("soar_points.json")
-WINGS_FILE     = Path("wings.json")
-FORECAST_TTL   = 3600   # 1 hour
-MEASURE_TTL    = 900    # 15 minutes
+FORECAST_PKL = Path("forecast.pkl")
+MEASURE_PKL  = Path("measurements.pkl")
+POINTS_FILE  = Path("soar_points.json")
+WINGS_FILE   = Path("wings.json")
+FORECAST_TTL = 3600   # 1 hour
+MEASURE_TTL  = 900    # 15 minutes
 
 
 # ── Startup ─────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
-    # Load points
     with open(POINTS_FILE) as f:
         state["soar_points"] = load(f)
 
-    # Load wings
     if WINGS_FILE.exists():
         with open(WINGS_FILE) as f:
             state["wings"] = load(f)
 
-    # Load cached forecast
     if FORECAST_PKL.exists():
         try:
             with open(FORECAST_PKL, "rb") as f:
                 state["forecast"] = pickle.load(f)
-            # Validate structure
             if "soar_knmi" not in state["forecast"] or "soar_ecmwf" not in state["forecast"]:
                 state["forecast"] = {}
         except Exception:
             state["forecast"] = {}
 
-    # Load cached measurements
     if MEASURE_PKL.exists():
         try:
             with open(MEASURE_PKL, "rb") as f:
@@ -144,7 +138,6 @@ def get_points():
 
 @app.get("/api/wings")
 def get_wings():
-    """Returns all wing definitions from wings.json."""
     return state["wings"]
 
 
@@ -166,11 +159,10 @@ async def refresh_measurements(bg: BackgroundTasks):
 
 @app.get("/api/forecast/display")
 def get_display_forecast(
-    model: str = Query("soar_knmi", enum=["soar_knmi", "soar_ecmwf"]),
-    time_start: str = Query("00:00"),
-    time_end:   str = Query("23:59"),
-    wing:       Optional[str] = Query(None, description="Wing model key from wings.json"),
-    wing_size:  Optional[int] = Query(None, description="Wing size in m²"),
+    model:      str           = Query("soar_knmi", enum=["soar_knmi", "soar_ecmwf"]),
+    time_start: str           = Query("00:00"),
+    time_end:   str           = Query("23:59"),
+    wings:      Optional[str] = Query(None, description='JSON array of {key, size} objects'),
 ):
     """Returns per-day, per-point display data (gantt, wind_pizza, hours)."""
     raw = state["forecast"].get(model)
@@ -180,8 +172,16 @@ def get_display_forecast(
     t_start = time.fromisoformat(time_start)
     t_end   = time.fromisoformat(time_end)
 
-    svc = ForecastService(state["soar_points"])
-    disp = svc.display(raw, t_start, t_end, wing=wing, wing_size=wing_size)
+    # Decode the wings array sent by the frontend
+    selected_wings: List[dict] = []
+    if wings:
+        try:
+            selected_wings = json.loads(wings)
+        except (json.JSONDecodeError, TypeError):
+            selected_wings = []
+
+    svc  = ForecastService(state["soar_points"])
+    disp = svc.display(raw, t_start, t_end, selected_wings=selected_wings)
     return {"model": model, "display": disp}
 
 
@@ -198,16 +198,13 @@ def get_raw_forecast(
 
 @app.get("/api/measurements")
 def get_measurements():
-    """Returns wind speed + direction measurements per station."""
     svc = MeasurementService(state["soar_points"])
     return svc.serialize(state["measurements"])
 
 
 @app.get("/api/days")
 def get_days():
-    """Return the day labels list (Yesterday … +6 days)."""
-    from datetime import datetime
-    week_days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
-    wd = datetime.today().weekday()
-    days = ["Yesterday","Today","Tomorrow"] + [week_days[(wd+2+i)%7] for i in range(5)]
+    week_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    wd   = datetime.today().weekday()
+    days = ["Yesterday", "Today", "Tomorrow"] + [week_days[(wd + 2 + i) % 7] for i in range(5)]
     return {"days": days}
