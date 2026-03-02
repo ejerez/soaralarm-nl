@@ -26,6 +26,7 @@ app.add_middleware(
 # ── Global in-memory state ──────────────────────────────────────────────────
 state = {
     "soar_points": [],
+    "wings": {},
     "raw_forecast": {},
     "forecast": {},
     "measurements": {},
@@ -36,6 +37,7 @@ state = {
 FORECAST_PKL   = Path("forecast.pkl")
 MEASURE_PKL    = Path("measurements.pkl")
 POINTS_FILE    = Path("soar_points.json")
+WINGS_FILE     = Path("wings.json")
 FORECAST_TTL   = 3600   # 1 hour
 MEASURE_TTL    = 900    # 15 minutes
 
@@ -46,6 +48,11 @@ async def startup():
     # Load points
     with open(POINTS_FILE) as f:
         state["soar_points"] = load(f)
+
+    # Load wings
+    if WINGS_FILE.exists():
+        with open(WINGS_FILE) as f:
+            state["wings"] = load(f)
 
     # Load cached forecast
     if FORECAST_PKL.exists():
@@ -135,6 +142,12 @@ def get_points():
     return state["soar_points"]
 
 
+@app.get("/api/wings")
+def get_wings():
+    """Returns all wing definitions from wings.json."""
+    return state["wings"]
+
+
 @app.post("/api/forecast/refresh")
 async def refresh_forecast(bg: BackgroundTasks):
     if not state["updating_forecast"]:
@@ -156,6 +169,8 @@ def get_display_forecast(
     model: str = Query("soar_knmi", enum=["soar_knmi", "soar_ecmwf"]),
     time_start: str = Query("00:00"),
     time_end:   str = Query("23:59"),
+    wing:       Optional[str] = Query(None, description="Wing model key from wings.json"),
+    wing_size:  Optional[int] = Query(None, description="Wing size in m²"),
 ):
     """Returns per-day, per-point display data (gantt, wind_pizza, hours)."""
     raw = state["forecast"].get(model)
@@ -166,7 +181,10 @@ def get_display_forecast(
     t_end   = time.fromisoformat(time_end)
 
     svc = ForecastService(state["soar_points"])
-    disp = svc.display(raw, t_start, t_end)
+
+    # Re-process with wing context so future wing-specific logic can use it
+    processed = svc.process(raw, wing=wing, wing_size=wing_size)
+    disp = svc.display(processed, t_start, t_end)
     return {"model": model, "display": disp}
 
 

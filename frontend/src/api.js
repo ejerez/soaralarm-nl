@@ -13,13 +13,22 @@ async function post(path) {
 }
 
 export const api = {
-  status:           ()           => get('/status'),
-  points:           ()           => get('/points'),
-  days:             ()           => get('/days'),
-  displayForecast:  (model, ts, te) =>
-    get(`/forecast/display?model=${model}&time_start=${ts}&time_end=${te}`),
-  rawForecast:      (model)      => get(`/forecast/raw?model=${model}`),
-  measurements:     ()           => get('/measurements'),
-  refreshForecast:  ()           => post('/forecast/refresh'),
-  refreshMeasure:   ()           => post('/measurements/refresh'),
+  status:           ()                          => get('/status'),
+  points:           ()                          => get('/points'),
+  days:             ()                          => get('/days'),
+  wings:            ()                          => get('/wings'),
+  displayForecast:  (model, ts, te, wing, wingSize) => {
+    const params = new URLSearchParams({
+      model,
+      time_start: ts,
+      time_end:   te,
+    })
+    if (wing)     params.set('wing',      wing)
+    if (wingSize) params.set('wing_size', wingSize)
+    return get(`/forecast/display?${params}`)
+  },
+  rawForecast:      (model)                     => get(`/forecast/raw?model=${model}`),
+  measurements:     ()                          => get('/measurements'),
+  refreshForecast:  ()                          => post('/forecast/refresh'),
+  refreshMeasure:   ()                          => post('/measurements/refresh'),
 }

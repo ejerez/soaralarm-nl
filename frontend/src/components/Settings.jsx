@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 
 const card = {
   background: '#1e1e2e',
@@ -19,7 +19,6 @@ const label = {
 }
 
 const select = {
-  width: '100%',
   background: '#2a2a3e',
   color: '#e0e0e0',
   border: '1px solid #3a3a5e',
@@ -62,35 +61,97 @@ export default function Settings({ data }) {
     model, setModel,
     timeStart, setTimeStart,
     timeEnd, setTimeEnd,
+    wing, setWing,
+    wingSize, setWingSize,
+    wings,
     status, refreshForecast, refetchDisplay,
   } = data
 
   const [localModel, setLocalModel]   = useState(model)
   const [localTs, setLocalTs]         = useState(timeStart)
   const [localTe, setLocalTe]         = useState(timeEnd)
+  const [localWing, setLocalWing]     = useState(wing)
+  const [localWingSize, setLocalWingSize] = useState(wingSize ?? '')
   const [saved, setSaved]             = useState(false)
+
+  // When the wing dropdown changes, reset size to that wing's default
+  function handleWingChange(e) {
+    const key = e.target.value
+    setLocalWing(key)
+    if (wings[key]) {
+      setLocalWingSize(wings[key].default_size)
+    }
+  }
+
+  // Only allow integers in the size field
+  function handleSizeChange(e) {
+    const val = e.target.value
+    if (val === '' || /^\d+$/.test(val)) {
+      setLocalWingSize(val === '' ? '' : Number(val))
+    }
+  }
 
   function handleSave() {
     setModel(localModel)
     setTimeStart(localTs)
     setTimeEnd(localTe)
+    setWing(localWing)
+    setWingSize(localWingSize !== '' ? Number(localWingSize) : null)
     setSaved(true)
     refetchDisplay()
     setTimeout(() => setSaved(false), 2500)
   }
+
+  const wingKeys = Object.keys(wings)
 
   return (
     <div>
       <h2 style={{ marginBottom: 20, color: '#ccc', fontSize: 18 }}>Settings</h2>
       <div style={card}>
 
-        {/* Model */}
+        {/* Forecast Model */}
         <div style={field}>
           <label style={label}>Forecast Model</label>
-          <select style={select} value={localModel} onChange={e => setLocalModel(e.target.value)}>
+          <select style={{ ...select, width: '100%' }} value={localModel} onChange={e => setLocalModel(e.target.value)}>
             <option value="soar_knmi">KNMI Seamless</option>
             <option value="soar_ecmwf">ECMWF IFS (may pick onshore points)</option>
           </select>
+        </div>
+
+        {/* Wing Model + Size */}
+        <div style={field}>
+          <label style={label}>Wing</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <select
+              style={{ ...select, flex: 1 }}
+              value={localWing}
+              onChange={handleWingChange}
+              disabled={wingKeys.length === 0}
+            >
+              {wingKeys.length === 0 && (
+                <option value="">Loading…</option>
+              )}
+              {wingKeys.map(key => (
+                <option key={key} value={key}>
+                  {wings[key].display_name}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="\d*"
+              style={{ ...input, width: 72 }}
+              value={localWingSize}
+              onChange={handleSizeChange}
+              placeholder="m²"
+              title="Wing size in m²"
+            />
+            <span style={{ fontSize: 13, color: '#666', whiteSpace: 'nowrap' }}>m²</span>
+          </div>
+          <div style={{ fontSize: 12, color: '#666', marginTop: 6 }}>
+            Wing size defaults to the selected model's standard size.
+          </div>
         </div>
 
         {/* Time window */}

@@ -7,6 +7,7 @@ export function useSoarData() {
   const [status, setStatus]           = useState(null)
   const [points, setPoints]           = useState([])
   const [days, setDays]               = useState([])
+  const [wings, setWings]             = useState({})
   const [displayForecast, setDisplay] = useState(null)
   const [rawForecast, setRaw]         = useState(null)
   const [measurements, setMeasure]    = useState(null)
@@ -14,30 +15,53 @@ export function useSoarData() {
   const [error, setError]             = useState(null)
 
   // User settings (persisted in localStorage)
-  const [model, setModel]       = useState(() => localStorage.getItem('model')       || 'soar_knmi')
-  const [timeStart, setTimeStart] = useState(() => localStorage.getItem('timeStart') || '00:00')
-  const [timeEnd, setTimeEnd]   = useState(() => localStorage.getItem('timeEnd')     || '23:59')
-  const [dateIdx, setDateIdx]   = useState(1)
+  const [model, setModel]         = useState(() => localStorage.getItem('model')       || 'soar_knmi')
+  const [timeStart, setTimeStart] = useState(() => localStorage.getItem('timeStart')   || '00:00')
+  const [timeEnd, setTimeEnd]     = useState(() => localStorage.getItem('timeEnd')     || '23:59')
+  const [wing, setWing]           = useState(() => localStorage.getItem('wing')        || '')
+  const [wingSize, setWingSize]   = useState(() => {
+    const s = localStorage.getItem('wingSize')
+    return s !== null ? Number(s) : null
+  })
+  const [dateIdx, setDateIdx]     = useState(1)
 
   const prevModelRef = useRef(model)
   const prevTsRef    = useRef(timeStart)
   const prevTeRef    = useRef(timeEnd)
+  const prevWingRef  = useRef(wing)
+  const prevWingSzRef = useRef(wingSize)
 
   // ── Save settings to localStorage ────────────────────────────────────────
-  useEffect(() => { localStorage.setItem('model', model) },       [model])
+  useEffect(() => { localStorage.setItem('model',    model)    }, [model])
   useEffect(() => { localStorage.setItem('timeStart', timeStart) }, [timeStart])
-  useEffect(() => { localStorage.setItem('timeEnd', timeEnd) },   [timeEnd])
+  useEffect(() => { localStorage.setItem('timeEnd',  timeEnd)  }, [timeEnd])
+  useEffect(() => { localStorage.setItem('wing',     wing)     }, [wing])
+  useEffect(() => {
+    if (wingSize !== null) localStorage.setItem('wingSize', wingSize)
+  }, [wingSize])
 
   // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
     async function init() {
       try {
-        const [pts, d, st] = await Promise.all([
-          api.points(), api.days(), api.status()
+        const [pts, d, st, wgs] = await Promise.all([
+          api.points(), api.days(), api.status(), api.wings()
         ])
         setPoints(pts)
         setDays(d.days)
         setStatus(st)
+        setWings(wgs)
+
+        // If no wing is stored yet, default to the first wing in the list
+        const storedWing = localStorage.getItem('wing')
+        const storedSize = localStorage.getItem('wingSize')
+        const firstKey   = Object.keys(wgs)[0]
+        if ((!storedWing || !wgs[storedWing]) && firstKey) {
+          setWing(firstKey)
+          if (!storedSize) setWingSize(wgs[firstKey].default_size)
+        } else if (storedWing && wgs[storedWing] && !storedSize) {
+          setWingSize(wgs[storedWing].default_size)
+        }
 
         if (st.forecast_stale && !st.updating_forecast) {
           await api.refreshForecast()
@@ -54,11 +78,11 @@ export function useSoarData() {
     init()
   }, [])
 
-  // ── Fetch display forecast (called when model/times/forecast ready) ───────
+  // ── Fetch display forecast (called when model/times/wing/forecast ready) ─
   const fetchDisplay = useCallback(async () => {
     try {
       const [disp, raw, meas] = await Promise.all([
-        api.displayForecast(model, timeStart, timeEnd),
+        api.displayForecast(model, timeStart, timeEnd, wing || undefined, wingSize || undefined),
         api.rawForecast(model),
         api.measurements(),
       ])
@@ -68,7 +92,7 @@ export function useSoarData() {
     } catch (e) {
       console.error('fetchDisplay', e)
     }
-  }, [model, timeStart, timeEnd])
+  }, [model, timeStart, timeEnd, wing, wingSize])
 
   // ── Poll status and refresh display data when ready ───────────────────────
   useEffect(() => {
@@ -78,13 +102,17 @@ export function useSoarData() {
         setStatus(st)
 
         const settingsChanged =
-          model !== prevModelRef.current ||
-          timeStart !== prevTsRef.current ||
-          timeEnd !== prevTeRef.current
+          model    !== prevModelRef.current  ||
+          timeStart !== prevTsRef.current    ||
+          timeEnd  !== prevTeRef.current     ||
+          wing     !== prevWingRef.current   ||
+          wingSize !== prevWingSzRef.current
 
-        prevModelRef.current = model
-        prevTsRef.current    = timeStart
-        prevTeRef.current    = timeEnd
+        prevModelRef.current  = model
+        prevTsRef.current     = timeStart
+        prevTeRef.current     = timeEnd
+        prevWingRef.current   = wing
+        prevWingSzRef.current = wingSize
 
         // Trigger backend refresh if stale
         if (st.forecast_stale && !st.updating_forecast) {
@@ -107,7 +135,7 @@ export function useSoarData() {
     }, POLL_MS)
 
     return () => clearInterval(poll)
-  }, [model, timeStart, timeEnd, displayForecast, fetchDisplay])
+  }, [model, timeStart, timeEnd, wing, wingSize, displayForecast, fetchDisplay])
 
   // Initial display fetch once status confirms data available
   useEffect(() => {
@@ -118,12 +146,14 @@ export function useSoarData() {
 
   return {
     // data
-    status, points, days, displayForecast, rawForecast, measurements,
+    status, points, days, wings, displayForecast, rawForecast, measurements,
     loading, error,
     // state
     model, setModel,
     timeStart, setTimeStart,
     timeEnd, setTimeEnd,
+    wing, setWing,
+    wingSize, setWingSize,
     dateIdx, setDateIdx,
     // actions
     refreshForecast: api.refreshForecast,

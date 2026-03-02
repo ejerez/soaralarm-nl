@@ -96,10 +96,24 @@ class ForecastService:
         return result
 
     # ── Process ──────────────────────────────────────────────────────────────
-    def process(self, raw: List[Dict]) -> List[List[Dict]]:
+    def process(
+        self,
+        raw: List[Dict],
+        wing: Optional[str] = None,
+        wing_size: Optional[int] = None,
+    ) -> List[List[Dict]]:
         """
         Process raw forecast into day×point structure.
-        Returns: list[day] of list[point] of hourly dicts.
+
+        Args:
+            raw:       Raw list returned by fetch_raw().
+            wing:      Wing model key from wings.json (e.g. "scraper_16").
+                       Reserved for future wing-specific computations.
+            wing_size: Wing size in m² chosen by the user.
+                       Reserved for future wing-specific computations.
+
+        Returns:
+            list[day] of list[point] of hourly dicts.
         """
         # Collect unique dates
         sample_dates = [pd.Timestamp(d).date() for d in raw[0]["daily"]["date"]]
