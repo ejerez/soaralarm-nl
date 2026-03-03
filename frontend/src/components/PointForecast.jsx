@@ -65,18 +65,33 @@ function buildWindData(dayFc, meas, station, sunrise, sunset) {
   return points.sort((a, b) => a.ts - b.ts)
 }
 
-function buildDirData(dayFc, meas, station, sunrise, sunset, domainLow, domainHigh) {
-  // Normalise a direction to sit within [domainLow, domainHigh] by adding/subtracting 360
-  function normDir(deg) {
-    let d = deg
-    while (d < domainLow)  d += 360
-    while (d > domainHigh) d -= 360
-    return d
+function buildDirData(dayFc, meas, station, sunrise, sunset, heading) {
+  // Normalise a single value to be within [-180, +180] of heading
+  function normToHeading(deg) {
+    let d = deg - heading
+    d = ((d + 180) % 360 + 360) % 360 - 180  // → [-180, +180]
+    return heading + d
   }
+
+  // Make a series continuous by minimising jumps between consecutive values
+  function unwrap(values) {
+    if (!values.length) return values
+    const out = [normToHeading(values[0])]
+    for (let i = 1; i < values.length; i++) {
+      const prev = out[i - 1]
+      let d = values[i] - prev
+      d = ((d + 180) % 360 + 360) % 360 - 180  // nearest rotation
+      out.push(prev + d)
+    }
+    return out
+  }
+
+  const rawDirs = dayFc.time.map((_, i) => dayFc.wind_direction[i])
+  const unwrapped = unwrap(rawDirs)
 
   const points = dayFc.time.map((t, i) => ({
     ts: new Date(t).getTime(),
-    wind_dir: parseFloat(normDir(dayFc.wind_direction[i]).toFixed(1)),
+    wind_dir: parseFloat(unwrapped[i].toFixed(1)),
   }))
   if (meas?.[station]?.WINDRTG) {
     const { timestamps, values } = meas[station].WINDRTG
@@ -84,7 +99,7 @@ function buildDirData(dayFc, meas, station, sunrise, sunset, domainLow, domainHi
       const t = new Date(ts)
       if (sunrise && t < new Date(sunrise)) return
       if (sunset  && t > new Date(sunset))  return
-      points.push({ ts: t.getTime(), meas_dir: parseFloat(normDir(values[i]).toFixed(1)) })
+      points.push({ ts: t.getTime(), meas_dir: parseFloat(normToHeading(values[i]).toFixed(1)) })
     })
   }
   return points.sort((a, b) => a.ts - b.ts)
@@ -123,8 +138,8 @@ export default function PointForecast({ data }) {
 
   const dirData = useMemo(() => {
     if (!dayFc || !point) return []
-    return buildDirData(dayFc, measurements, point.station, dayFc.sunrise, dayFc.sunset, domainLow, domainHigh)
-  }, [dayFc, measurements, point, domainLow, domainHigh])
+    return buildDirData(dayFc, measurements, point.station, dayFc.sunrise, dayFc.sunset, heading)
+  }, [dayFc, measurements, point, heading])
 
   const tempData = useMemo(() => {
     if (!dayFc || !point) return []
@@ -174,7 +189,11 @@ export default function PointForecast({ data }) {
             <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"    name="Gust Speed (km/h)"         fill="#d68800" stroke="#d68800" fillOpacity={0.3} dot={false} connectNulls />
             <Area yAxisId="wind" type="monotone" dataKey="wind_speed"    name="Wind Speed (km/h)"    fill="#7eb8f7" stroke="#7eb8f7" fillOpacity={0.3} dot={false} connectNulls />
             <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precipitation (mm)"           fill="#5ab5f7" stroke="#5ab5f7" fillOpacity={1}   dot={false} connectNulls />
-            <Scatter yAxisId="wind" dataKey="meas_wind"                  name="Measured wind spread (km/h)" fill="#ffffff" opacity={0.8} />
+            <Scatter yAxisId="wind" dataKey="meas_wind" name="Measured wind spread (km/h)" fill="#ffffff" opacity={0.8}
+              shape={(props) => {
+                if (props.meas_wind == null || !isFinite(props.cy)) return null
+                return <circle cx={props.cx} cy={props.cy} r={3} fill="#ffffff" opacity={0.8} />
+              }} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
