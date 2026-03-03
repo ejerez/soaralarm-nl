@@ -9,7 +9,7 @@ const card = {
   background: '#1e1e2e',
   border: '1px solid #2a2a3e',
   borderRadius: 8,
-  padding: '16px',
+  padding: '12px 0',
   marginBottom: 20,
 }
 
@@ -18,6 +18,7 @@ const sectionTitle = {
   fontWeight: 600,
   color: '#ccc',
   marginBottom: 12,
+  paddingLeft: 12,
 }
 
 const select = {
@@ -145,12 +146,12 @@ export default function PointForecast({ data }) {
       <div style={card}>
         <div style={sectionTitle}>Wind Speed &amp; Gusts</div>
         <ResponsiveContainer width="100%" height={260}>
-          <ComposedChart data={windData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
+          <ComposedChart data={windData} margin={{ top: 4, right: 2, left: 2, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3e" />
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin', 'dataMax']}
               tickFormatter={fmtTime} tick={{ fill: '#888', fontSize: 11 }} />
-            <YAxis yAxisId="wind" tick={{ fill: '#888', fontSize: 11 }} label={{ value: 'km/h', angle: -90, position: 'insideLeft', fill: '#888', fontSize: 11 }} />
-            <YAxis yAxisId="rain" orientation="right" tick={{ fill: '#5ab5f7', fontSize: 11 }} tickFormatter={v => `${v}mm`} width={36} />
+            <YAxis yAxisId="wind" tick={{ fill: '#888', fontSize: 11 }} tickFormatter={v => `${v}km/h`} width={42} />
+            <YAxis yAxisId="rain" orientation="right" tick={{ fill: '#5ab5f7', fontSize: 11 }} tickFormatter={v => `${v}mm`} width={32} />
             <Tooltip {...TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
 
@@ -169,12 +170,12 @@ export default function PointForecast({ data }) {
       <div style={card}>
         <div style={sectionTitle}>Wind Direction</div>
         <ResponsiveContainer width="100%" height={220}>
-          <ComposedChart data={dirData} margin={{ top: 4, right: 20, left: 0, bottom: 4 }}>
+          <ComposedChart data={dirData} margin={{ top: 4, right: 2, left: 2, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3e" />
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin', 'dataMax']}
               tickFormatter={fmtTime} tick={{ fill: '#888', fontSize: 11 }} />
             <YAxis tick={{ fill: '#888', fontSize: 11 }} domain={[lowerBound - 20, upperBound + 20]}
-              label={{ value: '°', position: 'insideLeft', fill: '#888', fontSize: 11 }} />
+              tickFormatter={v => `${v}°`} width={36} />
             <Tooltip {...TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
 
@@ -195,12 +196,12 @@ export default function PointForecast({ data }) {
       <div style={card}>
         <div style={sectionTitle}>Temperature &amp; Visibility</div>
         <ResponsiveContainer width="100%" height={220}>
-          <ComposedChart data={tempData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
+          <ComposedChart data={tempData} margin={{ top: 4, right: 2, left: 2, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3e" />
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin', 'dataMax']}
               tickFormatter={fmtTime} tick={{ fill: '#888', fontSize: 11 }} />
-            <YAxis yAxisId="temp" tick={{ fill: '#f5a623', fontSize: 11 }} label={{ value: '°C', angle: -90, position: 'insideLeft', fill: '#f5a623', fontSize: 11 }} />
-            <YAxis yAxisId="vis" orientation="right" tick={{ fill: '#aaa', fontSize: 11 }} tickFormatter={v => `${v}km`} width={36} />
+            <YAxis yAxisId="temp" tick={{ fill: '#f5a623', fontSize: 11 }} tickFormatter={v => `${v}°C`} width={36} />
+            <YAxis yAxisId="vis" orientation="right" tick={{ fill: '#aaa', fontSize: 11 }} tickFormatter={v => `${v}km`} width={32} />
             <Tooltip {...TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
             <ReferenceLine yAxisId="vis" y={0.1} stroke="#e05c5c" strokeDasharray="4 2"
