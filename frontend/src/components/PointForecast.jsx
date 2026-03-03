@@ -123,8 +123,8 @@ export default function PointForecast({ data }) {
 
   // Effective wind range pre-computed by the backend for the selected wings
   const dispPf   = displayForecast?.[dateIdx]?.[ptIdx]
-  const wind_min = dispPf?.wind_min ?? 0
-  const wind_max = dispPf?.wind_max ?? 999
+  const wind_min = dispPf?.wind_min
+  const wind_max = dispPf?.wind_max
 
   return (
     <div>
@@ -155,8 +155,9 @@ export default function PointForecast({ data }) {
             <Tooltip {...TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
 
-            {/* Flyable wind band */}
-            <ReferenceArea yAxisId="wind" y1={wind_min} y2={wind_max} fill="#1fd100" fillOpacity={0.15} />
+            {/* Flyable wind band — only shown when display forecast is loaded */}
+            {wind_min != null && <ReferenceLine yAxisId="wind" y={wind_min} stroke="#1fd100" strokeWidth={2} strokeDasharray="4 2" label={{ value: `↑ ${Math.round(wind_min)} km/h`, fill: '#1fd100', fontSize: 10, position: 'insideTopLeft' }} />}
+            {wind_max != null && <ReferenceLine yAxisId="wind" y={wind_max} stroke="#1fd100" strokeWidth={2} strokeDasharray="4 2" label={{ value: `↓ ${Math.round(wind_max)} km/h`, fill: '#1fd100', fontSize: 10, position: 'insideBottomLeft' }} />}
 
             <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"  name="Gusts"      fill="#d68800" stroke="#d68800" fillOpacity={0.3} dot={false} connectNulls />
             <Area yAxisId="wind" type="monotone" dataKey="wind_speed"  name="Wind Speed" fill="#7eb8f7" stroke="#7eb8f7" fillOpacity={0.3} dot={false} connectNulls />
