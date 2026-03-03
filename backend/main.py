@@ -37,7 +37,7 @@ FORECAST_PKL = Path("forecast.pkl")
 MEASURE_PKL  = Path("measurements.pkl")
 POINTS_FILE  = Path("soar_points.json")
 WINGS_FILE   = Path("wings.json")
-FORECAST_TTL = 3600   # 1 hour
+FORECAST_TTL = 21600  # 6 hours
 MEASURE_TTL  = 900    # 15 minutes
 
 

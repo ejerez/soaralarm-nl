@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, LabelList } from 'recharts'
 
 // Leaflet is loaded via CDN in index.html; import the JS bundle here
 import L from 'leaflet'
@@ -11,9 +11,11 @@ function toRad(d) { return d * DEG }
 
 // Mirror of backend's wind-polygon logic
 function windPolygons(point, pf) {
-  const head    = toRad(point.heading)
-  const relBounds = [point.head_range[0], -22.5, 22.5, point.head_range[1]]
-  const slices  = pf.wind_pizza
+  const head      = toRad(point.heading)
+  const good      = point.head_range.good
+  const cross     = point.head_range.cross
+  const relBounds = [cross[0], good[0], good[1], cross[1]]
+  const slices    = pf.wind_pizza
 
   return relBounds.slice(0, 3).map((_, i) => {
     const ang1 = head + toRad(relBounds[i])
@@ -41,7 +43,7 @@ function markerColor(pf) {
 function GanttChart({ ganttRows, days }) {
   // ganttRows: array of { day, point, type, start, end }
   const COLOR = { good: '#1fd100', cross: '#d68800', no: 'transparent' }
-  const DAY_H = 28
+  const DAY_H = 36
   const LEFT  = 90
   const RIGHT = 20
   const W     = 700
@@ -84,16 +86,25 @@ function GanttChart({ ganttRows, days }) {
         </g>
       ))}
       {dayKeys.map((day, di) => {
-        const y = 20 + di * DAY_H
+        const y    = 20 + di * DAY_H
         const rows = grouped[day] || []
+        const flyableRows = rows.filter(r => r.type !== 'no')
+        const pointName   = flyableRows.length > 0 ? rows[0].point : null
         return (
           <g key={day}>
-            <text x={LEFT - 4} y={y + DAY_H / 2 + 4} fontSize={11} fill="#aaa" textAnchor="end">{day}</text>
-            {rows.filter(r => r.type !== 'no').map((r, i) => {
+            {/* Day name */}
+            <text x={LEFT - 4} y={y + DAY_H / 2} fontSize={11} fill="#aaa" textAnchor="end">{day}</text>
+            {/* Point name — only when there are flyable hours */}
+            {pointName && (
+              <text x={LEFT - 4} y={y + DAY_H / 2 + 12} fontSize={9} fill="#666" textAnchor="end" fontStyle="italic">
+                {pointName}
+              </text>
+            )}
+            {flyableRows.map((r, i) => {
               const x1 = scale(r.start)
               const x2 = scale(r.end)
               return (
-                <rect key={i} x={x1} y={y + 4} width={Math.max(x2 - x1, 1)} height={DAY_H - 8}
+                <rect key={i} x={x1} y={y + 6} width={Math.max(x2 - x1, 1)} height={DAY_H - 12}
                   fill={COLOR[r.type] || '#555'} rx={2} opacity={0.85}>
                   <title>{r.type} – {r.point}</title>
                 </rect>
@@ -180,7 +191,7 @@ export default function MapForecast({ data }) {
         day: days[di] || `Day ${di}`,
         good: bpf?.good_hours || 0,
         cross: bpf?.cross_hours || 0,
-        label: bpt?.name || '',
+        label: ((bpf?.good_hours || 0) + (bpf?.cross_hours || 0)) > 0 ? (bpt?.name || '') : '',
       })
 
       if (bpf?.gantt) {
@@ -200,8 +211,8 @@ export default function MapForecast({ data }) {
 
       {/* Flyable Hours Bar */}
       <h3 style={{ marginBottom: 12, color: '#ccc', fontSize: 16 }}>Flyable Hours Per Day</h3>
-      <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={barData} margin={{ top: 4, right: 20, left: 0, bottom: 4 }}>
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart data={barData} margin={{ top: 24, right: 20, left: 0, bottom: 4 }}>
           <XAxis dataKey="day" tick={{ fill: '#aaa', fontSize: 12 }} />
           <YAxis tick={{ fill: '#aaa', fontSize: 12 }} label={{ value: 'Hours', angle: -90, position: 'insideLeft', fill: '#888', fontSize: 12 }} />
           <Tooltip
@@ -211,7 +222,9 @@ export default function MapForecast({ data }) {
           />
           <Legend wrapperStyle={{ color: '#aaa', fontSize: 13 }} />
           <Bar dataKey="cross" name="Crosswind" stackId="a" fill="#d68800" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="good"  name="Good wind"  stackId="a" fill="#1fd100" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="good"  name="Good wind"  stackId="a" fill="#1fd100" radius={[4, 4, 0, 0]}>
+            <LabelList dataKey="label" position="top" style={{ fill: '#888', fontSize: 10 }} />
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
 

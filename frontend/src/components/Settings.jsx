@@ -257,7 +257,10 @@ export default function Settings({ data }) {
         <button
           style={{ ...saveBtn, background: '#2a2a3e', marginTop: 16 }}
           onClick={() => { refreshForecast(); refetchDisplay() }}
-          disabled={status?.updating_forecast}
+          disabled={status?.updating_forecast || (status?.forecast_age_seconds != null && status.forecast_age_seconds < 3600)}
+          title={status?.forecast_age_seconds != null && status.forecast_age_seconds < 3600
+            ? `Available in ${Math.ceil((3600 - status.forecast_age_seconds) / 60)} min`
+            : 'Force refresh forecast'}
         >
           ↻ Force Refresh Forecast
         </button>

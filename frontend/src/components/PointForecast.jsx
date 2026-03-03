@@ -91,7 +91,7 @@ function buildTempData(dayFc) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function PointForecast({ data }) {
-  const { rawForecast, points, measurements, dateIdx, model } = data
+  const { rawForecast, displayForecast, points, measurements, dateIdx, model } = data
   const [ptIdx, setPtIdx] = useState(0)
 
   const point   = points[ptIdx]
@@ -114,11 +114,16 @@ export default function PointForecast({ data }) {
 
   if (!point || !dayFc) return <div style={{ color: '#888' }}>No data available for this selection.</div>
 
-  const { heading, head_range, wind_range } = point
-  const lowerIdeal  = heading - 22.5
-  const upperIdeal  = heading + 22.5
-  const lowerBound  = heading + head_range[0]
-  const upperBound  = heading + head_range[1]
+  const { heading, head_range } = point
+  const lowerIdeal = heading + head_range.good[0]
+  const upperIdeal = heading + head_range.good[1]
+  const lowerBound = heading + head_range.cross[0]
+  const upperBound = heading + head_range.cross[1]
+
+  // Effective wind range pre-computed by the backend for the selected wings
+  const dispPf   = displayForecast?.[dateIdx]?.[ptIdx]
+  const wind_min = dispPf?.wind_min ?? 0
+  const wind_max = dispPf?.wind_max ?? 999
 
   return (
     <div>
@@ -149,13 +154,12 @@ export default function PointForecast({ data }) {
             <Tooltip {...TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
 
-            {/* Flyable wind band — drawn first so series render on top */}
-            <ReferenceArea yAxisId="wind" y1={wind_range[0]} y2={wind_range[1]} fill="#1fd100" fillOpacity={0.15} />
-
-            <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"    name="Gusts"       fill="#d68800" stroke="#d68800" fillOpacity={0.3} dot={false} connectNulls />
-            <Area yAxisId="wind" type="monotone" dataKey="wind_speed"    name="Wind Speed"  fill="#7eb8f7" stroke="#7eb8f7" fillOpacity={0.3} dot={false} connectNulls />
-            <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precip (mm)" fill="#5ab5f7" stroke="#5ab5f7" fillOpacity={1}   dot={false} connectNulls />
+            <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"  name="Gusts"      fill="#d68800" stroke="#d68800" fillOpacity={0.3} dot={false} connectNulls />
+            <Area yAxisId="wind" type="monotone" dataKey="wind_speed"  name="Wind Speed" fill="#7eb8f7" stroke="#7eb8f7" fillOpacity={0.3} dot={false} connectNulls />
+            <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precip (mm)" fill="#5ab5f7" stroke="#5ab5f7" fillOpacity={1} dot={false} connectNulls />
             <Scatter yAxisId="wind" dataKey="meas_wind" name="Measured wind" fill="#ffffff" opacity={0.8} />
+            <ReferenceLine yAxisId="wind" y={wind_min} stroke="#1fd100" strokeWidth={2} strokeDasharray="4 2" label={{ value: `↑ ${Math.round(wind_min)} km/h`, fill: '#1fd100', fontSize: 10, position: 'insideTopLeft' }} />
+            <ReferenceLine yAxisId="wind" y={wind_max} stroke="#1fd100" strokeWidth={2} strokeDasharray="4 2" label={{ value: `↓ ${Math.round(wind_max)} km/h`, fill: '#1fd100', fontSize: 10, position: 'insideBottomLeft' }} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -174,14 +178,14 @@ export default function PointForecast({ data }) {
             <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
 
             {/* Heading zones */}
-            <ReferenceArea y1={lowerBound}  y2={lowerIdeal}  fill="#d68800" fillOpacity={0.15} />
-            <ReferenceArea y1={lowerIdeal}  y2={upperIdeal}  fill="#1fd100" fillOpacity={0.18} />
-            <ReferenceArea y1={upperIdeal}  y2={upperBound}  fill="#d68800" fillOpacity={0.15} />
+            <ReferenceArea y1={lowerBound}  y2={lowerIdeal}  fill="#d68800" fillOpacity={0.35} />
+            <ReferenceArea y1={lowerIdeal}  y2={upperIdeal}  fill="#1fd100" fillOpacity={0.4} />
+            <ReferenceArea y1={upperIdeal}  y2={upperBound}  fill="#d68800" fillOpacity={0.35} />
             <ReferenceLine y={heading} stroke="#666" strokeDasharray="4 2"
               label={{ value: `${heading}°`, fill: '#666', fontSize: 11 }} />
 
-            <Line type="monotone" dataKey="wind_dir"  name="Forecast dir" stroke="#ccc"     dot={false} strokeWidth={2}   connectNulls />
-            <Line type="linear"   dataKey="meas_dir"  name="Measured dir"  stroke="#ffffff" dot={false} strokeWidth={1.5} connectNulls strokeDasharray="5 3" />
+            <Line type="monotone" dataKey="wind_dir"  name="Forecast dir" stroke="#ccc" dot={false} strokeWidth={2} connectNulls />
+            <Line type="linear"   dataKey="meas_dir"  name="Measured dir"  stroke="#ffffff" dot={false} strokeWidth={1.5} connectNulls strokeDasharray="5 3"/>
           </ComposedChart>
         </ResponsiveContainer>
       </div>
