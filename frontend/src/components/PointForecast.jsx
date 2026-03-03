@@ -150,8 +150,8 @@ export default function PointForecast({ data }) {
             <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3e" />
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin', 'dataMax']}
               tickFormatter={fmtTime} tick={{ fill: '#888', fontSize: 11 }} />
-            <YAxis yAxisId="wind" tick={{ fill: '#888', fontSize: 11 }} tickFormatter={v => `${v}km/h`} width={42} />
-            <YAxis yAxisId="rain" orientation="right" tick={{ fill: '#5ab5f7', fontSize: 11 }} tickFormatter={v => `${v}mm`} width={32} />
+            <YAxis yAxisId="wind" tick={{ fill: '#888', fontSize: 11 }} width={30} />
+            <YAxis yAxisId="rain" orientation="right" tick={{ fill: '#5ab5f7', fontSize: 11 }} width={24} />
             <Tooltip {...TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
 
@@ -159,10 +159,11 @@ export default function PointForecast({ data }) {
             {wind_min != null && <ReferenceLine yAxisId="wind" y={wind_min} stroke="#1fd100" strokeWidth={2} strokeDasharray="4 2" label={{ value: `↑ ${Math.round(wind_min)} km/h`, fill: '#1fd100', fontSize: 10, position: 'insideTopLeft' }} />}
             {wind_max != null && <ReferenceLine yAxisId="wind" y={wind_max} stroke="#1fd100" strokeWidth={2} strokeDasharray="4 2" label={{ value: `↓ ${Math.round(wind_max)} km/h`, fill: '#1fd100', fontSize: 10, position: 'insideBottomLeft' }} />}
 
-            <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"  name="Gusts"      fill="#d68800" stroke="#d68800" fillOpacity={0.3} dot={false} connectNulls />
-            <Area yAxisId="wind" type="monotone" dataKey="wind_speed"  name="Wind Speed" fill="#7eb8f7" stroke="#7eb8f7" fillOpacity={0.3} dot={false} connectNulls />
-            <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precip (mm)" fill="#5ab5f7" stroke="#5ab5f7" fillOpacity={1} dot={false} connectNulls />
-            <Scatter yAxisId="wind" dataKey="meas_wind" name="Measured wind" fill="#ffffff" opacity={0.8} />
+            <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"    name="Gust Speed (km/h)"         fill="#d68800" stroke="#d68800" fillOpacity={0.3} dot={false} connectNulls />
+            <Area yAxisId="wind" type="monotone" dataKey="wind_speed"    name="Wind Speed (km/h)"    fill="#7eb8f7" stroke="#7eb8f7" fillOpacity={0.3} dot={false} connectNulls />
+            <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precipitation (mm)"           fill="#5ab5f7" stroke="#5ab5f7" fillOpacity={1}   dot={false} connectNulls />
+            <Scatter yAxisId="wind" dataKey="meas_wind" name="Measured wind spread (km/h)" fill="#ffffff" opacity={0.8}
+              shape={(props) => <circle cx={props.cx} cy={props.cy} r={3} fill="#ffffff" opacity={0.8} />} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -175,20 +176,19 @@ export default function PointForecast({ data }) {
             <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3e" />
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin', 'dataMax']}
               tickFormatter={fmtTime} tick={{ fill: '#888', fontSize: 11 }} />
-            <YAxis tick={{ fill: '#888', fontSize: 11 }} domain={[lowerBound - 20, upperBound + 20]}
-              tickFormatter={v => `${v}°`} width={36} />
+            <YAxis tick={{ fill: '#888', fontSize: 11 }} domain={[lowerBound - 20, upperBound + 20]} width={30} />
             <Tooltip {...TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
 
             {/* Heading zones */}
-            <ReferenceArea y1={lowerBound}  y2={lowerIdeal}  fill="#d68800" fillOpacity={0.15} />
-            <ReferenceArea y1={lowerIdeal}  y2={upperIdeal}  fill="#1fd100" fillOpacity={0.18} />
-            <ReferenceArea y1={upperIdeal}  y2={upperBound}  fill="#d68800" fillOpacity={0.15} />
+            <ReferenceArea y1={lowerBound}  y2={lowerIdeal}  fill="#d68800" fillOpacity={0.35} />
+            <ReferenceArea y1={lowerIdeal}  y2={upperIdeal}  fill="#1fd100" fillOpacity={0.4} />
+            <ReferenceArea y1={upperIdeal}  y2={upperBound}  fill="#d68800" fillOpacity={0.35} />
             <ReferenceLine y={heading} stroke="#666" strokeDasharray="4 2"
               label={{ value: `${heading}°`, fill: '#666', fontSize: 11 }} />
 
-            <Line type="monotone" dataKey="wind_dir"  name="Forecast dir" stroke="#ccc" dot={false} strokeWidth={2} connectNulls />
-            <Line type="linear"   dataKey="meas_dir"  name="Measured dir"  stroke="#ffffff" dot={false} strokeWidth={1.5} connectNulls strokeDasharray="5 3"/>
+            <Line type="monotone" dataKey="wind_dir" name="Forecasted heading (°)" stroke="#ccc"    dot={false} strokeWidth={2}   connectNulls />
+            <Line type="linear"   dataKey="meas_dir" name="Measured heading (°)" stroke="#ffffff" dot={false} strokeWidth={1.5} connectNulls strokeDasharray="5 3" />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -201,8 +201,8 @@ export default function PointForecast({ data }) {
             <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3e" />
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin', 'dataMax']}
               tickFormatter={fmtTime} tick={{ fill: '#888', fontSize: 11 }} />
-            <YAxis yAxisId="temp" tick={{ fill: '#f5a623', fontSize: 11 }} tickFormatter={v => `${v}°C`} width={36} />
-            <YAxis yAxisId="vis" orientation="right" tick={{ fill: '#aaa', fontSize: 11 }} tickFormatter={v => `${v}km`} width={32} />
+            <YAxis yAxisId="temp" tick={{ fill: '#f5a623', fontSize: 11 }} width={30} />
+            <YAxis yAxisId="vis" orientation="right" tick={{ fill: '#aaa', fontSize: 11 }} width={24} />
             <Tooltip {...TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
             <ReferenceLine yAxisId="vis" y={0.1} stroke="#e05c5c" strokeDasharray="4 2"
