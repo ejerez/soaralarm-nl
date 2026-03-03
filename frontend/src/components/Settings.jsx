@@ -131,6 +131,7 @@ export default function Settings({ data }) {
     timeStart, setTimeStart,
     timeEnd, setTimeEnd,
     selectedWings, setSelectedWings,
+    weight, setWeight,
     wings,
     status, refreshForecast, refetchDisplay,
   } = data
@@ -139,6 +140,7 @@ export default function Settings({ data }) {
   const [localTs, setLocalTs]       = useState(timeStart)
   const [localTe, setLocalTe]       = useState(timeEnd)
   const [localWings, setLocalWings] = useState(selectedWings)
+  const [localWeight, setLocalWeight] = useState(weight)
   const [saved, setSaved]           = useState(false)
 
   const wingKeys = Object.keys(wings)
@@ -168,6 +170,7 @@ export default function Settings({ data }) {
     setTimeStart(localTs)
     setTimeEnd(localTe)
     setSelectedWings(cleaned)
+    setWeight(localWeight)
     setSaved(true)
     refetchDisplay()
     setTimeout(() => setSaved(false), 2500)
@@ -223,6 +226,33 @@ export default function Settings({ data }) {
           )}
           <div style={{ fontSize: 12, color: '#666', marginTop: 8 }}>
             Up to {MAX_WINGS} wings. Size defaults to the model's standard size.
+          </div>
+        </div>
+
+        {/* Total Weight */}
+        <div style={field}>
+          <label style={label}>Total Weight (in flight)</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="text"
+              inputMode="decimal"
+              style={{ ...inputStyle, width: 90 }}
+              value={localWeight}
+              onChange={e => {
+                const val = e.target.value
+                if (val === '' || /^\d*\.?\d*$/.test(val)) setLocalWeight(val)
+              }}
+              onBlur={e => {
+                const n = parseFloat(e.target.value)
+                if (!isNaN(n) && n > 0) setLocalWeight(n)
+                else setLocalWeight(75)
+              }}
+              placeholder="75"
+            />
+            <span style={{ fontSize: 13, color: '#666' }}>kg</span>
+          </div>
+          <div style={{ fontSize: 12, color: '#666', marginTop: 6 }}>
+            Used to scale wind ranges together with wing size.
           </div>
         </div>
 

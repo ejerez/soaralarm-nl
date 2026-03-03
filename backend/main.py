@@ -37,7 +37,7 @@ FORECAST_PKL = Path("forecast.pkl")
 MEASURE_PKL  = Path("measurements.pkl")
 POINTS_FILE  = Path("soar_points.json")
 WINGS_FILE   = Path("wings.json")
-FORECAST_TTL = 21600  # 6 hours
+FORECAST_TTL = 3600   # 1 hour
 MEASURE_TTL  = 900    # 15 minutes
 
 
@@ -163,6 +163,7 @@ def get_display_forecast(
     time_start: str           = Query("00:00"),
     time_end:   str           = Query("23:59"),
     wings:      str           = Query(None, description='JSON array of {key, size} objects'),
+    weight:     float         = Query(75.0, description='Total pilot weight in flight (kg)'),
 ):
     """Returns per-day, per-point display data (gantt, wind_pizza, hours)."""
     raw = state["forecast"].get(model)
@@ -181,7 +182,7 @@ def get_display_forecast(
             selected_wings = []
 
     svc  = ForecastService(state["soar_points"])
-    disp = svc.display(raw, t_start, t_end, selected_wings, state["wings"])
+    disp = svc.display(raw, t_start, t_end, selected_wings, state["wings"], weight)
     return {"model": model, "display": disp}
 
 

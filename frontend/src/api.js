@@ -17,11 +17,12 @@ export const api = {
   points:          ()                               => get('/points'),
   days:            ()                               => get('/days'),
   wings:           ()                               => get('/wings'),
-  displayForecast: (model, ts, te, selectedWings)   => {
+  displayForecast: (model, ts, te, selectedWings, weight)   => {
     const params = new URLSearchParams({
       model,
       time_start: ts,
       time_end:   te,
+      weight:     weight ?? 75,
     })
     // Encode the wings array as a JSON string; backend will decode it
     if (selectedWings?.length) {

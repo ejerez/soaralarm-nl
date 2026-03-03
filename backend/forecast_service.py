@@ -153,33 +153,38 @@ class ForecastService:
             forecast.append(day_data)
         return forecast
     
+    DEFAULT_WEIGHT = 75.0   # kg — baseline pilot weight the wind ranges are calibrated for
+
     @staticmethod
     def effective_wind_range(
         point: Dict,
         selected_wings: List[Dict],
         wings_config: Dict,
+        weight: float = 75.0,
     ) -> List[float]:
         """
-        For each selected wing, look up wind_range_{key} in point, scale each
-        bound by sqrt(value * (default_size / selected_size)), then return
-        [min of all lower bounds, max of all upper bounds].
+        For each selected wing, scale wind range bounds by
+        sqrt((default_size / size) * (weight / default_weight)).
+        Returns [min of all lower bounds, max of all upper bounds].
         Falls back to [0, 999] if no wings match.
         """
         all_mins: List[float] = []
         all_maxs: List[float] = []
 
         for wing in selected_wings:
-            print(wing)
-            key       = wing["key"]
-            size      = float(wing["size"])
-            wr           = point["wind_range"][key]
-            default_size = float(wings_config[key]["default_size"])
-            ratio        = default_size / size
-            adj_min      = wr[0] * np.sqrt(ratio)
-            adj_max      = wr[1] * np.sqrt(ratio)
+            key            = wing["key"]
+            size           = float(wing["size"])
+            wr             = point["wind_range"][key]
+            default_size   = float(wings_config[key]["default_size"])
+            size_ratio     = default_size / size
+            weight_ratio   = weight / ForecastService.DEFAULT_WEIGHT
+            adj_min        = wr[0] * np.sqrt(size_ratio * weight_ratio)
+            adj_max        = wr[1] * np.sqrt(size_ratio * weight_ratio)
             all_mins.append(adj_min)
             all_maxs.append(adj_max)
 
+        if not all_mins:
+            return [0.0, 999.0]
         return [min(all_mins), max(all_maxs)]
 
     # ── Display ──────────────────────────────────────────────────────────────
@@ -188,8 +193,9 @@ class ForecastService:
         forecast: List[List[Dict]],
         t_start: time_t = time_t(0, 0),
         t_end:   time_t = time_t(23, 59),
-        selected_wings: List[Dict] = [{"key":"scraper_16","size":16}],
+        selected_wings: List[Dict] = [{"key": "scraper_16", "size": 16}],
         wings_config:   Dict       = None,
+        weight:         float      = 75.0,
     ) -> List[List[Dict]]:
         """
         Compute wind_pizza, good_hours, cross_hours, gantt for each day×point.
@@ -198,13 +204,14 @@ class ForecastService:
             forecast:       Processed forecast (output of process()).
             t_start:        Start of the flyable-hours time window.
             t_end:          End of the flyable-hours time window.
-            selected_wings: List of {"key": str, "size": int} dicts chosen by
-                            the user.
+            selected_wings: List of {"key": str, "size": int} dicts chosen by the user.
+            wings_config:   Full wings catalogue from wings.json.
+            weight:         Total pilot weight in flight (kg).
         """
 
         # Pre-compute effective wind range per point (constant across all days)
         eff_ranges = [
-            self.effective_wind_range(pt, selected_wings, wings_config)
+            self.effective_wind_range(pt, selected_wings, wings_config, weight)
             for pt in self.points
         ]
 
