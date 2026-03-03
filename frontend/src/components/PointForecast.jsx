@@ -145,21 +145,22 @@ export default function PointForecast({ data }) {
       <div style={card}>
         <div style={sectionTitle}>Wind Speed &amp; Gusts</div>
         <ResponsiveContainer width="100%" height={260}>
-          <ComposedChart data={windData} margin={{ top: 4, right: 50, left: 0, bottom: 4 }}>
+          <ComposedChart data={windData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3e" />
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin', 'dataMax']}
               tickFormatter={fmtTime} tick={{ fill: '#888', fontSize: 11 }} />
             <YAxis yAxisId="wind" tick={{ fill: '#888', fontSize: 11 }} label={{ value: 'km/h', angle: -90, position: 'insideLeft', fill: '#888', fontSize: 11 }} />
-            <YAxis yAxisId="rain" orientation="right" tick={{ fill: '#5ab5f7', fontSize: 11 }} label={{ value: 'mm', angle: 90, position: 'insideRight', fill: '#5ab5f7', fontSize: 11 }} />
+            <YAxis yAxisId="rain" orientation="right" tick={{ fill: '#5ab5f7', fontSize: 11 }} tickFormatter={v => `${v}mm`} width={36} />
             <Tooltip {...TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
+
+            {/* Flyable wind band */}
+            <ReferenceArea yAxisId="wind" y1={wind_min} y2={wind_max} fill="#1fd100" fillOpacity={0.15} />
 
             <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"  name="Gusts"      fill="#d68800" stroke="#d68800" fillOpacity={0.3} dot={false} connectNulls />
             <Area yAxisId="wind" type="monotone" dataKey="wind_speed"  name="Wind Speed" fill="#7eb8f7" stroke="#7eb8f7" fillOpacity={0.3} dot={false} connectNulls />
             <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precip (mm)" fill="#5ab5f7" stroke="#5ab5f7" fillOpacity={1} dot={false} connectNulls />
             <Scatter yAxisId="wind" dataKey="meas_wind" name="Measured wind" fill="#ffffff" opacity={0.8} />
-            <ReferenceLine yAxisId="wind" y={wind_min} stroke="#1fd100" strokeWidth={2} strokeDasharray="4 2" label={{ value: `↑ ${Math.round(wind_min)} km/h`, fill: '#1fd100', fontSize: 10, position: 'insideTopLeft' }} />
-            <ReferenceLine yAxisId="wind" y={wind_max} stroke="#1fd100" strokeWidth={2} strokeDasharray="4 2" label={{ value: `↓ ${Math.round(wind_max)} km/h`, fill: '#1fd100', fontSize: 10, position: 'insideBottomLeft' }} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -178,9 +179,9 @@ export default function PointForecast({ data }) {
             <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
 
             {/* Heading zones */}
-            <ReferenceArea y1={lowerBound}  y2={lowerIdeal}  fill="#d68800" fillOpacity={0.35} />
-            <ReferenceArea y1={lowerIdeal}  y2={upperIdeal}  fill="#1fd100" fillOpacity={0.4} />
-            <ReferenceArea y1={upperIdeal}  y2={upperBound}  fill="#d68800" fillOpacity={0.35} />
+            <ReferenceArea y1={lowerBound}  y2={lowerIdeal}  fill="#d68800" fillOpacity={0.15} />
+            <ReferenceArea y1={lowerIdeal}  y2={upperIdeal}  fill="#1fd100" fillOpacity={0.18} />
+            <ReferenceArea y1={upperIdeal}  y2={upperBound}  fill="#d68800" fillOpacity={0.15} />
             <ReferenceLine y={heading} stroke="#666" strokeDasharray="4 2"
               label={{ value: `${heading}°`, fill: '#666', fontSize: 11 }} />
 
@@ -194,12 +195,12 @@ export default function PointForecast({ data }) {
       <div style={card}>
         <div style={sectionTitle}>Temperature &amp; Visibility</div>
         <ResponsiveContainer width="100%" height={220}>
-          <ComposedChart data={tempData} margin={{ top: 4, right: 50, left: 0, bottom: 4 }}>
+          <ComposedChart data={tempData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3e" />
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin', 'dataMax']}
               tickFormatter={fmtTime} tick={{ fill: '#888', fontSize: 11 }} />
             <YAxis yAxisId="temp" tick={{ fill: '#f5a623', fontSize: 11 }} label={{ value: '°C', angle: -90, position: 'insideLeft', fill: '#f5a623', fontSize: 11 }} />
-            <YAxis yAxisId="vis" orientation="right" tick={{ fill: '#aaa', fontSize: 11 }} label={{ value: 'km', angle: 90, position: 'insideRight', fill: '#aaa', fontSize: 11 }} />
+            <YAxis yAxisId="vis" orientation="right" tick={{ fill: '#aaa', fontSize: 11 }} tickFormatter={v => `${v}km`} width={36} />
             <Tooltip {...TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
             <ReferenceLine yAxisId="vis" y={0.1} stroke="#e05c5c" strokeDasharray="4 2"
