@@ -145,13 +145,6 @@ export default function App() {
               Forecast updated {Math.round(status.forecast_age_seconds / 60)} min ago
             </span>
           )}
-          <button
-            style={{ ...styles.badge('#3a7bd5'), cursor: 'pointer', border: 'none' }}
-            onClick={() => { data.refreshForecast(); data.refreshMeasure() }}
-            disabled={status?.updating_forecast}
-          >
-            ↻ Refresh
-          </button>
         </div>
       )}
 
