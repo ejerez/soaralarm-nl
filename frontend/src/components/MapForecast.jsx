@@ -127,7 +127,7 @@ export default function MapForecast({ data }) {
   // Init Leaflet map once
   useEffect(() => {
     if (!mapRef.current || leafletRef.current) return
-    leafletRef.current = L.map(mapRef.current).setView([52.04, 4.39], 8)
+    leafletRef.current = L.map(mapRef.current).setView([52.04, 4.25], 8)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
     }).addTo(leafletRef.current)
