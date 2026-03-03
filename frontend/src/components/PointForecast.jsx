@@ -65,10 +65,18 @@ function buildWindData(dayFc, meas, station, sunrise, sunset) {
   return points.sort((a, b) => a.ts - b.ts)
 }
 
-function buildDirData(dayFc, meas, station, sunrise, sunset) {
+function buildDirData(dayFc, meas, station, sunrise, sunset, domainLow, domainHigh) {
+  // Normalise a direction to sit within [domainLow, domainHigh] by adding/subtracting 360
+  function normDir(deg) {
+    let d = deg
+    while (d < domainLow)  d += 360
+    while (d > domainHigh) d -= 360
+    return d
+  }
+
   const points = dayFc.time.map((t, i) => ({
     ts: new Date(t).getTime(),
-    wind_dir: parseFloat(dayFc.wind_direction[i]?.toFixed(1)),
+    wind_dir: parseFloat(normDir(dayFc.wind_direction[i]).toFixed(1)),
   }))
   if (meas?.[station]?.WINDRTG) {
     const { timestamps, values } = meas[station].WINDRTG
@@ -76,7 +84,7 @@ function buildDirData(dayFc, meas, station, sunrise, sunset) {
       const t = new Date(ts)
       if (sunrise && t < new Date(sunrise)) return
       if (sunset  && t > new Date(sunset))  return
-      points.push({ ts: t.getTime(), meas_dir: parseFloat(values[i]?.toFixed(1)) })
+      points.push({ ts: t.getTime(), meas_dir: parseFloat(normDir(values[i]).toFixed(1)) })
     })
   }
   return points.sort((a, b) => a.ts - b.ts)
@@ -98,6 +106,16 @@ export default function PointForecast({ data }) {
   const point   = points[ptIdx]
   const dayFc   = rawForecast?.[dateIdx]?.[ptIdx]
 
+  // Compute heading bounds early so dirData memo can use them
+  const heading    = point?.heading ?? 0
+  const head_range = point?.head_range
+  const lowerIdeal = heading + (head_range?.good[0]  ?? -22.5)
+  const upperIdeal = heading + (head_range?.good[1]  ??  22.5)
+  const lowerBound = heading + (head_range?.cross[0] ?? -45)
+  const upperBound = heading + (head_range?.cross[1] ??  45)
+  const domainLow  = heading - 90
+  const domainHigh = heading + 90
+
   const windData = useMemo(() => {
     if (!dayFc || !point) return []
     return buildWindData(dayFc, measurements, point.station, dayFc.sunrise, dayFc.sunset)
@@ -105,8 +123,8 @@ export default function PointForecast({ data }) {
 
   const dirData = useMemo(() => {
     if (!dayFc || !point) return []
-    return buildDirData(dayFc, measurements, point.station, dayFc.sunrise, dayFc.sunset)
-  }, [dayFc, measurements, point])
+    return buildDirData(dayFc, measurements, point.station, dayFc.sunrise, dayFc.sunset, domainLow, domainHigh)
+  }, [dayFc, measurements, point, domainLow, domainHigh])
 
   const tempData = useMemo(() => {
     if (!dayFc || !point) return []
@@ -114,12 +132,6 @@ export default function PointForecast({ data }) {
   }, [dayFc, point])
 
   if (!point || !dayFc) return <div style={{ color: '#888' }}>No data available for this selection.</div>
-
-  const { heading, head_range } = point
-  const lowerIdeal = heading + head_range.good[0]
-  const upperIdeal = heading + head_range.good[1]
-  const lowerBound = heading + head_range.cross[0]
-  const upperBound = heading + head_range.cross[1]
 
   // Effective wind range pre-computed by the backend for the selected wings
   const dispPf   = displayForecast?.[dateIdx]?.[ptIdx]
@@ -162,8 +174,7 @@ export default function PointForecast({ data }) {
             <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"    name="Gust Speed (km/h)"         fill="#d68800" stroke="#d68800" fillOpacity={0.3} dot={false} connectNulls />
             <Area yAxisId="wind" type="monotone" dataKey="wind_speed"    name="Wind Speed (km/h)"    fill="#7eb8f7" stroke="#7eb8f7" fillOpacity={0.3} dot={false} connectNulls />
             <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precipitation (mm)"           fill="#5ab5f7" stroke="#5ab5f7" fillOpacity={1}   dot={false} connectNulls />
-            <Scatter yAxisId="wind" dataKey="meas_wind" name="Measured wind spread (km/h)" fill="#ffffff" opacity={0.8}
-              shape={(props) => <circle cx={props.cx} cy={props.cy} r={3} fill="#ffffff" opacity={0.8} />} />
+            <Scatter yAxisId="wind" dataKey="meas_wind"                  name="Measured wind spread (km/h)" fill="#ffffff" opacity={0.8} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -176,7 +187,7 @@ export default function PointForecast({ data }) {
             <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3e" />
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin', 'dataMax']}
               tickFormatter={fmtTime} tick={{ fill: '#888', fontSize: 11 }} />
-            <YAxis tick={{ fill: '#888', fontSize: 11 }} domain={[lowerBound - 20, upperBound + 20]} width={30} />
+            <YAxis tick={{ fill: '#888', fontSize: 11 }} domain={[domainLow, domainHigh]} width={30} allowDataOverflow />
             <Tooltip {...TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
 
