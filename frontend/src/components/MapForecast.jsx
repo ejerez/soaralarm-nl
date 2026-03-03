@@ -218,7 +218,7 @@ export default function MapForecast({ data }) {
           <Tooltip
             contentStyle={{ background: '#1e1e2e', border: '1px solid #3a3a5e', borderRadius: 6 }}
             labelStyle={{ color: '#ccc' }}
-            formatter={(val, name, props) => [`${val}h – ${props.payload.label}`, name === 'good' ? 'Good wind' : 'Crosswind']}
+            formatter={(val, name, props) => [`${val}h – ${props.payload.label}`, name === 'Good wind' ? 'Good wind' : 'Crosswind']}
           />
           <Legend wrapperStyle={{ color: '#aaa', fontSize: 13 }} />
           <Bar dataKey="cross" name="Crosswind" stackId="a" fill="#d68800" radius={[0, 0, 0, 0]} />
