@@ -199,7 +199,7 @@ export default function PointForecast({ data }) {
             <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"    name="Gust Speed (km/h)"         fill="#d68800" stroke="#d68800" fillOpacity={0.3} dot={false} connectNulls />
             <Area yAxisId="wind" type="monotone" dataKey="wind_speed"    name="Wind Speed (km/h)"    fill="#7eb8f7" stroke="#7eb8f7" fillOpacity={0.3} dot={false} connectNulls />
             <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precipitation (mm)"           fill="#1b8fe2" stroke="#1b8fe2" fillOpacity={1}   dot={false} connectNulls />
-            <Scatter yAxisId="wind" dataKey="meas_wind" name="Measured wind spread (km/h)" fill="#ffffff" opacity={0.5}
+            <Scatter yAxisId="wind" dataKey="meas_wind" name="Measured wind spread (km/h)" fill="#ffffff" opacity={0.2}
               shape={(props) => {
                 if (props.meas_wind == null || !isFinite(props.cy)) return null
                 return <circle cx={props.cx} cy={props.cy} r={3} fill="#ffffff" opacity={0.8} />
