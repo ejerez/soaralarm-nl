@@ -83,15 +83,7 @@ function buildDirData(dayFc, meas, station, sunrise, sunset, heading) {
     if (!values.length) return values
     const out = [normToHeading(values[0])]
     for (let i = 1; i < values.length; i++) {
-      const prev = out[i - 1]
-      let d = values[i] - prev
-      if (d > 180){
-      d = d - 360
-      }
-      if (d < -180){
-        d = d + 360
-      }
-      out.push(prev + d)
+      out.push(normToHeading(values[i]))
     }
     return out
   }

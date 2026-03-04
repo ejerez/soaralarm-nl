@@ -131,7 +131,7 @@ class ForecastService:
                 sr = daily_info[pt_idx]["sunrise"]
                 ss = daily_info[pt_idx]["sunset"]
                 window_start = sr - timedelta(hours=1)
-                window_end   = ss + timedelta(hours=2)
+                window_end   = ss + timedelta(hours=1)
 
                 times = [pd.Timestamp(t) for t in pt_raw["hourly"]["date"]]
                 mask  = [(window_start <= t <= window_end) for t in times]
