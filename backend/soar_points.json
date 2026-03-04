@@ -4,7 +4,7 @@
         "lon": 3.499841,
         "offshore_lat": 51.486225,
         "offshore_lon": 3.415339,
-        "name": "Zoutelande (Main Dune)",
+        "name": "Zoutelande",
         "station": "vlaktevanderaan",
         "heading": 222,
         "head_range": {
@@ -25,6 +25,10 @@
             "scraper_16": [
                 22,
                 45
+            ],
+            "moustache_15": [
+                25,
+                40
             ]
         }
     },
@@ -33,7 +37,7 @@
         "lon": 4.589126,
         "offshore_lat": 52.503636,
         "offshore_lon": 4.528322,
-        "name": "Wijk aan Zee (North)",
+        "name": "Wijk aan Zee",
         "station": "ijmuiden.havenhoofd.zuid",
         "heading": 284,
         "head_range": {
@@ -54,6 +58,10 @@
             "scraper_16": [
                 25,
                 50
+            ],
+            "moustache_15": [
+                28,
+                45
             ]
         }
     },
@@ -83,6 +91,10 @@
             "scraper_16": [
                 25,
                 50
+            ],
+            "moustache_15": [
+                28,
+                45
             ]
         }
     },
@@ -91,7 +103,7 @@
         "lon": 4.475574,
         "offshore_lat": 52.319222,
         "offshore_lon": 4.421669,
-        "name": "Langevelderslag (Noordwijk)",
+        "name": "Langevelderslag",
         "station": "ijmuiden.havenhoofd.zuid",
         "heading": 295,
         "head_range": {
@@ -112,6 +124,10 @@
             "scraper_16": [
                 25,
                 50
+            ],
+            "moustache_15": [
+                28,
+                45
             ]
         }
     },
@@ -120,7 +136,7 @@
         "lon": 4.052526,
         "offshore_lat": 51.885594,
         "offshore_lon": 3.946932,
-        "name": "Rockanje (South)",
+        "name": "Rockanje",
         "station": "stellendam.haringvlietsluizen.schuif1",
         "heading": 237,
         "head_range": {
@@ -141,6 +157,10 @@
             "scraper_16": [
                 25,
                 50
+            ],
+            "moustache_15": [
+                28,
+                45
             ]
         }
     },
@@ -164,12 +184,16 @@
         },
         "wind_range": {
             "paraglider_22": [
-                25,
+                22,
                 35
             ],
             "scraper_16": [
-                30,
+                28,
                 50
+            ],
+            "moustache_15": [
+                32,
+                45
             ]
         }
     },
@@ -193,12 +217,16 @@
         },
         "wind_range": {
             "paraglider_22": [
-                25,
+                22,
                 35
             ],
             "scraper_16": [
-                30,
+                28,
                 50
+            ],
+            "moustache_15": [
+                32,
+                45
             ]
         }
     }

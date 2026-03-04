@@ -4,6 +4,11 @@
         "display_name": "Scraper",
         "default_size": 16
     },
+    "moustache_15":
+    {
+        "display_name": "Moustache 2",
+        "default_size": 15
+    },
     "paraglider_22":
     {
         "display_name": "Mountain Wing",
