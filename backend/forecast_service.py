@@ -250,7 +250,10 @@ class ForecastService:
 
                     if flyable:
                         rel = float(pf["wind_direction"][i]) - point["heading"]
-                        rel = (rel + 180) % 360 - 180  # normalise to [-180, 180]
+                        if rel > 180:
+                            rel -= 360
+                        elif rel < -180:
+                            rel += 360
                         if point["head_range"]["cross"][0] < rel < point["head_range"]["good"][0]:
                             cat = "cross"
                             wind_pizza[0] += 1

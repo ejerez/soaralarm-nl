@@ -69,7 +69,12 @@ function buildDirData(dayFc, meas, station, sunrise, sunset, heading) {
   // Normalise a single value to be within [-180, +180] of heading
   function normToHeading(deg) {
     let d = deg - heading
-    d = ((d + 180) % 360 + 360) % 360 - 180  // → [-180, +180]
+    if (d > 180){
+      d = d - 360
+    }
+    if (d < -180){
+      d = d + 360
+    }
     return heading + d
   }
 
@@ -80,7 +85,12 @@ function buildDirData(dayFc, meas, station, sunrise, sunset, heading) {
     for (let i = 1; i < values.length; i++) {
       const prev = out[i - 1]
       let d = values[i] - prev
-      d = ((d + 180) % 360 + 360) % 360 - 180  // nearest rotation
+      if (d > 180){
+      d = d - 360
+      }
+      if (d < -180){
+        d = d + 360
+      }
       out.push(prev + d)
     }
     return out
@@ -171,7 +181,7 @@ export default function PointForecast({ data }) {
 
       {/* Wind Speed & Gusts */}
       <div style={card}>
-        <div style={sectionTitle}>Wind Speed &amp; Gusts</div>
+        <div style={sectionTitle}>Wind &amp; Gust Speed</div>
         <ResponsiveContainer width="100%" height={260}>
           <ComposedChart data={windData} margin={{ top: 4, right: 2, left: 2, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3e" />
@@ -188,8 +198,8 @@ export default function PointForecast({ data }) {
 
             <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"    name="Gust Speed (km/h)"         fill="#d68800" stroke="#d68800" fillOpacity={0.3} dot={false} connectNulls />
             <Area yAxisId="wind" type="monotone" dataKey="wind_speed"    name="Wind Speed (km/h)"    fill="#7eb8f7" stroke="#7eb8f7" fillOpacity={0.3} dot={false} connectNulls />
-            <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precipitation (mm)"           fill="#5ab5f7" stroke="#5ab5f7" fillOpacity={1}   dot={false} connectNulls />
-            <Scatter yAxisId="wind" dataKey="meas_wind" name="Measured wind spread (km/h)" fill="#ffffff" opacity={0.8}
+            <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precipitation (mm)"           fill="#1b8fe2" stroke="#1b8fe2" fillOpacity={1}   dot={false} connectNulls />
+            <Scatter yAxisId="wind" dataKey="meas_wind" name="Measured wind spread (km/h)" fill="#ffffff" opacity={0.5}
               shape={(props) => {
                 if (props.meas_wind == null || !isFinite(props.cy)) return null
                 return <circle cx={props.cx} cy={props.cy} r={3} fill="#ffffff" opacity={0.8} />
@@ -200,7 +210,7 @@ export default function PointForecast({ data }) {
 
       {/* Wind Direction */}
       <div style={card}>
-        <div style={sectionTitle}>Wind Direction</div>
+        <div style={sectionTitle}>Wind Heading</div>
         <ResponsiveContainer width="100%" height={220}>
           <ComposedChart data={dirData} margin={{ top: 4, right: 2, left: 2, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3e" />
