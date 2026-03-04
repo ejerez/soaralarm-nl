@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import {
   ComposedChart, Area, Line, XAxis, YAxis, Scatter,
   CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine,
@@ -130,6 +130,19 @@ export default function PointForecast({ data }) {
 
   const point   = points[ptIdx]
   const dayFc   = rawForecast?.[dateIdx]?.[ptIdx]
+
+  // Default to the best point for the selected day (same logic as MapForecast bar chart)
+  useEffect(() => {
+    if (!displayForecast) return
+    const dayPf = displayForecast[dateIdx] || []
+    let bestGood = -1, bestFly = -1, bestIdx = 0, bestFlyIdx = 0
+    dayPf.forEach((pf, pi) => {
+      if (pf.good_hours > bestGood) { bestGood = pf.good_hours; bestIdx = pi }
+      const fly = pf.good_hours + pf.cross_hours
+      if (fly > bestFly) { bestFly = fly; bestFlyIdx = pi }
+    })
+    setPtIdx(bestGood > 0 ? bestIdx : bestFlyIdx)
+  }, [dateIdx, displayForecast])
 
   // Compute heading bounds early so dirData memo can use them
   const heading    = point?.heading ?? 0
