@@ -35,14 +35,14 @@ function windPolygons(point, pf) {
 
 function markerColor(pf) {
   if (pf.good_hours >= 3) return 'green'
-  if (pf.good_hours + pf.cross_hours > 0) return 'orange'
+  if (pf.good_hours + pf.cross_hours + (pf.gusty_hours || 0) > 0) return 'orange'
   return 'red'
 }
 
 // ── Gantt chart (custom SVG timeline) ────────────────────────────────────────
 function GanttChart({ ganttRows, days }) {
   // ganttRows: array of { day, point, type, start, end }
-  const COLOR = { good: '#1fd100', cross: '#d68800', no: 'transparent' }
+  const COLOR = { good: '#1fd100', cross: '#d68800', gusty: '#c12e0d', no: 'transparent' }
   const DAY_H = 36
   const LEFT  = 90
   const RIGHT = 20
@@ -180,7 +180,7 @@ export default function MapForecast({ data }) {
       let bestGood = -1, bestFly = -1, bestIdx = 0, bestFlyIdx = 0
       dayPf.forEach((pf, pi) => {
         if (pf.good_hours > bestGood) { bestGood = pf.good_hours; bestIdx = pi }
-        const fly = pf.good_hours + pf.cross_hours
+        const fly = pf.good_hours + pf.cross_hours + (pf.gusty_hours || 0)
         if (fly > bestFly) { bestFly = fly; bestFlyIdx = pi }
       })
       const best = bestGood > 0 ? bestIdx : bestFlyIdx
@@ -189,9 +189,10 @@ export default function MapForecast({ data }) {
 
       bar.push({
         day: days[di] || `Day ${di}`,
-        good: bpf?.good_hours || 0,
+        good:  bpf?.good_hours  || 0,
         cross: bpf?.cross_hours || 0,
-        label: ((bpf?.good_hours || 0) + (bpf?.cross_hours || 0)) > 0 ? (bpt?.name || '') : '',
+        gusty: bpf?.gusty_hours || 0,
+        label: ((bpf?.good_hours || 0) + (bpf?.cross_hours || 0) + (bpf?.gusty_hours || 0)) > 0 ? (bpt?.name || '') : '',
       })
 
       if (bpf?.gantt) {
@@ -210,7 +211,7 @@ export default function MapForecast({ data }) {
       <div ref={mapRef} style={{ height: 420, borderRadius: 8, overflow: 'hidden', marginBottom: 24, border: '1px solid #2a2a3e' }} />
 
       {/* Flyable Hours Bar */}
-      <h3 style={{ marginBottom: 12, color: '#ccc', fontSize: 16 }}>Flyable Hours Per Day</h3>
+      <h3 style={{ marginBottom: 12, color: '#ccc', fontSize: 16 }}>Flyable Hours (Best Location)</h3>
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={barData} margin={{ top: 24, right: 20, left: 0, bottom: 4 }}>
           <XAxis dataKey="day" tick={{ fill: '#aaa', fontSize: 12 }} />
@@ -218,23 +219,25 @@ export default function MapForecast({ data }) {
           <Tooltip
             contentStyle={{ background: '#1e1e2e', border: '1px solid #3a3a5e', borderRadius: 6 }}
             labelStyle={{ color: '#ccc' }}
-            formatter={(val, name, props) => [`${val}h – ${props.payload.label}`, name === 'Good wind' ? 'Good wind' : 'Crosswind']}
+            formatter={(val, name) => [`${val}h`, name]}
           />
           <Legend wrapperStyle={{ color: '#aaa', fontSize: 13 }} />
           <Bar dataKey="cross" name="Crosswind" stackId="a" fill="#d68800" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="good"  name="Good wind"  stackId="a" fill="#1fd100" radius={[4, 4, 0, 0]}>
+          <Bar dataKey="good"  name="Good wind" stackId="a" fill="#1fd100" radius={[0, 0, 0, 0]} />
+          <Bar dataKey="gusty" name="Gusty"     stackId="a" fill="#c12e0d" radius={[4, 4, 0, 0]}>
             <LabelList dataKey="label" position="top" style={{ fill: '#888', fontSize: 10 }} />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
 
       {/* Gantt timeline */}
-      <h3 style={{ margin: '24px 0 12px', color: '#ccc', fontSize: 16 }}>Daily Wind Window</h3>
+      <h3 style={{ margin: '24px 0 12px', color: '#ccc', fontSize: 16 }}>Flyable Windows (Best Location)</h3>
       <div style={{ background: '#1e1e2e', borderRadius: 8, padding: '12px 4px', border: '1px solid #2a2a3e', overflowX: 'auto' }}>
         <GanttChart ganttRows={ganttRows} days={days} />
         <div style={{ display: 'flex', gap: 16, padding: '8px 12px 0', fontSize: 12, color: '#888' }}>
           <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#1fd100', borderRadius: 2, marginRight: 4 }} />Good wind</span>
           <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#d68800', borderRadius: 2, marginRight: 4 }} />Crosswind</span>
+          <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#c12e0d', borderRadius: 2, marginRight: 4 }} />Gusty</span>
         </div>
       </div>
     </div>

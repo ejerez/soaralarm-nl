@@ -117,7 +117,7 @@ function buildTempData(dayFc) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function PointForecast({ data }) {
-  const { rawForecast, displayForecast, points, measurements, dateIdx, model } = data
+  const { rawForecast, displayForecast, points, measurements, wings, dateIdx, model } = data
   const [ptIdx, setPtIdx] = useState(0)
 
   const point   = points[ptIdx]
@@ -163,10 +163,12 @@ export default function PointForecast({ data }) {
 
   if (!point || !dayFc) return <div style={{ color: '#888' }}>No data available for this selection.</div>
 
-  // Effective wind range pre-computed by the backend for the selected wings
-  const dispPf   = displayForecast?.[dateIdx]?.[ptIdx]
-  const wind_min = dispPf?.wind_min
-  const wind_max = dispPf?.wind_max
+  // Per-wing speed ranges pre-computed by the backend
+  const dispPf     = displayForecast?.[dateIdx]?.[ptIdx]
+  const wind_ranges = dispPf?.wind_ranges ?? {}
+
+  // Dash patterns cycling per wing so each is visually distinct
+  const DASH_PATTERNS = ['4 2', '8 3', '2 2', '8 2 2 2', '4 2 8 2']
 
   return (
     <div>
@@ -181,7 +183,7 @@ export default function PointForecast({ data }) {
         target="_blank" rel="noopener noreferrer"
         style={{ display: 'inline-block', marginBottom: 16, marginLeft: 12, fontSize: 13, color: '#7eb8f7', textDecoration: 'none' }}
       >
-        📍 Google Maps
+        📍 Location
       </a>
 
       {/* Wind Speed & Gusts */}
@@ -197,14 +199,27 @@ export default function PointForecast({ data }) {
             <Tooltip {...TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
 
-            {/* Flyable wind band — only shown when display forecast is loaded */}
-            {wind_min != null && <ReferenceLine yAxisId="wind" y={wind_min} stroke="#1fd100" strokeWidth={2} strokeDasharray="4 2" label={{ value: `↑ ${Math.round(wind_min)} km/h`, fill: '#1fd100', fontSize: 10, position: 'insideTopLeft' }} />}
-            {wind_max != null && <ReferenceLine yAxisId="wind" y={wind_max} stroke="#1fd100" strokeWidth={2} strokeDasharray="4 2" label={{ value: `↓ ${Math.round(wind_max)} km/h`, fill: '#1fd100', fontSize: 10, position: 'insideBottomLeft' }} />}
+            {/* Per-wing speed bands */}
+            {Object.entries(wind_ranges).map(([key, wr], i) => {
+              const dash        = DASH_PATTERNS[i % DASH_PATTERNS.length]
+              const displayName = wings[key]?.display_name ?? key
+              const size        = wr.size
+              const label       = `${displayName} ${size}m²`
+              const [wMin, wMax] = wr.range
+              return [
+                <ReferenceLine key={`min-${key}`} yAxisId="wind" y={wMin}
+                  stroke="#1fd100" strokeWidth={1.5} strokeDasharray={dash}
+                  label={{ value: `↑ ${Math.round(wMin)} km/h – ${label}`, fill: '#1fd100', fontSize: 10, position: 'insideTopLeft' }} />,
+                <ReferenceLine key={`max-${key}`} yAxisId="wind" y={wMax}
+                  stroke="#1fd100" strokeWidth={1.5} strokeDasharray={dash}
+                  label={{ value: `↓ ${Math.round(wMax)} km/h – ${label}`, fill: '#1fd100', fontSize: 10, position: 'insideBottomLeft' }} />,
+              ]
+            })}
 
             <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"    name="Gust Speed (km/h)"         fill="#d68800" stroke="#d68800" fillOpacity={0.3} dot={false} connectNulls />
-            <Area yAxisId="wind" type="monotone" dataKey="wind_speed"    name="Wind Speed (km/h)"    fill="#7eb8f7" stroke="#7eb8f7" fillOpacity={0.3} dot={false} connectNulls />
+            <Area yAxisId="wind" type="monotone" dataKey="wind_speed"    name="Wind Speed (km/h)"    fill="#a0ccfc" stroke="#a0ccfc" fillOpacity={0.3} dot={false} connectNulls />
             <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precipitation (mm)"           fill="#1b8fe2" stroke="#1b8fe2" fillOpacity={1}   dot={false} connectNulls />
-            <Scatter yAxisId="wind" dataKey="meas_wind" name="Measured wind spread (km/h)" fill="#ffffff" opacity={0.2}
+            <Scatter yAxisId="wind" dataKey="meas_wind" name="Measured wind spread (km/h)" fill="#ffffff" opacity={0.1}
               shape={(props) => {
                 if (props.meas_wind == null || !isFinite(props.cy)) return null
                 return <circle cx={props.cx} cy={props.cy} r={3} fill="#ffffff" opacity={0.8} />

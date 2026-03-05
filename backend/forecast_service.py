@@ -161,16 +161,14 @@ class ForecastService:
         selected_wings: List[Dict],
         wings_config: Dict,
         weight: float = 75.0,
-    ) -> List[float]:
+    ) -> Dict:
         """
         For each selected wing, scale wind range bounds by
         sqrt((default_size / size) * (weight / default_weight)).
-        Returns [min of all lower bounds, max of all upper bounds].
-        Falls back to [0, 999] if no wings match.
+        Returns dict: {wing_key: {"size": size, "range": [min_wind, max_wind]}}.
         """
-        all_mins: List[float] = []
-        all_maxs: List[float] = []
-
+        wind_ranges = {}
+    
         for wing in selected_wings:
             key            = wing["key"]
             size           = float(wing["size"])
@@ -178,14 +176,11 @@ class ForecastService:
             default_size   = float(wings_config[key]["default_size"])
             size_ratio     = default_size / size
             weight_ratio   = weight / ForecastService.DEFAULT_WEIGHT
-            adj_min        = wr[0] * np.sqrt(size_ratio * weight_ratio)
-            adj_max        = wr[1] * np.sqrt(size_ratio * weight_ratio)
-            all_mins.append(adj_min)
-            all_maxs.append(adj_max)
+            min_wind       = wr[0] * np.sqrt(size_ratio * weight_ratio)
+            max_wind       = wr[1] * np.sqrt(size_ratio * weight_ratio)
+            wind_ranges[key] = {"size": size, "range": [min_wind, max_wind]}
 
-        if not all_mins:
-            return [0.0, 999.0]
-        return [min(all_mins), max(all_maxs)]
+        return wind_ranges
 
     # ── Display ──────────────────────────────────────────────────────────────
     def display(
@@ -220,8 +215,9 @@ class ForecastService:
             day_disp = []
             for pt_idx, pf in enumerate(day):
                 point      = self.points[pt_idx]
-                wind_min, wind_max  = eff_ranges[pt_idx]
-                wind_pizza = [0.0, 0.0, 0.0]  # left-cross, good, right-cross
+                wind_ranges  = eff_ranges[pt_idx]
+                wind_pizza = [0, 0, 0]  # left-cross, good, right-cross
+                wind_quality = [0, 0, 0]
                 gantt      = []
                 prev       = None
                 start      = None
@@ -238,12 +234,18 @@ class ForecastService:
                         t_local.replace(hour=t_end.hour, minute=t_end.minute,
                                         second=0, microsecond=0)
                     )
+
+                    wind_flyable = [
+                        float(pf["wind_speed"][i])     > wind_ranges[wing]["range"][0]
+                        and float(pf["wind_gusts"][i]) < wind_ranges[wing]["range"][1]
+                        for wing in wind_ranges
+                    ]
+
                     flyable = (
                         in_window
                         and float(pf["precipitation"][i])  < 0.01
-                        and float(pf["visibility"][i])     > 99
-                        and float(pf["wind_speed"][i])     > wind_min
-                        and float(pf["wind_gusts"][i])     < wind_max
+                        and float(pf["visibility"][i])     > 300
+                        and any(wind_flyable)
                     )
 
                     t_shifted = (t - timedelta(days=day_idx)).isoformat()
@@ -268,6 +270,16 @@ class ForecastService:
                     else:
                         cat = "no"
 
+                    if cat != "no" and float(pf["wind_gusts"][i]) - float(pf["wind_speed"][i]) > 15:
+                        cat = "gusty"
+
+                    if cat == "good":
+                        wind_quality[0] += 1
+                    elif cat == "cross":
+                        wind_quality[1] += 1
+                    elif cat == "gusty":
+                        wind_quality[2] += 1
+
                     if cat != prev:
                         if prev is not None:
                             gantt.append({"type": prev, "start": start, "end": t_shifted})
@@ -280,11 +292,11 @@ class ForecastService:
 
                 day_disp.append({
                     "wind_pizza":    wind_pizza,
-                    "good_hours":    wind_pizza[1],
-                    "cross_hours":   wind_pizza[0] + wind_pizza[2],
+                    "good_hours":    wind_quality[0],
+                    "cross_hours":   wind_quality[1],
+                    "gusty_hours":   wind_quality[2],
                     "gantt":         gantt,
-                    "wind_min":      wind_min,
-                    "wind_max":      wind_max
+                    "wind_ranges":   wind_ranges
                 })
             disp.append(day_disp)
         return disp
