@@ -200,17 +200,17 @@ export default function PointForecast({ data }) {
             <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
 
             {/* Per-wing speed bands */}
-            {Object.entries(wind_ranges).map(([key, wr], i) => {
+            {wind_ranges.map((wing, i) => {
               const dash        = DASH_PATTERNS[i % DASH_PATTERNS.length]
-              const displayName = wings[key]?.display_name ?? key
-              const size        = wr.size
+              const displayName = wings[wing.key]?.display_name ?? wing.key
+              const size        = wing.size
               const label       = `${displayName} ${size}m²`
-              const [wMin, wMax] = wr.range
+              const [wMin, wMax] = wing.range
               return [
-                <ReferenceLine key={`min-${key}`} yAxisId="wind" y={wMin}
+                <ReferenceLine key={`min-${wing.key}`} yAxisId="wind" y={wMin}
                   stroke="#1fd100" strokeWidth={1.5} strokeDasharray={dash}
                   label={{ value: `↑ ${Math.round(wMin)} km/h – ${label}`, fill: '#1fd100', fontSize: 10, position: 'insideTopLeft' }} />,
-                <ReferenceLine key={`max-${key}`} yAxisId="wind" y={wMax}
+                <ReferenceLine key={`max-${wing.key}`} yAxisId="wind" y={wMax}
                   stroke="#1fd100" strokeWidth={1.5} strokeDasharray={dash}
                   label={{ value: `↓ ${Math.round(wMax)} km/h – ${label}`, fill: '#1fd100', fontSize: 10, position: 'insideBottomLeft' }} />,
               ]

@@ -161,9 +161,10 @@ export default function MapForecast({ data }) {
 
       // Center dot
       const color = markerColor(pf)
+      const slices    = pf.wind_pizza
       const l = L.circleMarker([point.lat, point.lon], {
         radius: 6, color, fillColor: color, fillOpacity: 1, weight: 2,
-      }).bindPopup(`<b>${point.name}</b><br/>Good: ${pf.good_hours}h | Cross: ${pf.cross_hours}h`)
+      }).bindPopup(`<b>${point.name}</b><br/>Good: ${slices[1]}h | Cross: ${slices[0]+slices[2]}h`)
         .addTo(map)
       layersRef.current.push(l)
     })

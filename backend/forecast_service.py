@@ -161,13 +161,13 @@ class ForecastService:
         selected_wings: List[Dict],
         wings_config: Dict,
         weight: float = 75.0,
-    ) -> Dict:
+    ) -> List[Dict]:
         """
         For each selected wing, scale wind range bounds by
         sqrt((default_size / size) * (weight / default_weight)).
-        Returns dict: {wing_key: {"size": size, "range": [min_wind, max_wind]}}.
+        Returns list of: [{"key": wing_key, "size": size, "range": [min_wind, max_wind]}].
         """
-        wind_ranges = {}
+        wind_ranges = []
     
         for wing in selected_wings:
             key            = wing["key"]
@@ -178,7 +178,7 @@ class ForecastService:
             weight_ratio   = weight / ForecastService.DEFAULT_WEIGHT
             min_wind       = wr[0] * np.sqrt(size_ratio * weight_ratio)
             max_wind       = wr[1] * np.sqrt(size_ratio * weight_ratio)
-            wind_ranges[key] = {"size": size, "range": [min_wind, max_wind]}
+            wind_ranges.append({"key": key, "size": size, "range": [min_wind, max_wind]})
 
         return wind_ranges
 
@@ -236,8 +236,8 @@ class ForecastService:
                     )
 
                     wind_flyable = [
-                        float(pf["wind_speed"][i])     > wind_ranges[wing]["range"][0]
-                        and float(pf["wind_gusts"][i]) < wind_ranges[wing]["range"][1]
+                        float(pf["wind_speed"][i])     > wing["range"][0]
+                        and float(pf["wind_gusts"][i]) < wing["range"][1]
                         for wing in wind_ranges
                     ]
 
