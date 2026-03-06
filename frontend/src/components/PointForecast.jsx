@@ -215,11 +215,11 @@ export default function PointForecast({ data }) {
               const pos_max = (i % 2 == 0) ? 'insideBottomLeft' : 'insideBottomRight'
               return [
                 <ReferenceLine key={`min-${wing.key}`} yAxisId="wind" y={wMin}
-                  stroke="#1fd100" strokeWidth={1.5} strokeDasharray={dash}
+                  stroke="#6be655" strokeWidth={1.5} strokeDasharray={dash}
                   label={{ value: `↑ ${label} ↑`, fill: '#6be655', fontSize: 8, position: pos_min }} />,
                 <ReferenceLine key={`max-${wing.key}`} yAxisId="wind" y={wMax}
-                  stroke="#1fd100" strokeWidth={1.5} strokeDasharray={dash}
-                  label={{ value: `↓ ${label} ↓`, fill: '#3d9b2c', fontSize: 8, position: pos_max }} />,
+                  stroke="#3d9b2c" strokeWidth={1.5} strokeDasharray={dash}
+                  label={{ value: `↓ ${label} ↓`, fill: '#3aad26', fontSize: 8, position: pos_max }} />,
               ]
             })}
 
