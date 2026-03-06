@@ -173,7 +173,7 @@ export default function PointForecast({ data }) {
   const wind_ranges = dispPf?.wind_ranges ?? {}
 
   // Dash patterns cycling per wing so each is visually distinct
-  const DASH_PATTERNS = ['4 2', '8 3', '2 2', '8 2 2 2', '4 2 8 2']
+  const DASH_PATTERNS = ['4 2', '10 10', '8 2 2 2', '10 5 2 4', '5 10 4 2']
 
   return (
     <div>
