@@ -225,7 +225,7 @@ export default function Settings({ data }) {
             </button>
           )}
           <div style={{ fontSize: 12, color: '#666', marginTop: 8 }}>
-            Up to {MAX_WINGS} wings. Size defaults to the model's standard size.
+            Up to {MAX_WINGS} wings.
           </div>
         </div>
 
@@ -252,13 +252,13 @@ export default function Settings({ data }) {
             <span style={{ fontSize: 13, color: '#666' }}>kg</span>
           </div>
           <div style={{ fontSize: 12, color: '#666', marginTop: 6 }}>
-            Used to scale wind ranges together with wing size.
+            Used to adjust flyable wind ranges.
           </div>
         </div>
 
         {/* Time window */}
         <div style={field}>
-          <label style={label}>Flyable Hours Time Window</label>
+          <label style={label}>Availability to Fly</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <input
               type="time" style={inputStyle}
@@ -271,7 +271,7 @@ export default function Settings({ data }) {
             />
           </div>
           <div style={{ fontSize: 12, color: '#666', marginTop: 6 }}>
-            Only hours within this window count toward the "flyable hours" chart.
+            The "Flyable Hours" calculation will only use hours within your availability.
           </div>
         </div>
 

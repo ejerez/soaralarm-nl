@@ -127,13 +127,18 @@ export default function PointForecast({ data }) {
   useEffect(() => {
     if (!displayForecast) return
     const dayPf = displayForecast[dateIdx] || []
-    let bestGood = -1, bestFly = -1, bestIdx = 0, bestFlyIdx = 0
-    dayPf.forEach((pf, pi) => {
-      if (pf.good_hours > bestGood) { bestGood = pf.good_hours; bestIdx = pi }
-      const fly = pf.good_hours + pf.cross_hours
-      if (fly > bestFly) { bestFly = fly; bestFlyIdx = pi }
+    let bestFly = 0
+    dayPf.forEach((pf) => {
+      const fly = pf.good_hours + pf.cross_hours + (pf.gusty_hours || 0)
+      if (fly > bestFly) bestFly = fly
     })
-    setPtIdx(bestGood > 0 ? bestIdx : bestFlyIdx)
+    // Among all points tied at bestFly, pick the one with the most good hours (lowest index breaks ties)
+    let best = 0, bestGood = -1
+    dayPf.forEach((pf, pi) => {
+      const fly = pf.good_hours + pf.cross_hours + (pf.gusty_hours || 0)
+      if (fly === bestFly && pf.good_hours > bestGood) { bestGood = pf.good_hours; best = pi }
+    })
+    setPtIdx(best)
   }, [dateIdx, displayForecast])
 
   // Compute heading bounds early so dirData memo can use them
