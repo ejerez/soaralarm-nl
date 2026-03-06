@@ -11,6 +11,21 @@ function loadSelectedWings() {
   return []
 }
 
+// Returns true if now is within 90 minutes of sunrise/sunset for today's first point
+function isInDaylightWindow(rawForecast) {
+  try {
+    const todayFc = rawForecast?.[1]?.[0]  // dateIdx=1 is today, first point
+    if (!todayFc?.sunrise || !todayFc?.sunset) return true  // if unknown, allow refresh
+    const now     = Date.now()
+    const sunrise = new Date(todayFc.sunrise).getTime()
+    const sunset  = new Date(todayFc.sunset).getTime()
+    const MARGIN  = 90 * 60 * 1000  // 90 minutes in ms
+    return now >= sunrise - MARGIN && now <= sunset + MARGIN
+  } catch {
+    return true  // if anything fails, allow refresh
+  }
+}
+
 export function useSoarData() {
   const [status, setStatus]               = useState(null)
   const [points, setPoints]               = useState([])
@@ -121,8 +136,12 @@ export function useSoarData() {
         prevWingsRef.current  = selectedWings
         prevWeightRef.current = weight
 
-        if (st.forecast_stale && !st.updating_forecast)       api.refreshForecast()
-        if (st.measurement_stale && !st.updating_measurements) api.refreshMeasure()
+        if (st.forecast_stale && !st.updating_forecast) api.refreshForecast()
+
+        // Only refresh measurements during the daylight window (±90 min of sunrise/sunset)
+        if (st.measurement_stale && !st.updating_measurements && isInDaylightWindow(rawForecast)) {
+          api.refreshMeasure()
+        }
 
         if (
           (st.forecast_available && st.measurements_available && !displayForecast) ||
@@ -136,7 +155,7 @@ export function useSoarData() {
     }, POLL_MS)
 
     return () => clearInterval(poll)
-  }, [model, timeStart, timeEnd, selectedWings, weight, displayForecast, fetchDisplay])
+  }, [model, timeStart, timeEnd, selectedWings, weight, displayForecast, fetchDisplay, rawForecast])
 
   // Initial display fetch once data is available
   useEffect(() => {
