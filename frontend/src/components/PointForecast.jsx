@@ -218,8 +218,8 @@ export default function PointForecast({ data }) {
                   stroke="#6be655" strokeWidth={1.5} strokeDasharray={dash}
                   label={{ value: `↑ ${label} ↑`, fill: '#6be655', fontSize: 8, position: pos_min }} />,
                 <ReferenceLine key={`max-${wing.key}`} yAxisId="wind" y={wMax}
-                  stroke="#3d9b2c" strokeWidth={1.5} strokeDasharray={dash}
-                  label={{ value: `↓ ${label} ↓`, fill: '#3aad26', fontSize: 8, position: pos_max }} />,
+                  stroke="#55e68f" strokeWidth={1.5} strokeDasharray={dash}
+                  label={{ value: `↓ ${label} ↓`, fill: '#55e68f', fontSize: 8, position: pos_max }} />,
               ]
             })}
 

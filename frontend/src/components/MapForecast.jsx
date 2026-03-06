@@ -227,9 +227,9 @@ export default function MapForecast({ data }) {
             formatter={(val, name) => [`${val}h`, name]}
           />
           <Legend wrapperStyle={{ color: '#aaa', fontSize: 13 }} />
-          <Bar dataKey="cross" name="Crosswind" stackId="a" fill="#d68800" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="good"  name="Good wind" stackId="a" fill="#1fd100" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="gusty" name="Gusty"     stackId="a" fill="#c12e0d" radius={[4, 4, 0, 0]}>
+          <Bar dataKey="good"  name="Good wind" stackId="a" fill="#1fd100" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="cross" name="Crosswind" stackId="a" fill="#d68800" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="gusty" name="Gusty"     stackId="a" fill="#c12e0d" radius={[3, 3, 0, 0]}>
             <LabelList dataKey="label" position="top" style={{ fill: '#888', fontSize: 10 }} />
           </Bar>
         </BarChart>
