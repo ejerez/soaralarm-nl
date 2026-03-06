@@ -216,10 +216,10 @@ export default function PointForecast({ data }) {
               return [
                 <ReferenceLine key={`min-${wing.key}`} yAxisId="wind" y={wMin}
                   stroke="#1fd100" strokeWidth={1.5} strokeDasharray={dash}
-                  label={{ value: `↑ ${label}`, fill: '#1fd100', fontSize: 10, position: pos_min }} />,
+                  label={{ value: `↑ ${label} ↑`, fill: '#6be655', fontSize: 8, position: pos_min }} />,
                 <ReferenceLine key={`max-${wing.key}`} yAxisId="wind" y={wMax}
                   stroke="#1fd100" strokeWidth={1.5} strokeDasharray={dash}
-                  label={{ value: `↓ ${label}`, fill: '#1fd100', fontSize: 10, position: pos_max }} />,
+                  label={{ value: `↓ ${label} ↓`, fill: '#3d9b2c', fontSize: 8, position: pos_max }} />,
               ]
             })}
 
