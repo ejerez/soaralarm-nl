@@ -283,6 +283,7 @@ export default function PointForecast({ data }) {
       {/* Wing wind ranges */}
       {wind_ranges.length > 0 && (
         <div style={{ fontSize: 12, color: '#666', marginTop: 8, lineHeight: 2 }}>
+          <span style={{ color: '#aaa', fontWeight: 650 }}>Wind ranges at {point.name}:</span><br />
           {wind_ranges.map(wr => {
             const displayName = wings[wr.key]?.display_name ?? wr.key
             const [wMin, wMax] = wr.range
@@ -305,7 +306,9 @@ export default function PointForecast({ data }) {
         <div style={{ fontSize: 12, color: '#666', marginTop: 8, lineHeight: 1.7 }}>
           Weather station: <b style={{ color: '#aaa' }}>{measurements[point.station].name}</b>
           &nbsp;({measurements[point.station].lat?.toFixed(3)}°N, {measurements[point.station].lon?.toFixed(3)}°E)
-          &nbsp;— Forecast requested at: {point.offshore_lat?.toFixed(5)}°N, {point.offshore_lon?.toFixed(5)}°E
+          <br />
+          Offshore wind forecast requested at {point.offshore_lat?.toFixed(5)}°N, {point.offshore_lon?.toFixed(5)}°E <br />
+          {dayFc?.offshore_actual_lat != null && <span> Open-Meteo API returned forecast at <b style={{ color: '#aaa' }}>{dayFc.offshore_actual_lat.toFixed(5)}°N, {dayFc.offshore_actual_lon.toFixed(5)}°E</b></span>}
         </div>
       )}
     </div>

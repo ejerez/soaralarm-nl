@@ -78,6 +78,10 @@ class ForecastService:
 
             result.append({
                 "id": idx,
+                "actual_lat":         resp.Latitude(),
+                "actual_lon":         resp.Longitude(),
+                "offshore_actual_lat": off_resp.Latitude(),
+                "offshore_actual_lon": off_resp.Longitude(),
                 "hourly": {
                     "date":           [str(d) for d in dates],
                     "temperature":    hourly.Variables(0).ValuesAsNumpy().tolist(),
@@ -142,6 +146,10 @@ class ForecastService:
                 day_data.append({
                     "sunrise":        sr.isoformat(),
                     "sunset":         ss.isoformat(),
+                    "actual_lat":              pt_raw.get("actual_lat"),
+                    "actual_lon":              pt_raw.get("actual_lon"),
+                    "offshore_actual_lat":     pt_raw.get("offshore_actual_lat"),
+                    "offshore_actual_lon":     pt_raw.get("offshore_actual_lon"),
                     "time":           [t.isoformat() for t, ok in zip(times, mask) if ok],
                     "temperature":    _filter("temperature"),
                     "visibility":     _filter("visibility"),
