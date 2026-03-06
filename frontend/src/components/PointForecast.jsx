@@ -211,13 +211,15 @@ export default function PointForecast({ data }) {
               const size        = wing.size
               const label       = `${displayName} ${size}m²`
               const [wMin, wMax] = wing.range
+              const pos_min = (i % 2 == 0) ? 'insideTopLeft' : 'insideTopRight'
+              const pos_max = (i % 2 == 0) ? 'insideBottomLeft' : 'insideBottomRight'
               return [
                 <ReferenceLine key={`min-${wing.key}`} yAxisId="wind" y={wMin}
                   stroke="#1fd100" strokeWidth={1.5} strokeDasharray={dash}
-                  label={{ value: `↑ ${Math.round(wMin)} km/h – ${label}`, fill: '#1fd100', fontSize: 10, position: 'insideTopLeft' }} />,
+                  label={{ value: `↑ ${Math.round(wMin)} km/h – ${label}`, fill: '#1fd100', fontSize: 10, position: pos_min }} />,
                 <ReferenceLine key={`max-${wing.key}`} yAxisId="wind" y={wMax}
                   stroke="#1fd100" strokeWidth={1.5} strokeDasharray={dash}
-                  label={{ value: `↓ ${Math.round(wMax)} km/h – ${label}`, fill: '#1fd100', fontSize: 10, position: 'insideBottomLeft' }} />,
+                  label={{ value: `↓ ${Math.round(wMax)} km/h – ${label}`, fill: '#1fd100', fontSize: 10, position: pos_max }} />,
               ]
             })}
 
