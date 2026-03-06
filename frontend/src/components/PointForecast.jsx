@@ -280,12 +280,32 @@ export default function PointForecast({ data }) {
         </ResponsiveContainer>
       </div>
 
+      {/* Wing wind ranges */}
+      {wind_ranges.length > 0 && (
+        <div style={{ fontSize: 12, color: '#666', marginTop: 8, lineHeight: 2 }}>
+          {wind_ranges.map(wr => {
+            const displayName = wings[wr.key]?.display_name ?? wr.key
+            const [wMin, wMax] = wr.range
+            return (
+              <span key={wr.key} style={{ marginRight: 16 }}>
+                <b style={{ color: '#aaa' }}>{displayName} {wr.size}m²</b>
+                {': '}
+                <span style={{ color: '#6be655' }}>{Math.round(wMin)}</span>
+                {' – '}
+                <span style={{ color: '#55e68f' }}>{Math.round(wMax)}</span>
+                {' km/h'}
+              </span>
+            )
+          })}
+        </div>
+      )}
+
       {/* Station info */}
       {measurements?.[point.station] && (
         <div style={{ fontSize: 12, color: '#666', marginTop: 8, lineHeight: 1.7 }}>
           Weather station: <b style={{ color: '#aaa' }}>{measurements[point.station].name}</b>
           &nbsp;({measurements[point.station].lat?.toFixed(3)}°N, {measurements[point.station].lon?.toFixed(3)}°E)
-          &nbsp;— Forecast point: {point.offshore_lat?.toFixed(5)}°N, {point.offshore_lon?.toFixed(5)}°E
+          &nbsp;— Forecast requested at: {point.offshore_lat?.toFixed(5)}°N, {point.offshore_lon?.toFixed(5)}°E
         </div>
       )}
     </div>
