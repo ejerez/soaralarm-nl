@@ -52,13 +52,17 @@ function buildWindData(dayFc, meas, station, sunrise, sunset) {
     precipitation: parseFloat(dayFc.precipitation[i]?.toFixed(2)),
   }))
 
-  if (meas?.[station]?.WINDSHD) {
-    const { timestamps, values } = meas[station].WINDSHD
+  const windSeries = meas?.[station]?.WINDSHD
+  if (windSeries?.timestamps?.length && windSeries?.values?.length) {
+    const { timestamps, values } = windSeries
     timestamps.forEach((ts, i) => {
+      const v = values[i]
+      if (v == null || !isFinite(v)) return
       const t = new Date(ts)
+      if (isNaN(t.getTime())) return
       if (sunrise && t < new Date(sunrise)) return
       if (sunset  && t > new Date(sunset))  return
-      points.push({ ts: t.getTime(), meas_wind: parseFloat(values[i]?.toFixed(1)) })
+      points.push({ ts: t.getTime(), meas_wind: parseFloat(v.toFixed(1)) })
     })
   }
 
@@ -95,13 +99,17 @@ function buildDirData(dayFc, meas, station, sunrise, sunset, heading) {
     ts: new Date(t).getTime(),
     wind_dir: parseFloat(unwrapped[i].toFixed(1)),
   }))
-  if (meas?.[station]?.WINDRTG) {
-    const { timestamps, values } = meas[station].WINDRTG
+  const dirSeries = meas?.[station]?.WINDRTG
+  if (dirSeries?.timestamps?.length && dirSeries?.values?.length) {
+    const { timestamps, values } = dirSeries
     timestamps.forEach((ts, i) => {
+      const v = values[i]
+      if (v == null || !isFinite(v)) return
       const t = new Date(ts)
+      if (isNaN(t.getTime())) return
       if (sunrise && t < new Date(sunrise)) return
       if (sunset  && t > new Date(sunset))  return
-      points.push({ ts: t.getTime(), meas_dir: parseFloat(normToHeading(values[i]).toFixed(1)) })
+      points.push({ ts: t.getTime(), meas_dir: parseFloat(normToHeading(v).toFixed(1)) })
     })
   }
   return points.sort((a, b) => a.ts - b.ts)

@@ -77,6 +77,28 @@ def _measure_age() -> Optional[float]:
     t = state["measurements"].get("time")
     return (datetime.now() - t).total_seconds() if t else None
 
+def _in_daylight_window() -> bool:
+    """Return True if now is within 90 minutes of today's sunrise/sunset."""
+    try:
+        from datetime import timezone
+        forecast = state["forecast"].get("soar_knmi") or state["forecast"].get("soar_ecmwf")
+        if not forecast or len(forecast) < 2:
+            return True
+        today_fc = forecast[1][0] if forecast[1] else None   # dateIdx=1 = today, first point
+        if not today_fc or not today_fc.get("sunrise") or not today_fc.get("sunset"):
+            return True
+        now     = datetime.now(timezone.utc)
+        sunrise = datetime.fromisoformat(today_fc["sunrise"])
+        sunset  = datetime.fromisoformat(today_fc["sunset"])
+        if sunrise.tzinfo is None:
+            sunrise = sunrise.replace(tzinfo=timezone.utc)
+        if sunset.tzinfo is None:
+            sunset  = sunset.replace(tzinfo=timezone.utc)
+        margin = timedelta(minutes=90)
+        return now >= sunrise - margin and now <= sunset + margin
+    except Exception:
+        return True
+
 
 # ── Background workers ───────────────────────────────────────────────────────
 async def _refresh_forecast():
@@ -117,13 +139,15 @@ async def _refresh_measurements():
 
 @app.get("/api/status")
 def get_status():
-    fa = _forecast_age()
-    ma = _measure_age()
+    fa      = _forecast_age()
+    ma      = _measure_age()
+    in_dl   = _in_daylight_window()
     return {
         "forecast_age_seconds":     fa,
         "measurement_age_seconds":  ma,
         "forecast_stale":           fa is None or fa >= FORECAST_TTL,
         "measurement_stale":        ma is None or ma >= MEASURE_TTL,
+        "measurement_in_daylight":  in_dl,
         "updating_forecast":        state["updating_forecast"],
         "updating_measurements":    state["updating_measurements"],
         "forecast_available":       bool(state["forecast"].get("soar_knmi")),

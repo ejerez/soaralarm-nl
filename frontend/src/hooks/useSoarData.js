@@ -49,11 +49,12 @@ export function useSoarData() {
   })
   const [dateIdx, setDateIdx]           = useState(1)
 
-  const prevModelRef  = useRef(model)
-  const prevTsRef     = useRef(timeStart)
-  const prevTeRef     = useRef(timeEnd)
-  const prevWingsRef  = useRef(selectedWings)
-  const prevWeightRef = useRef(weight)
+  const prevModelRef   = useRef(model)
+  const prevTsRef      = useRef(timeStart)
+  const prevTeRef      = useRef(timeEnd)
+  const prevWingsRef   = useRef(selectedWings)
+  const prevWeightRef  = useRef(weight)
+  const prevMeasAgeRef = useRef(null)
 
   // ── Save settings to localStorage ────────────────────────────────────────
   useEffect(() => { localStorage.setItem('model',    model) },    [model])
@@ -141,6 +142,23 @@ export function useSoarData() {
         // Only refresh measurements during the daylight window (±90 min of sunrise/sunset)
         if (st.measurement_stale && !st.updating_measurements && isInDaylightWindow(rawForecast)) {
           api.refreshMeasure()
+        }
+
+        // Detect when a measurement refresh just completed (age reset to a small value)
+        // and pull the updated data into UI state without waiting for a full fetchDisplay
+        const prevMeasAge = prevMeasAgeRef.current
+        const currMeasAge = st.measurement_age_seconds
+        const measJustRefreshed = (
+          prevMeasAge != null &&
+          currMeasAge != null &&
+          currMeasAge < prevMeasAge - 30   // age dropped → refresh completed
+        )
+        prevMeasAgeRef.current = currMeasAge
+        if (measJustRefreshed) {
+          try {
+            const meas = await api.measurements()
+            setMeasure(meas)
+          } catch (e) { console.error('meas live-update', e) }
         }
 
         if (

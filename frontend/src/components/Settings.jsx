@@ -283,7 +283,7 @@ export default function Settings({ data }) {
       <div style={{ ...card, marginTop: 24 }}>
         <h3 style={{ color: '#ccc', marginBottom: 12, fontSize: 15 }}>Data Status</h3>
         <Row label="Forecast"     age={status?.forecast_age_seconds}    stale={status?.forecast_stale}    updating={status?.updating_forecast} />
-        <Row label="Measurements" age={status?.measurement_age_seconds} stale={status?.measurement_stale} updating={status?.updating_measurements} />
+        <Row label="Measurements" age={status?.measurement_age_seconds} stale={status?.measurement_stale} updating={status?.updating_measurements} inDaylight={status?.measurement_in_daylight ?? true} />
         <button
           style={{ ...saveBtn, background: '#2a2a3e', marginTop: 16 }}
           onClick={() => { refreshForecast(); refetchDisplay() }}
@@ -299,10 +299,18 @@ export default function Settings({ data }) {
   )
 }
 
-function Row({ label, age, stale, updating }) {
-  const ageStr      = age != null ? `${Math.round(age / 60)} min ago` : 'never'
-  const statusColor = updating ? '#e6a817' : stale ? '#e05c5c' : '#1fd100'
-  const statusText  = updating ? 'Updating…' : stale ? 'Stale' : 'Fresh'
+function Row({ label, age, stale, updating, inDaylight = true }) {
+  const ageStr = age != null ? `${Math.round(age / 60)} min ago` : 'never'
+  let statusColor, statusText
+  if (updating) {
+    statusColor = '#e6a817'; statusText = 'Updating…'
+  } else if (stale && !inDaylight) {
+    statusColor = '#555';    statusText = 'Night'
+  } else if (stale) {
+    statusColor = '#e05c5c'; statusText = 'Stale'
+  } else {
+    statusColor = '#1fd100'; statusText = 'Fresh'
+  }
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, fontSize: 13 }}>
       <span style={{ color: '#aaa' }}>{label}</span>
