@@ -129,13 +129,13 @@ export default function PointForecast({ data }) {
     const dayPf = displayForecast[dateIdx] || []
     let bestFly = 0
     dayPf.forEach((pf) => {
-      const fly = pf.good_hours + pf.cross_hours + (pf.gusty_hours || 0)
+      const fly = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
       if (fly > bestFly) bestFly = fly
     })
     // Among all points tied at bestFly, pick the one with the most good hours (lowest index breaks ties)
     let best = 0, bestGood = -1
     dayPf.forEach((pf, pi) => {
-      const fly = pf.good_hours + pf.cross_hours + (pf.gusty_hours || 0)
+      const fly = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
       if (fly === bestFly && pf.good_hours > bestGood) { bestGood = pf.good_hours; best = pi }
     })
     setPtIdx(best)
@@ -144,10 +144,10 @@ export default function PointForecast({ data }) {
   // Compute heading bounds early so dirData memo can use them
   const heading    = point?.heading ?? 0
   const head_range = point?.head_range
-  const lowerIdeal = heading + (head_range?.good[0]  ?? -22.5)
-  const upperIdeal = heading + (head_range?.good[1]  ??  22.5)
-  const lowerBound = heading + (head_range?.cross[0] ?? -45)
-  const upperBound = heading + (head_range?.cross[1] ??  45)
+  const lowerIdeal = heading + (head_range?.good[0])
+  const upperIdeal = heading + (head_range?.good[1])
+  const lowerBound = heading + (head_range?.cross[0])
+  const upperBound = heading + (head_range?.cross[1])
   const domainLow  = heading - 90
   const domainHigh = heading + 90
 

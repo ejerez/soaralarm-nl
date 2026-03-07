@@ -287,9 +287,9 @@ export default function Settings({ data }) {
         <button
           style={{ ...saveBtn, background: '#2a2a3e', marginTop: 16 }}
           onClick={() => { refreshForecast(); refetchDisplay() }}
-          disabled={status?.updating_forecast || (status?.forecast_age_seconds != null && status.forecast_age_seconds < 14400)}
-          title={status?.forecast_age_seconds != null && status.forecast_age_seconds < 14400
-            ? `Available in ${Math.ceil((14400 - status.forecast_age_seconds) / 60)} min`
+          disabled={status?.updating_forecast || (status?.forecast_age_seconds != null && status.forecast_age_seconds < 7200)}
+          title={status?.forecast_age_seconds != null && status.forecast_age_seconds < 7200
+            ? `Available in ${Math.ceil((7200 - status.forecast_age_seconds) / 60)} min`
             : 'Force refresh forecast'}
         >
           ↻ Force Refresh Forecast

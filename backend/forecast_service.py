@@ -225,7 +225,7 @@ class ForecastService:
                 point      = self.points[pt_idx]
                 wind_ranges  = eff_ranges[pt_idx]
                 wind_pizza = [0, 0, 0]  # left-cross, good, right-cross
-                wind_quality = [0, 0, 0]
+                wind_quality = [0, 0, 0, 0]
                 gantt      = []
                 prev       = None
                 start      = None
@@ -251,8 +251,8 @@ class ForecastService:
 
                     flyable = (
                         in_window
-                        and float(pf["precipitation"][i])  < 0.01
-                        and float(pf["visibility"][i])     > 300
+                        and float(pf["precipitation"][i])  <= 0.1
+                        and float(pf["visibility"][i])     > 299
                         and any(wind_flyable)
                     )
 
@@ -278,15 +278,19 @@ class ForecastService:
                     else:
                         cat = "no"
 
-                    if cat != "no" and float(pf["wind_gusts"][i]) - float(pf["wind_speed"][i]) > 15:
-                        cat = "gusty"
+                    if cat != "no" and float(pf["wind_gusts"][i]) - float(pf["wind_speed"][i]) > 20:
+                        cat += "_gusty"
 
-                    if cat == "good":
-                        wind_quality[0] += 1
-                    elif cat == "cross":
-                        wind_quality[1] += 1
-                    elif cat == "gusty":
-                        wind_quality[2] += 1
+                    if "good" in cat:
+                        if "gusty" in cat:
+                            wind_quality[2] += 1
+                        else:
+                            wind_quality[0] += 1
+                    elif "cross" in cat:
+                        if "gusty" in cat:
+                            wind_quality[3] += 1
+                        else:
+                            wind_quality[1] += 1
 
                     if cat != prev:
                         if prev is not None:
@@ -303,6 +307,7 @@ class ForecastService:
                     "good_hours":    wind_quality[0],
                     "cross_hours":   wind_quality[1],
                     "gusty_hours":   wind_quality[2],
+                    "cross_gusty_hours":   wind_quality[3],
                     "gantt":         gantt,
                     "wind_ranges":   wind_ranges
                 })

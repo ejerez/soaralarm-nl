@@ -1,17 +1,20 @@
 {
     "scraper_16":
     {
-        "display_name": "Scraper",
-        "default_size": 16
+        "display_name": "Performance Parakite",
+        "default_size": 16,
+        "tooltip": "High AR parakites like the Scraper, Bandit, Albatroxx"
     },
-    "moustache_15":
+    "hopper_16":
     {
-        "display_name": "Moustache 2",
-        "default_size": 15
+        "display_name": "Standard Parakite",
+        "default_size": 16,
+        "tooltip": "Medium AR parakites like the Hopper, Moustache, Mullet"
     },
     "paraglider_22":
     {
         "display_name": "Mountain Wing",
-        "default_size": 22
+        "default_size": 22,
+        "tooltip": "Standard paragliders (medium to high AR)"
     }
 }

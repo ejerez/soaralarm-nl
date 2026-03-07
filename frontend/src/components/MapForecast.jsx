@@ -42,7 +42,7 @@ function markerColor(pf) {
 // ── Gantt chart (custom SVG timeline) ────────────────────────────────────────
 function GanttChart({ ganttRows, days }) {
   // ganttRows: array of { day, point, type, start, end }
-  const COLOR = { good: '#1fd100', cross: '#d68800', gusty: '#c12e0d', no: 'transparent' }
+  const COLOR = { good: '#1fd100', cross: '#d68800', good_gusty: '#c12e0d', cross_gusty: '#80220d', no: 'transparent' }
   const DAY_H = 36
   const LEFT  = 90
   const RIGHT = 20
@@ -180,13 +180,13 @@ export default function MapForecast({ data }) {
     displayForecast.forEach((dayPf, di) => {
       let bestFly = 0
       dayPf.forEach((pf) => {
-        const fly = pf.good_hours + pf.cross_hours + (pf.gusty_hours || 0)
+        const fly = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
         if (fly > bestFly) bestFly = fly
       })
       // Among all points tied at bestFly, pick the one with the most good hours (lowest index breaks ties)
       let best = 0, bestGood = -1
       dayPf.forEach((pf, pi) => {
-        const fly = pf.good_hours + pf.cross_hours + (pf.gusty_hours || 0)
+        const fly = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
         if (fly === bestFly && pf.good_hours > bestGood) { bestGood = pf.good_hours; best = pi }
       })
       const bpf = dayPf[best]
@@ -197,7 +197,8 @@ export default function MapForecast({ data }) {
         good:  bpf?.good_hours  || 0,
         cross: bpf?.cross_hours || 0,
         gusty: bpf?.gusty_hours || 0,
-        label: ((bpf?.good_hours || 0) + (bpf?.cross_hours || 0) + (bpf?.gusty_hours || 0)) > 0 ? (bpt?.name || '') : '',
+        cross_gusty: bpf?.cross_gusty_hours || 0,
+        label: ((bpf?.good_hours || 0) + (bpf?.cross_hours || 0) + (bpf?.gusty_hours || 0) + (bpf?.cross_gusty_hours || 0)) > 0 ? (bpt?.name || '') : '',
       })
 
       if (bpf?.gantt) {
@@ -216,7 +217,7 @@ export default function MapForecast({ data }) {
       <div ref={mapRef} style={{ height: 420, borderRadius: 8, overflow: 'hidden', marginBottom: 24, border: '1px solid #2a2a3e' }} />
 
       {/* Flyable Hours Bar */}
-      <h3 style={{ marginBottom: 12, color: '#ccc', fontSize: 16 }}>Flyable Hours (Best Location)</h3>
+      <h3 style={{ marginBottom: 12, color: '#ccc', fontSize: 16 }}>Possible Flyable Hours (Best Locations)</h3>
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={barData} margin={{ top: 24, right: 20, left: 0, bottom: 4 }}>
           <XAxis dataKey="day" tick={{ fill: '#aaa', fontSize: 12 }} />
@@ -224,25 +225,27 @@ export default function MapForecast({ data }) {
           <Tooltip
             contentStyle={{ background: '#1e1e2e', border: '1px solid #3a3a5e', borderRadius: 6 }}
             labelStyle={{ color: '#ccc' }}
-            formatter={(val, name) => [`${val}h`, name]}
+            formatter={(val, name) => val > 0 ? [`${val}h`, name] : [null, null]}
           />
           <Legend wrapperStyle={{ color: '#aaa', fontSize: 13 }} />
-          <Bar dataKey="good"  name="Good wind" stackId="a" fill="#1fd100" radius={[3, 3, 0, 0]} />
-          <Bar dataKey="cross" name="Crosswind" stackId="a" fill="#d68800" radius={[3, 3, 0, 0]} />
-          <Bar dataKey="gusty" name="Gusty"     stackId="a" fill="#c12e0d" radius={[3, 3, 0, 0]}>
+          <Bar dataKey="good"        name="Good wind"        stackId="a" fill="#1fd100" radius={[0, 0, 0, 0]} />
+          <Bar dataKey="cross"       name="Crosswind"        stackId="a" fill="#d68800" radius={[0, 0, 0, 0]} />
+          <Bar dataKey="gusty"       name="Gusty"            stackId="a" fill="#c12e0d" radius={[0, 0, 0, 0]} />
+          <Bar dataKey="cross_gusty" name="Crosswind, Gusty" stackId="a" fill="#80220d" radius={[0, 0, 0, 0]}>
             <LabelList dataKey="label" position="top" style={{ fill: '#888', fontSize: 10 }} />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
 
       {/* Gantt timeline */}
-      <h3 style={{ margin: '24px 0 12px', color: '#ccc', fontSize: 16 }}>Flyable Windows (Best Location)</h3>
+      <h3 style={{ margin: '24px 0 12px', color: '#ccc', fontSize: 16 }}>Possible Flyable Windows (Best Locations)</h3>
       <div style={{ background: '#1e1e2e', borderRadius: 8, padding: '12px 4px', border: '1px solid #2a2a3e', overflowX: 'auto' }}>
         <GanttChart ganttRows={ganttRows} days={days} />
         <div style={{ display: 'flex', gap: 16, padding: '8px 12px 0', fontSize: 12, color: '#888' }}>
           <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#1fd100', borderRadius: 2, marginRight: 4 }} />Good wind</span>
           <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#d68800', borderRadius: 2, marginRight: 4 }} />Crosswind</span>
           <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#c12e0d', borderRadius: 2, marginRight: 4 }} />Gusty</span>
+          <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#80220d', borderRadius: 2, marginRight: 4 }} />Crosswind, Gusty</span>
         </div>
       </div>
     </div>
