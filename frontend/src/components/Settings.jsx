@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 
 const MAX_WINGS = 5
 
@@ -77,9 +77,13 @@ const iconBtn = (color = '#3a3a5e') => ({
 
 function WingRow({ entry, wings, isRemovable, onChange, onRemove }) {
   const wingKeys = Object.keys(wings)
+  const [tipOpen, setTipOpen] = useState(false)
+  const tipRef = useRef(null)
+  const tooltip = wings[entry.key]?.tooltip
 
   function handleKeyChange(e) {
     const key = e.target.value
+    setTipOpen(false)
     onChange({ key, size: wings[key]?.default_size ?? entry.size })
   }
 
@@ -90,40 +94,93 @@ function WingRow({ entry, wings, isRemovable, onChange, onRemove }) {
     }
   }
 
+  // Close tooltip when tapping/clicking outside
+  useEffect(() => {
+    if (!tipOpen) return
+    function handleOutside(e) {
+      if (tipRef.current && !tipRef.current.contains(e.target)) setTipOpen(false)
+    }
+    document.addEventListener('mousedown', handleOutside)
+    document.addEventListener('touchstart', handleOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('touchstart', handleOutside)
+    }
+  }, [tipOpen])
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-      <select
-        style={{ ...selectStyle, flex: 1 }}
-        value={entry.key}
-        onChange={handleKeyChange}
-        disabled={wingKeys.length === 0}
-      >
-        {wingKeys.map(k => (
-          <option key={k} value={k}>{wings[k].display_name}</option>
-        ))}
-      </select>
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <select
+          style={{ ...selectStyle, flex: 1 }}
+          value={entry.key}
+          onChange={handleKeyChange}
+          disabled={wingKeys.length === 0}
+        >
+          {wingKeys.map(k => (
+            <option key={k} value={k}>{wings[k].display_name}</option>
+          ))}
+        </select>
 
-      <input
-        type="text"
-        inputMode="numeric"
-        pattern="\d*"
-        style={inputStyle}
-        value={entry.size}
-        onChange={handleSizeChange}
-        placeholder="m²"
-        title="Wing size in m²"
-      />
-      <span style={{ fontSize: 13, color: '#666', whiteSpace: 'nowrap' }}>m²</span>
+        {/* Info icon — only shown when the selected wing has a tooltip */}
+        {tooltip ? (
+          <button
+            style={{
+              background: tipOpen ? '#3a5a8a' : '#2a2a3e',
+              color: tipOpen ? '#7eb8f7' : '#668',
+              border: '1px solid #3a3a5e',
+              borderRadius: '50%',
+              width: 22, height: 22,
+              fontSize: 12, lineHeight: 1,
+              cursor: 'pointer', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 0,
+            }}
+            onClick={() => setTipOpen(o => !o)}
+            aria-label="Wing info"
+          >ⓘ</button>
+        ) : (
+          <div style={{ width: 22, flexShrink: 0 }} />
+        )}
 
-      {isRemovable ? (
-        <button style={iconBtn('#3a2a2e')} onClick={onRemove} title="Remove wing">✕</button>
-      ) : (
-        // Spacer so all rows stay aligned
-        <div style={{ width: 30, flexShrink: 0 }} />
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="\d*"
+          style={inputStyle}
+          value={entry.size}
+          onChange={handleSizeChange}
+          placeholder="m²"
+          title="Wing size in m²"
+        />
+        <span style={{ fontSize: 13, color: '#666', whiteSpace: 'nowrap' }}>m²</span>
+
+        {isRemovable ? (
+          <button style={iconBtn('#3a2a2e')} onClick={onRemove} title="Remove wing">✕</button>
+        ) : (
+          <div style={{ width: 30, flexShrink: 0 }} />
+        )}
+      </div>
+
+      {/* Tooltip bubble — expands below the row */}
+      {tipOpen && tooltip && (
+        <div ref={tipRef} style={{
+          marginTop: 6,
+          padding: '8px 12px',
+          background: '#252535',
+          border: '1px solid #3a3a5e',
+          borderRadius: 6,
+          fontSize: 12,
+          color: '#aaa',
+          lineHeight: 1.5,
+        }}>
+          {tooltip}
+        </div>
       )}
     </div>
   )
 }
+
 
 export default function Settings({ data }) {
   const {
