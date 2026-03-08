@@ -196,6 +196,8 @@ def get_display_forecast(
     time_end:   str           = Query("23:59"),
     wings:      str           = Query(None, description='JSON array of {key, size} objects'),
     weight:     float         = Query(75.0, description='Total pilot weight in flight (kg)'),
+    wind_min:   Optional[float] = Query(None, description='Custom minimum wind speed (km/h); enables custom mode'),
+    wind_max:   Optional[float] = Query(None, description='Custom maximum gust speed (km/h); enables custom mode'),
 ):
     """Returns per-day, per-point display data (gantt, wind_pizza, hours)."""
     raw = state["forecast"].get(model)
@@ -214,7 +216,8 @@ def get_display_forecast(
             selected_wings = []
 
     svc  = ForecastService(state["soar_points"])
-    disp = svc.display(raw, t_start, t_end, selected_wings, state["wings"], weight)
+    disp = svc.display(raw, t_start, t_end, selected_wings, state["wings"], weight,
+                       wind_min=wind_min, wind_max=wind_max)
 
     # ── Certainty: count model agreement at each day's best location ─────────
     ALL_MODELS = ["soar_knmi", "soar_ecmwf", "soar_icon", "soar_arome"]
@@ -224,7 +227,8 @@ def get_display_forecast(
             model_disps[mk] = disp
         elif state["forecast"].get(mk):
             model_disps[mk] = svc.display(
-                state["forecast"][mk], t_start, t_end, selected_wings, state["wings"], weight
+                state["forecast"][mk], t_start, t_end, selected_wings, state["wings"], weight,
+                wind_min=wind_min, wind_max=wind_max,
             )
 
     certainty = []

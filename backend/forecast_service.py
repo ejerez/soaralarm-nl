@@ -1,5 +1,4 @@
 """
-ForecastService – replaces process_forecast.py with no Streamlit dependency.
 All methods take/return plain Python dicts and lists so they can be serialised
 to JSON by FastAPI directly.
 """
@@ -214,6 +213,8 @@ class ForecastService:
         selected_wings: List[Dict] = [{"key": "scraper_16", "size": 16}],
         wings_config:   Dict       = None,
         weight:         float      = 75.0,
+        wind_min: Optional[float]  = None,
+        wind_max: Optional[float]  = None,
     ) -> List[List[Dict]]:
         """
         Compute wind_pizza, good_hours, cross_hours, gantt for each day×point.
@@ -225,20 +226,29 @@ class ForecastService:
             selected_wings: List of {"key": str, "size": int} dicts chosen by the user.
             wings_config:   Full wings catalogue from wings.json.
             weight:         Total pilot weight in flight (kg).
+            wind_min:       Custom minimum wind speed (km/h). When both wind_min and
+                            wind_max are supplied, wing/weight calculations are skipped
+                            and this flat range is applied to every location.
+            wind_max:       Custom maximum wind speed (km/h) applied to gusts.
         """
 
-        # Pre-compute effective wind range per point (constant across all days)
-        eff_ranges = [
-            self.effective_wind_range(pt, selected_wings, wings_config, weight)
-            for pt in self.points
-        ]
+        custom_mode = wind_min is not None and wind_max is not None
+
+        # Pre-compute effective wind range per point (constant across all days).
+        # Skipped in custom mode — the flat wind_min/wind_max is used instead.
+        eff_ranges = (
+            None if custom_mode
+            else [
+                self.effective_wind_range(pt, selected_wings, wings_config, weight)
+                for pt in self.points
+            ]
+        )
 
         disp = []
         for day_idx, day in enumerate(forecast):
             day_disp = []
             for pt_idx, pf in enumerate(day):
                 point      = self.points[pt_idx]
-                wind_ranges  = eff_ranges[pt_idx]
                 wind_pizza = [0, 0, 0]  # left-cross, good, right-cross
                 wind_quality = [0, 0, 0, 0]
                 gantt      = []
@@ -258,17 +268,24 @@ class ForecastService:
                                         second=0, microsecond=0)
                     )
 
-                    wind_flyable = [
-                        float(pf["wind_speed"][i]  or 0) > wing["range"][0]
-                        and float(pf["wind_gusts"][i] or 0) < wing["range"][1]
-                        for wing in wind_ranges
-                    ]
+                    if custom_mode:
+                        wind_flyable = (
+                            float(pf["wind_speed"][i] or 0) >= wind_min
+                            and float(pf["wind_gusts"][i] or 0) <= wind_max
+                        )
+                    else:
+                        wind_ranges = eff_ranges[pt_idx]
+                        wind_flyable = any(
+                            float(pf["wind_speed"][i]  or 0) > wing["range"][0]
+                            and float(pf["wind_gusts"][i] or 0) < wing["range"][1]
+                            for wing in wind_ranges
+                        )
 
                     flyable = (
                         in_window
                         and float(pf["precipitation"][i] or 0) <= 0.1
                         and float(pf["visibility"][i]    or 9999) > 299
-                        and any(wind_flyable)
+                        and wind_flyable
                     )
 
                     t_shifted = (t - timedelta(days=day_idx)).isoformat()
@@ -324,7 +341,10 @@ class ForecastService:
                     "gusty_hours":   wind_quality[2],
                     "cross_gusty_hours":   wind_quality[3],
                     "gantt":         gantt,
-                    "wind_ranges":   wind_ranges
+                    "wind_ranges":   (
+                        [{"key": "custom", "range": [wind_min, wind_max]}]
+                        if custom_mode else eff_ranges[pt_idx]
+                    ),
                 })
             disp.append(day_disp)
         return disp

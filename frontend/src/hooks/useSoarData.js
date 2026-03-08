@@ -48,6 +48,13 @@ export function useSoarData() {
     const s = localStorage.getItem('weight')
     return s !== null ? parseFloat(s) : 75.0
   })
+  const [customWind, setCustomWind]     = useState(() => localStorage.getItem('customWind') === 'true')
+  const [windMin, setWindMin]           = useState(() => {
+    const s = localStorage.getItem('windMin'); return s !== null ? parseFloat(s) : 15
+  })
+  const [windMax, setWindMax]           = useState(() => {
+    const s = localStorage.getItem('windMax'); return s !== null ? parseFloat(s) : 60
+  })
   const [dateIdx, setDateIdx]           = useState(1)
 
   const prevModelRef   = useRef(model)
@@ -65,6 +72,9 @@ export function useSoarData() {
     localStorage.setItem('selectedWings', JSON.stringify(selectedWings))
   }, [selectedWings])
   useEffect(() => { localStorage.setItem('weight', weight) }, [weight])
+  useEffect(() => { localStorage.setItem('customWind', customWind) }, [customWind])
+  useEffect(() => { localStorage.setItem('windMin', windMin) }, [windMin])
+  useEffect(() => { localStorage.setItem('windMax', windMax) }, [windMax])
 
   // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -105,7 +115,11 @@ export function useSoarData() {
   const fetchDisplay = useCallback(async () => {
     try {
       const [disp, raw, meas] = await Promise.all([
-        api.displayForecast(model, timeStart, timeEnd, selectedWings, weight),
+        api.displayForecast(
+          model, timeStart, timeEnd, selectedWings, weight,
+          customWind ? windMin : undefined,
+          customWind ? windMax : undefined,
+        ),
         api.rawForecast(model),
         api.measurements(),
       ])
@@ -116,7 +130,7 @@ export function useSoarData() {
     } catch (e) {
       console.error('fetchDisplay', e)
     }
-  }, [model, timeStart, timeEnd, selectedWings, weight])
+  }, [model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax])
 
   // ── Poll status ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -194,6 +208,9 @@ export function useSoarData() {
     timeEnd, setTimeEnd,
     selectedWings, setSelectedWings,
     weight, setWeight,
+    customWind, setCustomWind,
+    windMin, setWindMin,
+    windMax, setWindMax,
     dateIdx, setDateIdx,
     // actions
     refreshForecast: api.refreshForecast,

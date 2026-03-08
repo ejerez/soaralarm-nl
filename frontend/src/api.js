@@ -17,7 +17,7 @@ export const api = {
   points:          ()                               => get('/points'),
   days:            ()                               => get('/days'),
   wings:           ()                               => get('/wings'),
-  displayForecast: (model, ts, te, selectedWings, weight)   => {
+  displayForecast: (model, ts, te, selectedWings, weight, windMin, windMax) => {
     const params = new URLSearchParams({
       model,
       time_start: ts,
@@ -28,6 +28,9 @@ export const api = {
     if (selectedWings?.length) {
       params.set('wings', JSON.stringify(selectedWings))
     }
+    // Custom wind range mode — overrides wing/weight-based calculation on backend
+    if (windMin != null) params.set('wind_min', windMin)
+    if (windMax != null) params.set('wind_max', windMax)
     return get(`/forecast/display?${params}`)
   },
   rawForecast:     (model)                          => get(`/forecast/raw?model=${model}`),

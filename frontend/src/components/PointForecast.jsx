@@ -216,8 +216,8 @@ export default function PointForecast({ data }) {
             {wind_ranges.map((wing, i) => {
               const dash        = DASH_PATTERNS[i % DASH_PATTERNS.length]
               const displayName = wings[wing.key]?.display_name ?? wing.key
-              const size        = wing.size
-              const label       = `${displayName} ${size}`
+              const isCustom    = wing.key === 'custom'
+              const label       = isCustom ? 'Custom' : `${displayName} ${wing.size}`
               const [wMin, wMax] = wing.range
               const pos_min = (i % 2 == 0) ? 'insideTopLeft' : 'insideTopRight'
               const pos_max = (i % 2 == 0) ? 'insideBottomLeft' : 'insideBottomRight'
@@ -294,10 +294,11 @@ export default function PointForecast({ data }) {
           <span style={{ color: '#aaa', fontWeight: 650 }}>Wind ranges at {point.name}:</span><br />
           {wind_ranges.map(wr => {
             const displayName = wings[wr.key]?.display_name ?? wr.key
+            const isCustom    = wr.key === 'custom'
             const [wMin, wMax] = wr.range
             return (
               <span key={wr.key} style={{ marginRight: 16 }}>
-                <b style={{ color: '#aaa' }}>{displayName} {wr.size}m²</b>
+                <b style={{ color: '#aaa' }}>{isCustom ? 'Custom' : `${displayName} ${wr.size}m²`}</b>
                 {': '}
                 <span style={{ color: '#6be655' }}>{Math.round(wMin)}</span>
                 {' – '}

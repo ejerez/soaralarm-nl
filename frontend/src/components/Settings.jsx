@@ -182,6 +182,64 @@ function WingRow({ entry, wings, isRemovable, onChange, onRemove }) {
 }
 
 
+function CustomWindTooltip() {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleOutside)
+    document.addEventListener('touchstart', handleOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('touchstart', handleOutside)
+    }
+  }, [open])
+
+  return (
+    <span ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          background: open ? '#3a5a8a' : '#2a2a3e',
+          color: open ? '#7eb8f7' : '#668',
+          border: '1px solid #3a3a5e',
+          borderRadius: '50%',
+          width: 22, height: 22,
+          fontSize: 12, lineHeight: 1,
+          cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 0, flexShrink: 0,
+        }}
+        aria-label="Custom wind info"
+      >ⓘ</button>
+      {open && (
+        <div style={{
+          position: 'absolute',
+          top: 'calc(100% + 6px)',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 290,
+          background: '#252535',
+          border: '1px solid #3a3a5e',
+          borderRadius: 6,
+          padding: '8px 12px',
+          fontSize: 12,
+          color: '#aaa',
+          lineHeight: 1.5,
+          zIndex: 100,
+        }}>
+          Disables wing and weight-based flyable wind range calculations, and uses your custom minimum and maximum wind instead. Note that this applies the same wind range to all locations.
+        </div>
+      )}
+    </span>
+  )
+}
+
+
 export default function Settings({ data }) {
   const {
     model, setModel,
@@ -189,16 +247,22 @@ export default function Settings({ data }) {
     timeEnd, setTimeEnd,
     selectedWings, setSelectedWings,
     weight, setWeight,
+    customWind, setCustomWind,
+    windMin, setWindMin,
+    windMax, setWindMax,
     wings,
     status, refreshForecast, refetchDisplay,
   } = data
 
-  const [localModel, setLocalModel] = useState(model)
-  const [localTs, setLocalTs]       = useState(timeStart)
-  const [localTe, setLocalTe]       = useState(timeEnd)
-  const [localWings, setLocalWings] = useState(selectedWings)
-  const [localWeight, setLocalWeight] = useState(weight)
-  const [saved, setSaved]           = useState(false)
+  const [localModel, setLocalModel]       = useState(model)
+  const [localTs, setLocalTs]             = useState(timeStart)
+  const [localTe, setLocalTe]             = useState(timeEnd)
+  const [localWings, setLocalWings]       = useState(selectedWings)
+  const [localWeight, setLocalWeight]     = useState(weight)
+  const [localCustomWind, setLocalCustomWind] = useState(customWind)
+  const [localWindMin, setLocalWindMin]   = useState(windMin)
+  const [localWindMax, setLocalWindMax]   = useState(windMax)
+  const [saved, setSaved]                 = useState(false)
 
   const wingKeys = Object.keys(wings)
   const firstKey = wingKeys[0]
@@ -228,6 +292,9 @@ export default function Settings({ data }) {
     setTimeEnd(localTe)
     setSelectedWings(cleaned)
     setWeight(localWeight)
+    setCustomWind(localCustomWind)
+    setWindMin(Number(localWindMin) || 15)
+    setWindMax(Number(localWindMax) || 60)
     setSaved(true)
     refetchDisplay()
     setTimeout(() => setSaved(false), 2500)
@@ -252,6 +319,54 @@ export default function Settings({ data }) {
             <option value="soar_arome">Météo-France AROME HD</option>
           </select>
         </div>
+
+        {/* Custom Wind Range */}
+        <div style={field}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                checked={localCustomWind}
+                onChange={e => setLocalCustomWind(e.target.checked)}
+                style={{ width: 15, height: 15, cursor: 'pointer', accentColor: '#3a7bd5' }}
+              />
+              <span style={{ fontSize: 13, color: '#aaa', fontWeight: 500 }}>Custom Wind Range</span>
+            </label>
+            <CustomWindTooltip />
+          </div>
+          {localCustomWind && (
+            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 13, color: '#888' }}>Min. wind</span>
+                <input
+                  type="text" inputMode="numeric" pattern="\d*"
+                  style={{ ...inputStyle, width: 64 }}
+                  value={localWindMin}
+                  onChange={e => { if (/^\d*$/.test(e.target.value)) setLocalWindMin(e.target.value) }}
+                  onBlur={e => { const n = parseInt(e.target.value); setLocalWindMin(isNaN(n) ? 15 : n) }}
+                  placeholder="15"
+                />
+                <span style={{ fontSize: 13, color: '#666' }}>km/h</span>
+              </div>
+              <span style={{ color: '#555' }}>→</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 13, color: '#888' }}>Max. gusts</span>
+                <input
+                  type="text" inputMode="numeric" pattern="\d*"
+                  style={{ ...inputStyle, width: 64 }}
+                  value={localWindMax}
+                  onChange={e => { if (/^\d*$/.test(e.target.value)) setLocalWindMax(e.target.value) }}
+                  onBlur={e => { const n = parseInt(e.target.value); setLocalWindMax(isNaN(n) ? 60 : n) }}
+                  placeholder="60"
+                />
+                <span style={{ fontSize: 13, color: '#666' }}>km/h</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Wings + Weight — greyed out when custom wind is active */}
+        <div style={{ opacity: localCustomWind ? 0.4 : 1, pointerEvents: localCustomWind ? 'none' : 'auto', transition: 'opacity 0.2s' }}>
 
         {/* Wings */}
         <div style={field}>
@@ -314,6 +429,8 @@ export default function Settings({ data }) {
             Used to adjust flyable wind ranges.
           </div>
         </div>
+
+        </div>{/* end grey-out wrapper */}
 
         {/* Time window */}
         <div style={field}>
