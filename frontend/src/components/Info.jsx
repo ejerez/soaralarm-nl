@@ -38,7 +38,7 @@ const code = {
 }
 
 export default function Info({ data }) {
-  const { points, wings, selectedWings, weight } = data
+  const { points, wings, selectedWings, weight, customWind, windMin, windMax } = data
   const w = parseFloat(weight) || DEFAULT_WEIGHT
 
   // Wings to show: fall back to all wing keys if nothing selected
@@ -109,13 +109,18 @@ export default function Info({ data }) {
         <h2 style={h2}>Wind ranges and headings per location</h2>
         <p style={{ ...p, marginBottom: 16 }}>
           Values for the current selection in "Settings":{' '}
-          {activeWings.map((aw, i) => (
-            <span key={aw.key}>
-              <b style={{ color: '#ccc' }}>{wings[aw.key]?.display_name ?? aw.key}</b>{' '}
-              {aw.size} m²{i < activeWings.length - 1 ? ', ' : ''}
-            </span>
-          ))}
-          {' '}at <b style={{ color: '#ccc' }}>{w} kg</b>.
+          {customWind
+            ? <span>Custom wind range <b style={{ color: '#6be655' }}>{windMin}</b> – <b style={{ color: '#55e68f' }}>{windMax}</b> km/h</span>
+            : <>
+                {activeWings.map((aw, i) => (
+                  <span key={aw.key}>
+                    <b style={{ color: '#ccc' }}>{wings[aw.key]?.display_name ?? aw.key}</b>{' '}
+                    {aw.size} m²{i < activeWings.length - 1 ? ', ' : ''}
+                  </span>
+                ))}
+                {' '}at <b style={{ color: '#ccc' }}>{w} kg</b>
+              </>
+          }.
         </p>
 
         <div style={{ overflowX: 'auto' }}>
@@ -126,12 +131,15 @@ export default function Info({ data }) {
                 <th style={th}>Heading</th>
                 <th style={th}>Good range</th>
                 <th style={th}>Cross range</th>
-                {activeWings.map(aw => (
-                  <th key={aw.key} style={th}>
-                    {wings[aw.key]?.display_name ?? aw.key}<br />
-                    <span style={{ color: '#666', fontWeight: 400 }}>{aw.size} m² wind (km/h)</span>
-                  </th>
-                ))}
+                {customWind
+                  ? <th style={th}>Wind (km/h)<br /><span style={{ color: '#666', fontWeight: 400 }}>custom range</span></th>
+                  : activeWings.map(aw => (
+                      <th key={aw.key} style={th}>
+                        {wings[aw.key]?.display_name ?? aw.key}<br />
+                        <span style={{ color: '#666', fontWeight: 400 }}>{aw.size} m² wind (km/h)</span>
+                      </th>
+                    ))
+                }
               </tr>
             </thead>
             <tbody>
@@ -147,18 +155,25 @@ export default function Info({ data }) {
                     {wrapDeg(pt.heading + pt.head_range.cross[0])}° –{' '}
                     {wrapDeg(pt.heading + pt.head_range.cross[1])}°
                   </td>
-                  {activeWings.map(aw => {
-                    const base = pt.wind_range?.[aw.key]
-                    if (!base) return <td key={aw.key} style={{ ...td, color: '#555' }}>—</td>
-                    const [mn, mx] = effectiveRange(base, wings[aw.key].default_size, aw.size, w)
-                    return (
-                      <td key={aw.key} style={td}>
-                        <span style={{ color: '#6be655' }}>{mn}</span>
+                  {customWind
+                    ? <td style={td}>
+                        <span style={{ color: '#6be655' }}>{windMin}</span>
                         {' – '}
-                        <span style={{ color: '#55e68f' }}>{mx}</span>
+                        <span style={{ color: '#55e68f' }}>{windMax}</span>
                       </td>
-                    )
-                  })}
+                    : activeWings.map(aw => {
+                        const base = pt.wind_range?.[aw.key]
+                        if (!base) return <td key={aw.key} style={{ ...td, color: '#555' }}>—</td>
+                        const [mn, mx] = effectiveRange(base, wings[aw.key].default_size, aw.size, w)
+                        return (
+                          <td key={aw.key} style={td}>
+                            <span style={{ color: '#6be655' }}>{mn}</span>
+                            {' – '}
+                            <span style={{ color: '#55e68f' }}>{mx}</span>
+                          </td>
+                        )
+                      })
+                  }
                 </tr>
               ))}
             </tbody>

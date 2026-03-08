@@ -49,8 +49,8 @@ export default function WelcomeModal() {
         <p style={p}>
           Soaralarm NL is a <b style={{ color: '#ccc' }}>free and open-source</b> project,
           built as a free service for the community of pilots who soar the dunes along the
-          Dutch coast. It combines KNMI/ECMWF offshore wind forecasts with 
-          live RWS measurements to give you an overview of the best spots to fly in the
+          Dutch coast. It combines offshore wind forecasts using four major European weather models
+          with live RWS measurements to give you an overview of the best spots to fly in the
           upcoming 7 days, plus detailed forecasts and measurements to judge the conditions 
           when you go fly.
         </p>
@@ -63,9 +63,10 @@ export default function WelcomeModal() {
           <div>
             <b style={{ color: '#ccc' }}>Map Forecast</b>
             <p style={{ ...p, margin: '2px 0 0' }}>
-              Overview of all locations. The map shows wind directions for the selected date. 
-              A bar chart shows the estimated flyable hours at the best location each day,
-              and a timeline chart shows the estimated flyable window for the best location each day.
+              Overview of all locations for the selected date. A bar chart shows estimated flyable hours at
+              the best location each day, and a Gantt chart shows the estimated flyable windows. Both include
+              a <b style={{ color: '#ccc' }}>confidence score</b> showing how many of the four weather models
+              agree on the forecast.
             </p>
           </div>
         </div>
@@ -87,9 +88,10 @@ export default function WelcomeModal() {
           <div>
             <b style={{ color: '#ccc' }}>Settings</b>
             <p style={{ ...p, margin: '2px 0 0' }}>
-              Allows you to select you wing type and size, up to 5 wings, as well as your total weight in flight,
-              preferred forecast model, and your daily availability time window. Tap <b style={{ color: '#ccc' }}>Save &amp; Apply </b>
-              to update all charts. The wings and weight are used to scale the wind ranges for each location.
+              Select your wing type and size (up to 5 wings), total weight in flight, preferred forecast
+              model, and daily availability window. Tap <b style={{ color: '#ccc' }}>Save &amp; Apply </b>
+              to update all charts. Advanced pilots can enable <b style={{ color: '#ccc' }}>Custom Wind Range</b> to
+              bypass wing and weight calculations and set their own minimum and maximum wind speed directly.
             </p>
           </div>
         </div>

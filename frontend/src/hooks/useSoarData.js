@@ -57,24 +57,27 @@ export function useSoarData() {
   })
   const [dateIdx, setDateIdx]           = useState(1)
 
-  const prevModelRef   = useRef(model)
-  const prevTsRef      = useRef(timeStart)
-  const prevTeRef      = useRef(timeEnd)
-  const prevWingsRef   = useRef(selectedWings)
-  const prevWeightRef  = useRef(weight)
-  const prevMeasAgeRef = useRef(null)
+  const prevModelRef      = useRef(model)
+  const prevTsRef         = useRef(timeStart)
+  const prevTeRef         = useRef(timeEnd)
+  const prevWingsRef      = useRef(selectedWings)
+  const prevWeightRef     = useRef(weight)
+  const prevCustomWindRef = useRef(customWind)
+  const prevWindMinRef    = useRef(windMin)
+  const prevWindMaxRef    = useRef(windMax)
+  const prevMeasAgeRef    = useRef(null)
 
   // ── Save settings to localStorage ────────────────────────────────────────
-  useEffect(() => { localStorage.setItem('model',    model) },    [model])
-  useEffect(() => { localStorage.setItem('timeStart', timeStart) }, [timeStart])
-  useEffect(() => { localStorage.setItem('timeEnd',  timeEnd) },  [timeEnd])
+  useEffect(() => { localStorage.setItem('model',      model) },      [model])
+  useEffect(() => { localStorage.setItem('timeStart',  timeStart) },  [timeStart])
+  useEffect(() => { localStorage.setItem('timeEnd',    timeEnd) },    [timeEnd])
   useEffect(() => {
     localStorage.setItem('selectedWings', JSON.stringify(selectedWings))
   }, [selectedWings])
-  useEffect(() => { localStorage.setItem('weight', weight) }, [weight])
+  useEffect(() => { localStorage.setItem('weight',     weight) },     [weight])
   useEffect(() => { localStorage.setItem('customWind', customWind) }, [customWind])
-  useEffect(() => { localStorage.setItem('windMin', windMin) }, [windMin])
-  useEffect(() => { localStorage.setItem('windMax', windMax) }, [windMax])
+  useEffect(() => { localStorage.setItem('windMin',    windMin) },    [windMin])
+  useEffect(() => { localStorage.setItem('windMax',    windMax) },    [windMax])
 
   // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -141,17 +144,23 @@ export function useSoarData() {
 
         const wingsChanged = JSON.stringify(selectedWings) !== JSON.stringify(prevWingsRef.current)
         const settingsChanged =
-          model     !== prevModelRef.current  ||
-          timeStart !== prevTsRef.current     ||
-          timeEnd   !== prevTeRef.current     ||
-          weight    !== prevWeightRef.current ||
+          model      !== prevModelRef.current      ||
+          timeStart  !== prevTsRef.current         ||
+          timeEnd    !== prevTeRef.current         ||
+          weight     !== prevWeightRef.current     ||
+          customWind !== prevCustomWindRef.current ||
+          windMin    !== prevWindMinRef.current    ||
+          windMax    !== prevWindMaxRef.current    ||
           wingsChanged
 
-        prevModelRef.current  = model
-        prevTsRef.current     = timeStart
-        prevTeRef.current     = timeEnd
-        prevWingsRef.current  = selectedWings
-        prevWeightRef.current = weight
+        prevModelRef.current      = model
+        prevTsRef.current         = timeStart
+        prevTeRef.current         = timeEnd
+        prevWingsRef.current      = selectedWings
+        prevWeightRef.current     = weight
+        prevCustomWindRef.current = customWind
+        prevWindMinRef.current    = windMin
+        prevWindMaxRef.current    = windMax
 
         if (st.forecast_stale && !st.updating_forecast) api.refreshForecast()
 
@@ -189,7 +198,7 @@ export function useSoarData() {
     }, POLL_MS)
 
     return () => clearInterval(poll)
-  }, [model, timeStart, timeEnd, selectedWings, weight, displayForecast, fetchDisplay, rawForecast])
+  }, [model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax, displayForecast, fetchDisplay, rawForecast])
 
   // Initial display fetch once data is available
   useEffect(() => {
