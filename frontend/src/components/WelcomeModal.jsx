@@ -49,7 +49,7 @@ export default function WelcomeModal() {
         <p style={p}>
           Soaralarm NL is a <b style={{ color: '#ccc' }}>free and open-source</b> project,
           built as a free service for the community of pilots who soar the dunes along the
-          Dutch coast. It combines KNMI HARMONIE/ECMWF IFS offshore wind forecasts with 
+          Dutch coast. It combines KNMI/ECMWF offshore wind forecasts with 
           live RWS measurements to give you an overview of the best spots to fly in the
           upcoming 7 days, plus detailed forecasts and measurements to judge the conditions 
           when you go fly.
@@ -64,7 +64,7 @@ export default function WelcomeModal() {
             <b style={{ color: '#ccc' }}>Map Forecast</b>
             <p style={{ ...p, margin: '2px 0 0' }}>
               Overview of all locations. The map shows wind directions for the selected date. 
-              A bar chart shoes the estimated flyable hours at the best location each day,
+              A bar chart shows the estimated flyable hours at the best location each day,
               and a timeline chart shows the estimated flyable window for the best location each day.
             </p>
           </div>
