@@ -87,8 +87,8 @@ export default function WelcomeModal() {
           <div>
             <b style={{ color: '#ccc' }}>Settings</b>
             <p style={{ ...p, margin: '2px 0 0' }}>
-              Allows you to select you wing type and size, up to 5 wings, as well as you total weight in flight,
-              forecast model, and your daily availability time window. Tap <b style={{ color: '#ccc' }}>Save &amp; Apply</b>
+              Allows you to select you wing type and size, up to 5 wings, as well as your total weight in flight,
+              preferred forecast model, and your daily availability time window. Tap <b style={{ color: '#ccc' }}>Save &amp; Apply </b>
               to update all charts. The wings and weight are used to scale the wind ranges for each location.
             </p>
           </div>

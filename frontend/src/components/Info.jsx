@@ -52,7 +52,7 @@ export default function Info({ data }) {
 
       {/* ── How flyability is calculated ── */}
       <div style={card}>
-        <h2 style={h2}>Flyability calculation:</h2>
+        <h2 style={h2}>Flyability calculation</h2>
 
         <p style={p}>
           The flyable wind ranges and wind headings are calculated based on an experienced pilot of{' '}

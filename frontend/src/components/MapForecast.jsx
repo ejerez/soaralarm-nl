@@ -43,7 +43,7 @@ function markerColor(pf) {
 const FLYABLE_DISCLAIMER = "The calculated flyable hours and flyable windows are only an (optimistic)\
  estimate based on your indicated wing type and weight, and are in no case a replacement for the pilot's\
  own judgement. Always check that the forecasted conditions are actually appropriate for your exact wing model,\
- skill level, physical ability and risk tolerance. Go to the \"Info\" tab for more information on how the flyability\
+ skill level, physical ability and risk tolerance. Go to the ℹ️ Info tab for more information on how the flyability\
  is calculated."
 
 // ── Info tooltip button ───────────────────────────────────────────────────────
@@ -282,7 +282,7 @@ export default function MapForecast({ data }) {
       <div ref={mapRef} style={{ height: 420, borderRadius: 8, overflow: 'hidden', marginBottom: 24, border: '1px solid #2a2a3e' }} />
 
       {/* Flyable Hours Bar */}
-      <h3 style={{ marginBottom: 12, color: '#ccc', fontSize: 16 }}>Possible Flyable Hours (Best Locations)<InfoTooltip text={FLYABLE_DISCLAIMER} /></h3>
+      <h3 style={{ marginBottom: 12, color: '#ccc', fontSize: 16 }}>Possible Flyable Hours (Best Locations)</h3>
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={barData} margin={{ top: 24, right: 20, left: 0, bottom: 4 }}>
           <XAxis dataKey="day" tick={{ fill: '#aaa', fontSize: 12 }} />
@@ -303,7 +303,7 @@ export default function MapForecast({ data }) {
       </ResponsiveContainer>
 
       {/* Gantt timeline */}
-      <h3 style={{ margin: '24px 0 12px', color: '#ccc', fontSize: 16 }}>Possible Flyable Windows (Best Locations)<InfoTooltip text={FLYABLE_DISCLAIMER} /></h3>
+      <h3 style={{ margin: '24px 0 12px', color: '#ccc', fontSize: 16 }}>Possible Flyable Windows (Best Locations)</h3>
       <div style={{ background: '#1e1e2e', borderRadius: 8, padding: '12px 4px', border: '1px solid #2a2a3e', overflowX: 'auto' }}>
         <GanttChart ganttRows={ganttRows} days={days} />
         <div style={{ display: 'flex', gap: 16, padding: '8px 12px 0', fontSize: 12, color: '#888' }}>
@@ -313,6 +313,12 @@ export default function MapForecast({ data }) {
           <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#80220d', borderRadius: 2, marginRight: 4 }} />Crosswind, Gusty</span>
         </div>
       </div>
+    
+      {/* Disclaimer */}
+      <h3 style={{ margin: '24px 0 12px', color: '#ccc', fontSize: 16 }}>DISCLAIMER</h3>
+      <div style={{ background: '#1e1e2e', borderRadius: 8, padding: '12px 4px', border: '1px solid #2a2a3e', overflowX: 'auto' }}>
+        {FLYABLE_DISCLAIMER}
+      </div> 
     </div>
   )
 }
