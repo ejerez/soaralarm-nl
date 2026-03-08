@@ -33,6 +33,11 @@ state = {
     "updating_measurements": False,
 }
 
+# ── Display result cache ─────────────────────────────────────────────────────
+# Keyed by (model, time_start, time_end, wings_json, weight, wind_min, wind_max).
+# Cleared whenever a fresh forecast is fetched.
+_display_cache: dict = {}
+
 FORECAST_PKL = Path("forecast.pkl")
 MEASURE_PKL  = Path("measurements.pkl")
 POINTS_FILE  = Path("soar_points.json")
@@ -120,6 +125,7 @@ async def _refresh_forecast():
         state["forecast"]["soar_icon"]  = svc.process(raw_icon)
         state["forecast"]["soar_arome"] = svc.process(raw_arome)
         state["forecast"]["time"]       = datetime.now()
+        _display_cache.clear()
         with open(FORECAST_PKL, "wb") as f:
             pickle.dump(state["forecast"], f, protocol=pickle.HIGHEST_PROTOCOL)
     except Exception as exc:
@@ -196,8 +202,8 @@ def get_display_forecast(
     time_end:   str           = Query("23:59"),
     wings:      str           = Query(None, description='JSON array of {key, size} objects'),
     weight:     float         = Query(75.0, description='Total pilot weight in flight (kg)'),
-    wind_min:   Optional[float] = Query(None, description='Custom minimum wind speed (km/h); enables custom mode'),
-    wind_max:   Optional[float] = Query(None, description='Custom maximum gust speed (km/h); enables custom mode'),
+    wind_min:   Optional[float] = Query(None, description='Custom minimum wind speed (km/h)'),
+    wind_max:   Optional[float] = Query(None, description='Custom maximum gust speed (km/h)'),
 ):
     """Returns per-day, per-point display data (gantt, wind_pizza, hours)."""
     raw = state["forecast"].get(model)
@@ -215,21 +221,29 @@ def get_display_forecast(
         except (json.JSONDecodeError, TypeError):
             selected_wings = []
 
-    svc  = ForecastService(state["soar_points"])
-    disp = svc.display(raw, t_start, t_end, selected_wings, state["wings"], weight,
-                       wind_min=wind_min, wind_max=wind_max)
+    # Normalise the wings JSON for use as a cache key
+    wings_key = json.dumps(selected_wings, sort_keys=True)
+
+    def _cached_display(mk: str):
+        """Return display result for model mk, computing and caching if needed."""
+        cache_key = (mk, time_start, time_end, wings_key, weight, wind_min, wind_max)
+        if cache_key in _display_cache:
+            return _display_cache[cache_key]
+        raw_mk = state["forecast"].get(mk)
+        if not raw_mk:
+            return None
+        svc = ForecastService(state["soar_points"])
+        result = svc.display(raw_mk, t_start, t_end, selected_wings, state["wings"], weight, wind_min, wind_max)
+        _display_cache[cache_key] = result
+        return result
+
+    disp = _cached_display(model)
+    if disp is None:
+        return {"error": "forecast not available"}
 
     # ── Certainty: count model agreement at each day's best location ─────────
     ALL_MODELS = ["soar_knmi", "soar_ecmwf", "soar_icon", "soar_arome"]
-    model_disps = {}
-    for mk in ALL_MODELS:
-        if mk == model:
-            model_disps[mk] = disp
-        elif state["forecast"].get(mk):
-            model_disps[mk] = svc.display(
-                state["forecast"][mk], t_start, t_end, selected_wings, state["wings"], weight,
-                wind_min=wind_min, wind_max=wind_max,
-            )
+    model_disps = {mk: _cached_display(mk) for mk in ALL_MODELS if state["forecast"].get(mk)}
 
     certainty = []
     for day_idx, day_disp in enumerate(disp):
@@ -239,10 +253,14 @@ def get_display_forecast(
             if fly > best_fly or (fly == best_fly and pf["good_hours"] > best_good):
                 best_fly, best_good, best_pi = fly, pf["good_hours"], pi
 
-        use_models = ALL_MODELS if day_idx < 4 else [m for m in ALL_MODELS if m != "soar_knmi"]
+        # KNMI seamless transitions to ECMWF IFS at ~2.5 days ahead (from today = index 1).
+        # day_idx 3 (day-after-tomorrow) is already using ECMWF data internally, so
+        # including it would double-count ECMWF and inflate confidence scores.
+        # Include KNMI only for yesterday (0), today (1), tomorrow (2).
+        use_models = ALL_MODELS if day_idx < 3 else [m for m in ALL_MODELS if m != "soar_knmi"]
         agree, total = 0, 0
         for mk in use_models:
-            if mk not in model_disps:
+            if mk not in model_disps or model_disps[mk] is None:
                 continue
             total += 1
             m_days = model_disps[mk]
