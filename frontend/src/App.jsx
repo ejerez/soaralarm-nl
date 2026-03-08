@@ -3,8 +3,9 @@ import { useSoarData } from './hooks/useSoarData.js'
 import MapForecast   from './components/MapForecast.jsx'
 import PointForecast from './components/PointForecast.jsx'
 import Settings      from './components/Settings.jsx'
+import Info          from './components/Info.jsx'
 
-const TABS = ['🌍 Map Forecast', '📍 Point Forecast', '⚙ Settings']
+const TABS = ['🗺 Map Forecast', '📍 Point Forecast', '⚙ Settings', 'ℹ️ Info']
 
 const styles = {
   app: {
@@ -116,7 +117,7 @@ export default function App() {
       {/* ── Header ── */}
       <header style={styles.header}>
         <div style={styles.title}>
-          Soaralarm NL
+          🪂 Soaralarm NL
           {status?.updating_forecast    && <span style={styles.badge('#e6a817')}>Updating forecast…</span>}
           {status?.updating_measurements && <span style={styles.badge('#3a7bd5')}>Updating measurements…</span>}
           {!forecastReady && !status?.updating_forecast &&
@@ -161,6 +162,7 @@ export default function App() {
             : <LoadingPanel msg="Fetching forecast data, please wait…" />
         )}
         {activeTab === 2 && <Settings data={data} />}
+        {activeTab === 3 && <Info data={data} />}
       </main>
     </div>
   )

@@ -34,9 +34,74 @@ function windPolygons(point, pf) {
 }
 
 function markerColor(pf) {
-  if (pf.good_hours >= 3) return 'green'
-  if (pf.good_hours + pf.cross_hours + (pf.gusty_hours || 0) > 0) return 'orange'
-  return 'red'
+  if (pf.good_hours > 0) return 'green'
+  else if (pf.cross_hours > 0) return 'orange'
+  else if (pf.gusty_hours > 0 || pf.cross_gusty_hours > 0) return 'red'
+  return 'black'
+}
+
+const FLYABLE_DISCLAIMER = "The calculated flyable hours and flyable windows are only an (optimistic)\
+ estimate based on your indicated wing type and weight, and are in no case a replacement for the pilot's\
+ own judgement. Always check that the forecasted conditions are actually appropriate for your exact wing model,\
+ skill level, physical ability and risk tolerance. Go to the \"Info\" tab for more information on how the flyability\
+ is calculated."
+
+// ── Info tooltip button ───────────────────────────────────────────────────────
+function InfoTooltip({ text }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleOutside)
+    document.addEventListener('touchstart', handleOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('touchstart', handleOutside)
+    }
+  }, [open])
+
+  return (
+    <span ref={ref} style={{ position: 'relative', display: 'inline-block', verticalAlign: 'middle', marginLeft: 6 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          background: open ? '#3a5a8a' : 'transparent',
+          color: open ? '#7eb8f7' : '#556',
+          border: '1px solid #3a3a5e',
+          borderRadius: '50%',
+          width: 18, height: 18,
+          fontSize: 11, lineHeight: 1,
+          cursor: 'pointer',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          padding: 0,
+        }}
+        aria-label="Info"
+      >ⓘ</button>
+      {open && (
+        <div style={{
+          position: 'absolute',
+          top: 'calc(100% + 6px)',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 280,
+          background: '#252535',
+          border: '1px solid #3a3a5e',
+          borderRadius: 6,
+          padding: '8px 12px',
+          fontSize: 12,
+          color: '#aaa',
+          lineHeight: 1.5,
+          zIndex: 100,
+        }}>
+          {text}
+        </div>
+      )}
+    </span>
+  )
 }
 
 // ── Gantt chart (custom SVG timeline) ────────────────────────────────────────
@@ -217,7 +282,7 @@ export default function MapForecast({ data }) {
       <div ref={mapRef} style={{ height: 420, borderRadius: 8, overflow: 'hidden', marginBottom: 24, border: '1px solid #2a2a3e' }} />
 
       {/* Flyable Hours Bar */}
-      <h3 style={{ marginBottom: 12, color: '#ccc', fontSize: 16 }}>Possible Flyable Hours (Best Locations)</h3>
+      <h3 style={{ marginBottom: 12, color: '#ccc', fontSize: 16 }}>Possible Flyable Hours (Best Locations)<InfoTooltip text={FLYABLE_DISCLAIMER} /></h3>
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={barData} margin={{ top: 24, right: 20, left: 0, bottom: 4 }}>
           <XAxis dataKey="day" tick={{ fill: '#aaa', fontSize: 12 }} />
@@ -238,7 +303,7 @@ export default function MapForecast({ data }) {
       </ResponsiveContainer>
 
       {/* Gantt timeline */}
-      <h3 style={{ margin: '24px 0 12px', color: '#ccc', fontSize: 16 }}>Possible Flyable Windows (Best Locations)</h3>
+      <h3 style={{ margin: '24px 0 12px', color: '#ccc', fontSize: 16 }}>Possible Flyable Windows (Best Locations)<InfoTooltip text={FLYABLE_DISCLAIMER} /></h3>
       <div style={{ background: '#1e1e2e', borderRadius: 8, padding: '12px 4px', border: '1px solid #2a2a3e', overflowX: 'auto' }}>
         <GanttChart ganttRows={ganttRows} days={days} />
         <div style={{ display: 'flex', gap: 16, padding: '8px 12px 0', fontSize: 12, color: '#888' }}>
