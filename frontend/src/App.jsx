@@ -4,8 +4,9 @@ import MapForecast   from './components/MapForecast.jsx'
 import PointForecast from './components/PointForecast.jsx'
 import Settings      from './components/Settings.jsx'
 import Info          from './components/Info.jsx'
+import WelcomeModal  from './components/WelcomeModal.jsx'
 
-const TABS = ['🗺 Map Forecast', '📍 Point Forecast', '⚙ Settings', 'ℹ️ Info']
+const TABS = ['🌍 Map Forecast', '📍 Point Forecast', '⚙ Settings', 'ℹ️ Info']
 
 const styles = {
   app: {
@@ -114,6 +115,9 @@ export default function App() {
 
   return (
     <div style={styles.app}>
+      {/* ── Welcome modal (first visit only) ── */}
+      <WelcomeModal />
+
       {/* ── Header ── */}
       <header style={styles.header}>
         <div style={styles.title}>
