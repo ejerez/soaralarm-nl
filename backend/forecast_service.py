@@ -5,6 +5,7 @@ to JSON by FastAPI directly.
 """
 
 import asyncio
+import math
 from datetime import datetime, timedelta, time as time_t
 from typing import Any, Dict, List, Optional
 
@@ -97,7 +98,21 @@ class ForecastService:
                     "sunset":  [str(s) for s in sunsets],
                 },
             })
-        return result
+        return _sanitise(result)
+
+    def _sanitise(obj):
+        """Replace NaN/±inf (Python float or numpy scalar) with None so json.dumps never raises."""
+        if isinstance(obj, list):
+            return [_sanitise(v) for v in obj]
+        if isinstance(obj, dict):
+            return {k: _sanitise(v) for k, v in obj.items()}
+        try:
+            # math.isfinite works on both float and numpy scalar types
+            if not math.isfinite(obj):
+                return None
+        except (TypeError, ValueError):
+            pass
+        return obj
 
     # ── Process ──────────────────────────────────────────────────────────────
     def process(
@@ -244,22 +259,22 @@ class ForecastService:
                     )
 
                     wind_flyable = [
-                        float(pf["wind_speed"][i])     > wing["range"][0]
-                        and float(pf["wind_gusts"][i]) < wing["range"][1]
+                        float(pf["wind_speed"][i]  or 0) > wing["range"][0]
+                        and float(pf["wind_gusts"][i] or 0) < wing["range"][1]
                         for wing in wind_ranges
                     ]
 
                     flyable = (
                         in_window
-                        and float(pf["precipitation"][i])  <= 0.1
-                        and float(pf["visibility"][i])     > 299
+                        and float(pf["precipitation"][i] or 0) <= 0.1
+                        and float(pf["visibility"][i]    or 9999) > 299
                         and any(wind_flyable)
                     )
 
                     t_shifted = (t - timedelta(days=day_idx)).isoformat()
 
                     if flyable:
-                        rel = float(pf["wind_direction"][i]) - point["heading"]
+                        rel = float(pf["wind_direction"][i] or 0) - point["heading"]
                         if rel > 180:
                             rel -= 360
                         elif rel < -180:

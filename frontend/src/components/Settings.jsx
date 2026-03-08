@@ -249,6 +249,7 @@ export default function Settings({ data }) {
             <option value="soar_knmi">KNMI HARMONIE</option>
             <option value="soar_ecmwf">ECMWF IFS (may pick onshore points)</option>
             <option value="soar_icon">DWD ICON D2</option>
+            <option value="soar_arome">Météo-France AROME HD</option>
           </select>
         </div>
 

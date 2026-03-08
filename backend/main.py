@@ -1,7 +1,7 @@
 import asyncio
 import json
 import pickle
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from json import load
 from pathlib import Path
 from typing import List, Optional
@@ -55,7 +55,7 @@ async def startup():
         try:
             with open(FORECAST_PKL, "rb") as f:
                 state["forecast"] = pickle.load(f)
-            if not all(k in state["forecast"] for k in ("soar_knmi", "soar_ecmwf", "soar_icon")):
+            if not all(k in state["forecast"] for k in ("soar_knmi", "soar_ecmwf", "soar_icon", "soar_arome")):
                 state["forecast"] = {}
         except Exception:
             state["forecast"] = {}
@@ -105,14 +105,20 @@ async def _refresh_forecast():
     state["updating_forecast"] = True
     try:
         svc = ForecastService(state["soar_points"])
-        raw_knmi, raw_ecmwf, raw_icon = await asyncio.gather(
+        raw_knmi, raw_ecmwf, raw_icon, raw_arome = await asyncio.gather(
             svc.fetch_raw(model="knmi_seamless"),
             svc.fetch_raw(model="ecmwf_ifs"),
             svc.fetch_raw(model="icon_seamless"),
+            svc.fetch_raw(model="meteofrance_seamless"),
         )
+        # Météo-France AROME does not provide visibility forecasts — patch in
+        # the KNMI visibility arrays (same onshore coordinates) before processing.
+        for pt_idx in range(len(raw_arome)):
+            raw_arome[pt_idx]["hourly"]["visibility"] = raw_knmi[pt_idx]["hourly"]["visibility"]
         state["forecast"]["soar_knmi"]  = svc.process(raw_knmi)
         state["forecast"]["soar_ecmwf"] = svc.process(raw_ecmwf)
         state["forecast"]["soar_icon"]  = svc.process(raw_icon)
+        state["forecast"]["soar_arome"] = svc.process(raw_arome)
         state["forecast"]["time"]       = datetime.now()
         with open(FORECAST_PKL, "wb") as f:
             pickle.dump(state["forecast"], f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -185,7 +191,8 @@ async def refresh_measurements(bg: BackgroundTasks):
 
 @app.get("/api/forecast/display")
 def get_display_forecast(
-    model:      str           = Query("soar_knmi", enum=["soar_knmi", "soar_ecmwf", "soar_icon"]),    time_start: str           = Query("00:00"),
+    model:      str           = Query("soar_knmi", enum=["soar_knmi", "soar_ecmwf", "soar_icon", "soar_arome"]),
+    time_start: str           = Query("00:00"),
     time_end:   str           = Query("23:59"),
     wings:      str           = Query(None, description='JSON array of {key, size} objects'),
     weight:     float         = Query(75.0, description='Total pilot weight in flight (kg)'),
@@ -213,7 +220,7 @@ def get_display_forecast(
 
 @app.get("/api/forecast/raw")
 def get_raw_forecast(
-    model: str = Query("soar_knmi", enum=["soar_knmi", "soar_ecmwf", "soar_icon"]),
+    model: str = Query("soar_knmi", enum=["soar_knmi", "soar_ecmwf", "soar_icon", "soar_arome"]),
 ):
     """Returns full hourly forecast data per day per point for the point-detail view."""
     raw = state["forecast"].get(model)
