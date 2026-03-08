@@ -246,8 +246,9 @@ export default function Settings({ data }) {
             value={localModel}
             onChange={e => setLocalModel(e.target.value)}
           >
-            <option value="soar_knmi">KNMI Seamless</option>
+            <option value="soar_knmi">KNMI HARMONIE</option>
             <option value="soar_ecmwf">ECMWF IFS (may pick onshore points)</option>
+            <option value="soar_icon">DWD ICON D2</option>
           </select>
         </div>
 
