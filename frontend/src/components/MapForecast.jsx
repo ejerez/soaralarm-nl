@@ -312,9 +312,9 @@ export default function MapForecast({ data }) {
       <h3 style={{ marginBottom: 12, color: '#ccc', fontSize: 16 }}>Possible Flyable Hours (Best Locations)</h3>
 
       <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={barData} margin={{ top: 24, right: 20, left: 0, bottom: 4 }}>
+        <BarChart data={barData} margin={{ top: 24, right: 8, left: 0, bottom: 0 }}>
           <XAxis dataKey="day" tick={{ fill: '#aaa', fontSize: 12 }} />
-          <YAxis tick={{ fill: '#aaa', fontSize: 12 }} />
+          <YAxis width={28} tick={{ fill: '#aaa', fontSize: 12 }} />
           <Tooltip
             contentStyle={{ background: '#1e1e2e', border: '1px solid #3a3a5e', borderRadius: 6 }}
             labelStyle={{ color: '#ccc' }}
@@ -331,10 +331,10 @@ export default function MapForecast({ data }) {
 
       {/* Certainty row — below chart, above legend */}
       {certainty && certainty.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', marginTop: 2 }}>
-          {/* Left spacer matching the recharts YAxis width (~38px) */}
-          <div style={{ width: 38, flexShrink: 0 }} />
-          <div style={{ flex: 1, display: 'flex', paddingRight: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginTop: 0 }}>
+          {/* Left spacer must exactly match YAxis width (28) + BarChart left margin (0) */}
+          <div style={{ width: 28, flexShrink: 0 }} />
+          <div style={{ flex: 1, display: 'flex', paddingRight: 8 }}>
             {barData.map((d, i) => {
               const totalHours = (d.good || 0) + (d.cross || 0) + (d.gusty || 0) + (d.cross_gusty || 0)
               const c = certainty[i]
@@ -380,11 +380,18 @@ export default function MapForecast({ data }) {
       <h3 style={{ margin: '24px 0 12px', color: '#ccc', fontSize: 16 }}>Possible Flyable Windows (Best Locations)</h3>
       <div style={{ background: '#1e1e2e', borderRadius: 8, padding: '12px 4px', border: '1px solid #2a2a3e', overflowX: 'auto' }}>
         <GanttChart ganttRows={ganttRows} days={days} certByDay={certByDay} />
-        <div style={{ display: 'flex', gap: 16, padding: '8px 12px 0', fontSize: 12, color: '#888' }}>
-          <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#1fd100', borderRadius: 2, marginRight: 4 }} />Good wind</span>
-          <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#d68800', borderRadius: 2, marginRight: 4 }} />Crosswind</span>
-          <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#c12e0d', borderRadius: 2, marginRight: 4 }} />Gusty</span>
-          <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#80220d', borderRadius: 2, marginRight: 4 }} />Crosswind, Gusty</span>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', padding: '8px 12px 0', fontSize: 'clamp(10px, 1.8vw, 12px)', color: '#888' }}>
+          {[
+            { color: '#1fd100', name: 'Good wind' },
+            { color: '#d68800', name: 'Crosswind' },
+            { color: '#c12e0d', name: 'Gusty' },
+            { color: '#80220d', name: 'Crosswind, Gusty' },
+          ].map(({ color, name }) => (
+            <span key={name} style={{ display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+              <span style={{ display: 'inline-block', width: 10, height: 10, background: color, borderRadius: 2, marginRight: 4, flexShrink: 0 }} />
+              {name}
+            </span>
+          ))}
         </div>
       </div>
     
