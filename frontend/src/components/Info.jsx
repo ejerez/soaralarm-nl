@@ -76,15 +76,15 @@ export default function Info({ data }) {
         <h3 style={h3}>Wind range scaling:</h3>
         <p style={p}>
           Wind ranges for different sizes and pilot weights are derived from the base ranges by solving
-          for constant lift coefficient:
+          for constant lift:
         </p>
         <div style={{ ...code, display: 'block', padding: '8px 14px', margin: '8px 0 12px' }}>
           v₂ = v₁ · √((W₂/W₁) · (A₁/A₂))
         </div>
         <p style={p}>
           where <i>v</i> is airspeed, <i>W</i> is total pilot weight in flight, and <i>A</i> is wing area.
-          This assumes the glide ratio is the same across all sizes and weights for a given wing type,
-          which is a simplification.
+          This assumes the glide ratio and lift coefficient are the same across all sizes and weights for a
+          given wing type, which is a simplification but close enough in most cases.
         </p>
 
         <h3 style={h3}>Wind quality</h3>
