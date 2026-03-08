@@ -66,6 +66,7 @@ export function useSoarData() {
   const prevWindMinRef    = useRef(windMin)
   const prevWindMaxRef    = useRef(windMax)
   const prevMeasAgeRef    = useRef(null)
+  const prevForecastAgeRef = useRef(null)
 
   // ── Save settings to localStorage ────────────────────────────────────────
   useEffect(() => { localStorage.setItem('model',      model) },      [model])
@@ -184,6 +185,21 @@ export function useSoarData() {
             const meas = await api.measurements()
             setMeasure(meas)
           } catch (e) { console.error('meas live-update', e) }
+        }
+
+        // Detect when a forecast refresh just completed (age dropped back to a small value)
+        // and immediately re-fetch the display forecast so charts update without user action.
+        const prevForecastAge = prevForecastAgeRef.current
+        const currForecastAge = st.forecast_age_seconds
+        const forecastJustRefreshed = (
+          prevForecastAge != null &&
+          currForecastAge != null &&
+          currForecastAge < prevForecastAge - 30   // age dropped → refresh completed
+        )
+        prevForecastAgeRef.current = currForecastAge
+        if (forecastJustRefreshed) {
+          fetchDisplay()
+          return
         }
 
         if (
