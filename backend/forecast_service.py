@@ -16,6 +16,20 @@ import requests_cache
 from retry_requests import retry
 
 
+def _sanitise(obj):
+    """Replace NaN/±inf (Python float or numpy scalar) with None so json.dumps never raises."""
+    if isinstance(obj, list):
+        return [_sanitise(v) for v in obj]
+    if isinstance(obj, dict):
+        return {k: _sanitise(v) for k, v in obj.items()}
+    try:
+        if not math.isfinite(obj):
+            return None
+    except (TypeError, ValueError):
+        pass
+    return obj
+
+
 class ForecastService:
     BASE_URL = "https://api.open-meteo.com/v1/forecast"
 
@@ -99,20 +113,6 @@ class ForecastService:
                 },
             })
         return _sanitise(result)
-
-    def _sanitise(obj):
-        """Replace NaN/±inf (Python float or numpy scalar) with None so json.dumps never raises."""
-        if isinstance(obj, list):
-            return [_sanitise(v) for v in obj]
-        if isinstance(obj, dict):
-            return {k: _sanitise(v) for k, v in obj.items()}
-        try:
-            # math.isfinite works on both float and numpy scalar types
-            if not math.isfinite(obj):
-                return None
-        except (TypeError, ValueError):
-            pass
-        return obj
 
     # ── Process ──────────────────────────────────────────────────────────────
     def process(
