@@ -32,6 +32,7 @@ export function useSoarData() {
   const [days, setDays]                   = useState([])
   const [wings, setWings]                 = useState({})
   const [displayForecast, setDisplay]     = useState(null)
+  const [certainty, setCertainty]         = useState(null)
   const [rawForecast, setRaw]             = useState(null)
   const [measurements, setMeasure]        = useState(null)
   const [loading, setLoading]             = useState(true)
@@ -109,6 +110,7 @@ export function useSoarData() {
         api.measurements(),
       ])
       if (disp.display) setDisplay(disp.display)
+      if (disp.certainty) setCertainty(disp.certainty)
       if (raw.forecast) setRaw(raw.forecast)
       setMeasure(meas)
     } catch (e) {
@@ -184,7 +186,7 @@ export function useSoarData() {
 
   return {
     // data
-    status, points, days, wings, displayForecast, rawForecast, measurements,
+    status, points, days, wings, displayForecast, certainty, rawForecast, measurements,
     loading, error,
     // state
     model, setModel,

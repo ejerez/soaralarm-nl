@@ -104,11 +104,24 @@ function InfoTooltip({ text }) {
   )
 }
 
-// ── Gantt chart (custom SVG timeline) ────────────────────────────────────────
-function GanttChart({ ganttRows, days }) {
+export function certLabel(agree, total) {
+  if (total === 4) {
+    if (agree === 4) return { label: 'Very High Confidence', color: '#00e676' }
+    if (agree === 3) return { label: 'High Confidence',      color: '#c6ef00' }
+    if (agree === 2) return { label: 'Medium Confidence',    color: '#ffa726' }
+    return                  { label: 'Low Confidence',       color: '#ef5350' }
+  }
+  // 3-model scale (KNMI excluded for day 4+)
+  if (agree === 3) return { label: 'High Confidence',   color: '#c6ef00' }
+  if (agree === 2) return { label: 'Medium Confidence', color: '#ffa726' }
+  return                  { label: 'Low Confidence',    color: '#ef5350' }
+}
+
+
+function GanttChart({ ganttRows, days, certByDay }) {
   // ganttRows: array of { day, point, type, start, end }
   const COLOR = { good: '#1fd100', cross: '#d68800', good_gusty: '#c12e0d', cross_gusty: '#80220d', no: 'transparent' }
-  const DAY_H = 36
+  const DAY_H = 44
   const LEFT  = 90
   const RIGHT = 20
   const W     = 700
@@ -143,7 +156,7 @@ function GanttChart({ ganttRows, days }) {
   }
 
   return (
-    <svg width="100%" viewBox={`0 0 ${W} ${svgH}`} style={{ fontFamily: 'sans-serif' }}>
+    <svg width="100%" viewBox={`0 0 ${W + 120} ${svgH}`} style={{ fontFamily: 'sans-serif' }}>
       {hourLabels.map(h => (
         <g key={h.label + h.x}>
           <line x1={h.x} y1={20} x2={h.x} y2={svgH} stroke="#333" strokeWidth={0.5} />
@@ -165,11 +178,21 @@ function GanttChart({ ganttRows, days }) {
                 {pointName}
               </text>
             )}
+            {/* Confidence label — right side, only when there are flyable hours */}
+            {flyableRows.length > 0 && certByDay?.[day] && (() => {
+              const { label, color } = certLabel(certByDay[day].agree, certByDay[day].total)
+              return (
+                <text x={LEFT - 4} y={y + DAY_H / 2 + 22} fontSize={8} fill={color}
+                  textAnchor="end" fontWeight="bold">
+                  {label}
+                </text>
+              )
+            })()}
             {flyableRows.map((r, i) => {
               const x1 = scale(r.start)
               const x2 = scale(r.end)
               return (
-                <rect key={i} x={x1} y={y + 6} width={Math.max(x2 - x1, 1)} height={DAY_H - 12}
+                <rect key={i} x={x1} y={y + 14} width={Math.max(x2 - x1, 1)} height={DAY_H - 12}
                   fill={COLOR[r.type] || '#555'} rx={2} opacity={0.85}>
                   <title>{r.type} – {r.point}</title>
                 </rect>
@@ -184,7 +207,7 @@ function GanttChart({ ganttRows, days }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function MapForecast({ data }) {
-  const { displayForecast, points, days, dateIdx, model } = data
+  const { displayForecast, certainty, points, days, dateIdx, model } = data
   const mapRef    = useRef(null)
   const leafletRef = useRef(null)
   const layersRef  = useRef([])
@@ -236,11 +259,12 @@ export default function MapForecast({ data }) {
   }, [displayForecast, points, dateIdx])
 
   // ── Bar chart data ────────────────────────────────────────────────────────
-  const { barData, ganttRows } = useMemo(() => {
+  const { barData, ganttRows, certByDay } = useMemo(() => {
     if (!displayForecast || !points.length) return { barData: [], ganttRows: [] }
 
     const bar = []
     const gantt = []
+    const certByDayMap = {}
 
     displayForecast.forEach((dayPf, di) => {
       let bestFly = 0
@@ -266,6 +290,9 @@ export default function MapForecast({ data }) {
         label: ((bpf?.good_hours || 0) + (bpf?.cross_hours || 0) + (bpf?.gusty_hours || 0) + (bpf?.cross_gusty_hours || 0)) > 0 ? (bpt?.name || '') : '',
       })
 
+      const dayName = days[di] || `Day ${di}`
+      if (certainty?.[di]) certByDayMap[dayName] = certainty[di]
+
       if (bpf?.gantt) {
         bpf.gantt.forEach(g => {
           gantt.push({ day: days[di] || `Day ${di}`, point: bpt?.name || '', type: g.type, start: g.start, end: g.end })
@@ -273,8 +300,8 @@ export default function MapForecast({ data }) {
       }
     })
 
-    return { barData: bar, ganttRows: gantt }
-  }, [displayForecast, points, days])
+    return { barData: bar, ganttRows: gantt, certByDay: certByDayMap }
+  }, [displayForecast, points, days, certainty])
 
   return (
     <div>
@@ -283,6 +310,40 @@ export default function MapForecast({ data }) {
 
       {/* Flyable Hours Bar */}
       <h3 style={{ marginBottom: 12, color: '#ccc', fontSize: 16 }}>Possible Flyable Hours (Best Locations)</h3>
+
+      {/* Certainty row */}
+      {certainty && certainty.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', marginTop: 4, marginBottom: 8 }}>
+          {/* Left spacer matching the recharts YAxis width (~38px) */}
+          <div style={{ width: 38, flexShrink: 0, fontSize: 12, color: '#d7d7d7', textAlign: 'right', paddingRight: 6 }}>
+          
+          </div>
+          <div style={{ flex: 1, display: 'flex', paddingRight: 20 }}>
+            {barData.map((d, i) => {
+              const totalHours = (d.good || 0) + (d.cross || 0) + (d.gusty || 0) + (d.cross_gusty || 0)
+              const c = certainty[i]
+              if (!c || totalHours === 0) return <div key={i} style={{ flex: 1 }} />
+              const { label, color } = certLabel(c.agree, c.total)
+              return (
+                <div key={i} style={{ flex: 1, textAlign: 'center' }}>
+                  <span style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color,
+                    background: color + '22',
+                    padding: '2px 5px',
+                    borderRadius: 4,
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {label}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+      
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={barData} margin={{ top: 24, right: 20, left: 0, bottom: 4 }}>
           <XAxis dataKey="day" tick={{ fill: '#aaa', fontSize: 12 }} />
@@ -302,10 +363,9 @@ export default function MapForecast({ data }) {
         </BarChart>
       </ResponsiveContainer>
 
-      {/* Gantt timeline */}
       <h3 style={{ margin: '24px 0 12px', color: '#ccc', fontSize: 16 }}>Possible Flyable Windows (Best Locations)</h3>
       <div style={{ background: '#1e1e2e', borderRadius: 8, padding: '12px 4px', border: '1px solid #2a2a3e', overflowX: 'auto' }}>
-        <GanttChart ganttRows={ganttRows} days={days} />
+        <GanttChart ganttRows={ganttRows} days={days} certByDay={certByDay} />
         <div style={{ display: 'flex', gap: 16, padding: '8px 12px 0', fontSize: 12, color: '#888' }}>
           <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#1fd100', borderRadius: 2, marginRight: 4 }} />Good wind</span>
           <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#d68800', borderRadius: 2, marginRight: 4 }} />Crosswind</span>

@@ -215,7 +215,42 @@ def get_display_forecast(
 
     svc  = ForecastService(state["soar_points"])
     disp = svc.display(raw, t_start, t_end, selected_wings, state["wings"], weight)
-    return {"model": model, "display": disp}
+
+    # ── Certainty: count model agreement at each day's best location ─────────
+    ALL_MODELS = ["soar_knmi", "soar_ecmwf", "soar_icon", "soar_arome"]
+    model_disps = {}
+    for mk in ALL_MODELS:
+        if mk == model:
+            model_disps[mk] = disp
+        elif state["forecast"].get(mk):
+            model_disps[mk] = svc.display(
+                state["forecast"][mk], t_start, t_end, selected_wings, state["wings"], weight
+            )
+
+    certainty = []
+    for day_idx, day_disp in enumerate(disp):
+        best_pi, best_fly, best_good = 0, 0, -1
+        for pi, pf in enumerate(day_disp):
+            fly = pf["good_hours"] + pf["cross_hours"] + pf["gusty_hours"] + pf["cross_gusty_hours"]
+            if fly > best_fly or (fly == best_fly and pf["good_hours"] > best_good):
+                best_fly, best_good, best_pi = fly, pf["good_hours"], pi
+
+        use_models = ALL_MODELS if day_idx < 4 else [m for m in ALL_MODELS if m != "soar_knmi"]
+        agree, total = 0, 0
+        for mk in use_models:
+            if mk not in model_disps:
+                continue
+            total += 1
+            m_days = model_disps[mk]
+            if day_idx < len(m_days) and best_pi < len(m_days[day_idx]):
+                pf_m = m_days[day_idx][best_pi]
+                fly_m = (pf_m["good_hours"] + pf_m["cross_hours"]
+                         + pf_m["gusty_hours"] + pf_m["cross_gusty_hours"])
+                if fly_m > 0:
+                    agree += 1
+        certainty.append({"agree": agree, "total": total})
+
+    return {"model": model, "display": disp, "certainty": certainty}
 
 
 @app.get("/api/forecast/raw")

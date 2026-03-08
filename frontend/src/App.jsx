@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useSoarData } from './hooks/useSoarData.js'
-import MapForecast   from './components/MapForecast.jsx'
+import MapForecast, { certLabel } from './components/MapForecast.jsx'
 import PointForecast from './components/PointForecast.jsx'
 import Settings      from './components/Settings.jsx'
 import Info          from './components/Info.jsx'
@@ -84,12 +84,20 @@ const styles = {
   },
 }
 
+const MODEL_NAMES = {
+  soar_knmi:  'KNMI HARMONIE',
+  soar_ecmwf: 'ECMWF IFS',
+  soar_icon:  'DWD ICON D2',
+  soar_arome: 'Météo-France AROME HD',
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState(0)
   const data = useSoarData()
   const {
     status, days, loading, error,
     dateIdx, setDateIdx,
+    certainty, model,
   } = data
 
   if (loading) return (
@@ -145,6 +153,30 @@ export default function App() {
           >
             {days.map((d, i) => <option key={d} value={i}>{d}</option>)}
           </select>
+          {/* Model name */}
+          <span style={{ fontSize: 12, color: '#666' }}>
+            {MODEL_NAMES[model] ?? model}
+          </span>
+          {/* Confidence badge for selected day */}
+          {(() => {
+            const c = certainty?.[dateIdx]
+            if (!c) return null
+            const dayBar = data.displayForecast?.[dateIdx]
+            const hasFly = dayBar?.some(pf =>
+              (pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours) > 0
+            )
+            if (!hasFly) return null
+            const { label, color } = certLabel(c.agree, c.total)
+            return (
+              <span style={{
+                fontSize: 11, fontWeight: 700, color,
+                background: color + '22',
+                padding: '2px 8px', borderRadius: 4,
+              }}>
+                {label}
+              </span>
+            )
+          })()}
           {status?.forecast_age_seconds != null && (
             <span style={{ fontSize: 12, color: '#666' }}>
               Forecast updated {Math.round(status.forecast_age_seconds / 60)} min ago
