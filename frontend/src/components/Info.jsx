@@ -102,6 +102,11 @@ export default function Info({ data }) {
           An hour counts as flyable only if the wind speed is within range for at least one of the selected
           wings, with precipitation ≤ 0.1 mm and visibility &gt; 300 m.
         </p>
+        <p style={p}>
+          Alternatively, the <b style={{ color: '#ccc' }}>Custom Wind Range</b> option in Settings disables
+          wing and weight-based calculations and applies a single user-defined minimum wind speed and maximum
+          gust speed uniformly to all locations.
+        </p>
       </div>
 
       {/* ── Per-point table ── */}
@@ -191,22 +196,43 @@ export default function Info({ data }) {
           <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" style={link}>
             Open-Meteo API
           </a>
-          , a FOS weather API. The two models used are:
+          , a free and open-source weather API. All four models are fetched in parallel on every
+          refresh and cached. The active model is selected in Settings.
         </p>
         <ul style={{ ...p, paddingLeft: 20 }}>
           <li>
-            <b style={{ color: '#ccc' }}>KNMI Seamless</b> – Uses the KNMI HARMONIE AROME 2 km resolution 
-            model for the next 2.5 days, and afterwards uses ECMWF IFS forecasts.
+            <b style={{ color: '#ccc' }}>KNMI HARMONIE</b> – 2 km resolution. Uses KNMI HARMONIE AROME
+            for the first 2.5 days, then blends into ECMWF IFS for the remainder of the forecast.
           </li>
           <li>
-            <b style={{ color: '#ccc' }}>ECMWF IFS</b> – 9 km resolution forecasts from the European Centre
-            for Medium-Range Weather Forecasts.
+            <b style={{ color: '#ccc' }}>ECMWF IFS</b> – 9 km resolution global model from the European
+            Centre for Medium-Range Weather Forecasts. Most reliable for days 4–7.
+          </li>
+          <li>
+            <b style={{ color: '#ccc' }}>DWD ICON D2</b> – 2 km resolution model from Deutscher
+            Wetterdienst. Uses ICON D2 for the first 2 days, and ICON EU afterwards. From 78h into the future,
+            forecasted values are only 3-hourly and therefore interpolated for each hour in-between.
+          </li>
+          <li>
+            <b style={{ color: '#ccc' }}>Météo-France AROME HD</b> – 1.5 km resolution. Visibility is 
+            not provided by this model and is patched in from KNMI HARMONIE. Forecast only for up to 4 days
+            into the future.
           </li>
         </ul>
         <p style={p}>
-          Wind speed, direction, and gusts are sampled at hand-picked, offshore, upwind coordinates for each 
-          location, while temperature, visibility, and precipitation are sampled at the flying site, onshore. 
+          Wind speed, direction, and gusts are sampled at hand-picked, offshore, upwind coordinates for each
+          location, while temperature, visibility, and precipitation are sampled at the flying site, onshore.
           Forecasts are refreshed every 2 hours.
+        </p>
+
+        <h3 style={h3}>Multi-model confidence scores</h3>
+        <p style={p}>
+          For each day, Soaralarm checks how many of the four models agree that the best location has flyable
+          hours. This agreement score is shown as a colour-coded confidence badge below the flyable-hours
+          chart, on the Gantt chart, and in the date bar. Beyond the 3rd day, KNMI is excluded from the
+          count because it blends into ECMWF IFS after 2.5 days and would otherwise double-count the same
+          underlying data. Note that the AROME forecast is limited to 4 days ahead, therefore from the 5th
+          day on, only a confidence score of "Medium" is possible.
         </p>
 
         <h3 style={h3}>Live wind measurements</h3>
@@ -219,9 +245,9 @@ export default function Info({ data }) {
           <a href="https://github.com/Deltares/ddlpy" target="_blank" rel="noopener noreferrer" style={link}>
             ddlpy
           </a>{' '}
-          library. The measurements used are the wind spreads (only available from certain weather stations) and wind 
-          heading reported every 10-minutes by RWS coastal monitoring stations. Data is refreshed every
-          15 minutes, only during the daylight window (from 60 minutes before sunrise to 60 minutes after sunset).
+          library. The measurements used are the wind spreads and wind heading reported every 10 minutes by
+          RWS coastal monitoring stations. Data is refreshed every 15 minutes, only during the daylight
+          window (from 90 minutes before sunrise to 90 minutes after sunset).
         </p>
       </div>
 
