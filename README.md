@@ -1,4 +1,4 @@
-# Soaralarm NL — FastAPI + React
+# Soaralarm NL – FastAPI + React
 
 A soaring/paragliding wind forecast app for the Dutch coast. Combines four numerical weather models with live RWS coastal measurements to give pilots a 7-day overview of the best spots to fly, plus detailed hourly forecasts per location.
 
@@ -33,7 +33,7 @@ soaralarm/
 
 ## Quick Start
 
-### 1 — Backend
+### 1 – Backend
 
 ```bash
 cd backend
@@ -45,7 +45,7 @@ uvicorn main:app --reload --port 8000
 The API will be at **http://localhost:8000**.  
 Interactive docs: **http://localhost:8000/docs**
 
-### 2 — Frontend
+### 2 – Frontend
 
 ```bash
 cd frontend
@@ -83,7 +83,7 @@ Forecasts are fetched in parallel from [Open-Meteo](https://open-meteo.com/) for
 The active model is selected in Settings and shown in the date bar. All four models are always fetched and cached regardless of the active selection.
 
 ### Multi-model confidence scores
-For each day, the backend checks how many of the four models agree that the best location has flyable hours. This agreement score is shown as a colour-coded badge in three places:
+For each day, the backend scores every location by how many of the four models agree it has flyable hours. The location with the **highest agreement score** is selected as the "best" location shown in the flyable-hours chart, Gantt chart, and as the default in Point Forecast. When multiple locations share the same score, the selected model's total flyable hours – and then good-quality hours – are used to break ties. A confidence badge is shown whenever at least one model forecasts flyable weather, even if the selected model does not. This agreement score is shown as a colour-coded badge in three places:
 
 - Below the flyable-hours bar chart (one badge per day)
 - On each row of the Gantt chart (left column, between the day name and location name)
@@ -144,10 +144,10 @@ Wind speed spreads and headings are pulled from [Rijkswaterstaat Waterinfo](http
 | `model` | `soar_knmi` | One of `soar_knmi`, `soar_ecmwf`, `soar_icon`, `soar_arome` |
 | `time_start` | `00:00` | Start of pilot availability window |
 | `time_end` | `23:59` | End of pilot availability window |
-| `wings` | — | JSON array of `{key, size}` objects |
+| `wings` | – | JSON array of `{key, size}` objects |
 | `weight` | `75.0` | Total pilot weight in flight (kg) |
-| `wind_min` | — | Custom minimum wind speed (km/h); activates custom mode when set alongside `wind_max` |
-| `wind_max` | — | Custom maximum gust speed (km/h); activates custom mode when set alongside `wind_min` |
+| `wind_min` | – | Custom minimum wind speed (km/h); activates custom mode when set alongside `wind_max` |
+| `wind_max` | – | Custom maximum gust speed (km/h); activates custom mode when set alongside `wind_min` |
 
 ---
 
@@ -201,12 +201,12 @@ Then add a matching `my_wing_15` entry to each point's `wind_range` in `soar_poi
 | Streamlit (original) | FastAPI + React |
 |----------------------|-----------------|
 | `st.session_state` | In-memory `state` dict in `main.py`; React state in hooks |
-| Blocking `asyncio.run()` | `BackgroundTasks` — non-blocking, polled every 10 s |
+| Blocking `asyncio.run()` | `BackgroundTasks` – non-blocking, polled every 10 s |
 | `st.spinner` / `st.rerun` | Status badges + auto-polling via `useSoarData` |
 | `pickle.load` on every render | Loaded once on startup; persisted after each refresh |
 | `folium` maps | Leaflet rendered in the browser |
 | `plotly` charts | Recharts rendered in the browser |
-| Cookies for settings | `localStorage` — no server round-trip needed |
+| Cookies for settings | `localStorage` – no server round-trip needed |
 | `ddlpy` DataFrames | Serialised to JSON by `MeasurementService` |
 
 ---

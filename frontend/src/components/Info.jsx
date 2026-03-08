@@ -93,10 +93,10 @@ export default function Info({ data }) {
           considered "gusty" when the forecasted gusts exceed the forecasted windspeed by more than 20 km/h.
         </p>
         <ul style={{ ...p, paddingLeft: 20 }}>
-          <li><b style={{ color: '#1fd100' }}>Good wind</b> — Comfortable wind heading.</li>
-          <li><b style={{ color: '#d68800' }}>Crosswind</b> — Noticeably cross.</li>
-          <li><b style={{ color: '#c12e0d' }}>Gusty</b> — Good wind heading, gusts &gt; 20 km/h over windspeed.</li>
-          <li><b style={{ color: '#80220d' }}>Crosswind, Gusty</b> — Noticeably cross, gusts &gt; 20 km/h over windspeed.</li>
+          <li><b style={{ color: '#1fd100' }}>Good wind</b> – Comfortable wind heading.</li>
+          <li><b style={{ color: '#d68800' }}>Crosswind</b> – Noticeably cross.</li>
+          <li><b style={{ color: '#c12e0d' }}>Gusty</b> – Good wind heading, gusts &gt; 20 km/h over windspeed.</li>
+          <li><b style={{ color: '#80220d' }}>Crosswind, Gusty</b> – Noticeably cross, gusts &gt; 20 km/h over windspeed.</li>
         </ul>
         <p style={p}>
           An hour counts as flyable only if the wind speed is within range for at least one of the selected
@@ -168,7 +168,7 @@ export default function Info({ data }) {
                       </td>
                     : activeWings.map(aw => {
                         const base = pt.wind_range?.[aw.key]
-                        if (!base) return <td key={aw.key} style={{ ...td, color: '#555' }}>—</td>
+                        if (!base) return <td key={aw.key} style={{ ...td, color: '#555' }}>–</td>
                         const [mn, mx] = effectiveRange(base, wings[aw.key].default_size, aw.size, w)
                         return (
                           <td key={aw.key} style={td}>
@@ -196,8 +196,7 @@ export default function Info({ data }) {
           <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" style={link}>
             Open-Meteo API
           </a>
-          , a free and open-source weather API. All four models are fetched in parallel on every
-          refresh and cached. The active model is selected in Settings.
+          , a free and open-source weather API. The active model is selected in Settings.
         </p>
         <ul style={{ ...p, paddingLeft: 20 }}>
           <li>
@@ -227,13 +226,54 @@ export default function Info({ data }) {
 
         <h3 style={h3}>Multi-model confidence scores</h3>
         <p style={p}>
-          For each day, Soaralarm checks how many of the four models agree that the best location has flyable
-          hours. This agreement score is shown as a colour-coded confidence badge below the flyable-hours
-          chart, on the Gantt chart, and in the date bar. Beyond the 3rd day, KNMI is excluded from the
-          count because it blends into ECMWF IFS after 2.5 days and would otherwise double-count the same
-          underlying data. Note that the AROME forecast is limited to 4 days ahead, therefore from the 5th
-          day on, only a confidence score of "Medium" is possible.
+          For each day, every location is scored by how many of the four models agree there will be flyable
+          hours. The location with the highest score is selected as the "best" location shown in the
+          flyable-hours chart, Gantt chart, and Point Forecast default. When multiple locations share the
+          same score, the selected model's total flyable hours – and then good-quality hours – are used as
+          a tie-breaker. The badge is shown whenever at least one model forecasts flyable weather.
         </p>
+        <p style={p}>
+          Beyond day 3, KNMI is excluded because it blends into ECMWF IFS after 2.5 days – including it
+          would double-count the same source. From day 5 onward, AROME drops out too (4-day limit), leaving
+          only ECMWF and ICON.
+        </p>
+
+        {/* Confidence score table */}
+        <div style={{ overflowX: 'auto', marginBottom: 8 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #3a3a5e' }}>
+                <th style={th}>Badge</th>
+                <th style={th}>Models agree</th>
+                <th style={th}>Available until</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { label: 'Very High', color: '#00e676', agree: '4 / 4', until: 'Third day from today (all 4 models active)' },
+                { label: 'High',      color: '#c6ef00', agree: '3 / 4', until: 'Fourth day from today (AROME still active)' },
+                { label: 'Medium',    color: '#ffa726', agree: '2 / 4', until: 'Always possible' },
+                { label: 'Low',       color: '#ef5350', agree: '1 / 4', until: 'Always possible' },
+              ].map(({ label, color, agree, until }, i) => (
+                <tr key={label} style={{ borderBottom: '1px solid #252535', background: i % 2 === 0 ? 'transparent' : '#1a1a28' }}>
+                  <td style={td}>
+                    <span style={{
+                      display: 'inline-block',
+                      background: color + '22',
+                      color,
+                      fontWeight: 700,
+                      fontSize: 11,
+                      padding: '2px 7px',
+                      borderRadius: 4,
+                    }}>{label}</span>
+                  </td>
+                  <td style={{ ...td, fontFamily: 'monospace', color: '#aaa' }}>{agree}</td>
+                  <td style={td}>{until}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         <h3 style={h3}>Live wind measurements</h3>
         <p style={p}>

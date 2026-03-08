@@ -172,13 +172,13 @@ function GanttChart({ ganttRows, days, certByDay }) {
           <g key={day}>
             {/* Day name */}
             <text x={LEFT - 4} y={y + DAY_H / 2} fontSize={11} fill="#aaa" textAnchor="end">{day}</text>
-            {/* Point name — only when there are flyable hours */}
+            {/* Point name – only when there are flyable hours */}
             {pointName && (
               <text x={LEFT - 4} y={y + DAY_H / 2 + 12} fontSize="clamp(8px, 1.4vw, 10px)" fill="#666" textAnchor="end" fontStyle="italic">
                 {pointName}
               </text>
             )}
-            {/* Confidence label — right side, only when there are flyable hours */}
+            {/* Confidence label – right side, only when there are flyable hours */}
             {flyableRows.length > 0 && certByDay?.[day] && (() => {
               const { label, color } = certLabel(certByDay[day].agree, certByDay[day].total)
               return (
@@ -267,17 +267,23 @@ export default function MapForecast({ data }) {
     const certByDayMap = {}
 
     displayForecast.forEach((dayPf, di) => {
-      let bestFly = 0
-      dayPf.forEach((pf) => {
-        const fly = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
-        if (fly > bestFly) bestFly = fly
-      })
-      // Among all points tied at bestFly, pick the one with the most good hours (lowest index breaks ties)
-      let best = 0, bestGood = -1
-      dayPf.forEach((pf, pi) => {
-        const fly = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
-        if (fly === bestFly && pf.good_hours > bestGood) { bestGood = pf.good_hours; best = pi }
-      })
+      // Use the confidence-based best point from the backend when available.
+      // Falls back to the selected-model flyable-hours heuristic if certainty isn't ready yet.
+      let best = 0
+      if (certainty?.[di]?.best_pi != null) {
+        best = certainty[di].best_pi
+      } else {
+        let bestFly = 0
+        dayPf.forEach((pf) => {
+          const fly = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
+          if (fly > bestFly) bestFly = fly
+        })
+        let bestGood = -1
+        dayPf.forEach((pf, pi) => {
+          const fly = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
+          if (fly === bestFly && pf.good_hours > bestGood) { bestGood = pf.good_hours; best = pi }
+        })
+      }
       const bpf = dayPf[best]
       const bpt = points[best]
 
@@ -329,7 +335,7 @@ export default function MapForecast({ data }) {
         </BarChart>
       </ResponsiveContainer>
 
-      {/* Certainty row — below chart, above legend */}
+      {/* Certainty row – below chart, above legend */}
       {certainty && certainty.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', marginTop: 'clamp(-18px, -2.5vw, -10px)' }}>
           {/* Left spacer must exactly match YAxis width (28) + BarChart left margin (0) */}
@@ -338,7 +344,7 @@ export default function MapForecast({ data }) {
             {barData.map((d, i) => {
               const totalHours = (d.good || 0) + (d.cross || 0) + (d.gusty || 0) + (d.cross_gusty || 0)
               const c = certainty[i]
-              if (!c || totalHours === 0) return <div key={i} style={{ flex: 1 }} />
+              if (!c || c.agree === 0) return <div key={i} style={{ flex: 1 }} />
               const { label, color } = certLabel(c.agree, c.total)
               const shortLabel = label.replace(' Confidence', '')
               return (

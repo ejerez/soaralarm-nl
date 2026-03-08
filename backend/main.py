@@ -247,30 +247,37 @@ def get_display_forecast(
 
     certainty = []
     for day_idx, day_disp in enumerate(disp):
-        best_pi, best_fly, best_good = 0, 0, -1
-        for pi, pf in enumerate(day_disp):
-            fly = pf["good_hours"] + pf["cross_hours"] + pf["gusty_hours"] + pf["cross_gusty_hours"]
-            if fly > best_fly or (fly == best_fly and pf["good_hours"] > best_good):
-                best_fly, best_good, best_pi = fly, pf["good_hours"], pi
-
         # KNMI seamless transitions to ECMWF IFS at ~2.5 days ahead (from today = index 1).
-        # day_idx 3 (day-after-tomorrow) is already using ECMWF data internally, so
-        # including it would double-count ECMWF and inflate confidence scores.
         # Include KNMI only for yesterday (0), today (1), tomorrow (2).
         use_models = ALL_MODELS if day_idx < 3 else [m for m in ALL_MODELS if m != "soar_knmi"]
-        agree, total = 0, 0
-        for mk in use_models:
-            if mk not in model_disps or model_disps[mk] is None:
-                continue
-            total += 1
-            m_days = model_disps[mk]
-            if day_idx < len(m_days) and best_pi < len(m_days[day_idx]):
-                pf_m = m_days[day_idx][best_pi]
-                fly_m = (pf_m["good_hours"] + pf_m["cross_hours"]
-                         + pf_m["gusty_hours"] + pf_m["cross_gusty_hours"])
-                if fly_m > 0:
-                    agree += 1
-        certainty.append({"agree": agree, "total": total})
+        total = sum(1 for mk in use_models if mk in model_disps and model_disps[mk] is not None)
+
+        # Count model agreement per point — pick the point most models agree is flyable.
+        # Tie-break by selected model's total flyable hours, then good hours.
+        n_points = len(day_disp)
+        point_agree = [0] * n_points
+        for pi in range(n_points):
+            for mk in use_models:
+                if mk not in model_disps or model_disps[mk] is None:
+                    continue
+                m_days = model_disps[mk]
+                if day_idx < len(m_days) and pi < len(m_days[day_idx]):
+                    pf_m = m_days[day_idx][pi]
+                    fly_m = (pf_m["good_hours"] + pf_m["cross_hours"]
+                             + pf_m["gusty_hours"] + pf_m["cross_gusty_hours"])
+                    if fly_m > 0:
+                        point_agree[pi] += 1
+
+        best_pi, best_agree, best_fly, best_good = 0, -1, -1, -1
+        for pi, pf in enumerate(day_disp):
+            fly = pf["good_hours"] + pf["cross_hours"] + pf["gusty_hours"] + pf["cross_gusty_hours"]
+            ag  = point_agree[pi]
+            if (ag > best_agree
+                    or (ag == best_agree and fly > best_fly)
+                    or (ag == best_agree and fly == best_fly and pf["good_hours"] > best_good)):
+                best_agree, best_fly, best_good, best_pi = ag, fly, pf["good_hours"], pi
+
+        certainty.append({"agree": best_agree, "total": total, "best_pi": best_pi})
 
     return {"model": model, "display": disp, "certainty": certainty}
 
