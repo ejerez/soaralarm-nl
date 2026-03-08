@@ -35,6 +35,10 @@ const styles = {
   header: {
     padding: '16px 20px 0',
     borderBottom: '1px solid #2a2a3e',
+    position: 'sticky',
+    top: 0,
+    zIndex: 100,
+    background: '#0f1117',
   },
   title: {
     fontSize: 22,
@@ -146,7 +150,6 @@ export default function App() {
       {/* ── Header ── */}
       <header style={styles.header}>
         <div style={styles.title}>
-          Soaralarm NL
           {status?.updating_forecast    && <span style={styles.badge('#e6a817')}>Updating forecast…</span>}
           {status?.updating_measurements && <span style={styles.badge('#3a7bd5')}>Updating measurements…</span>}
           {!forecastReady && !status?.updating_forecast &&
