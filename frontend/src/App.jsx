@@ -6,7 +6,24 @@ import Settings      from './components/Settings.jsx'
 import Info          from './components/Info.jsx'
 import WelcomeModal  from './components/WelcomeModal.jsx'
 
-const TABS = ['🌍 Map Forecast', '📍 Point Forecast', '⚙ Settings', 'ℹ️ Info']
+// icons8 ios-filled icon helper
+function I8({ name, size = 16, color = 'aaaaaa', style: s = {} }) {
+  return (
+    <img
+      src={`https://img.icons8.com/ios-filled/${size * 2}/${color}/${name}.png`}
+      width={size} height={size}
+      style={{ display: 'inline-block', verticalAlign: 'middle', ...s }}
+      alt=""
+    />
+  )
+}
+
+const TABS = [
+  { label: 'Map Forecast',   icon: 'map'      },
+  { label: 'Point Forecast', icon: 'marker'   },
+  { label: 'Settings',       icon: 'settings' },
+  { label: 'Info',           icon: 'info'     },
+]
 
 const styles = {
   app: {
@@ -103,7 +120,7 @@ export default function App() {
   if (loading) return (
     <div style={styles.app}>
       <div style={styles.spinner}>
-        <div style={{ fontSize: 32 }}>🪂</div>
+        <I8 name="paragliding" size={40} color="7eb8f7" />
         <div>Loading Soaralarm NL…</div>
       </div>
     </div>
@@ -112,7 +129,7 @@ export default function App() {
   if (error) return (
     <div style={styles.app}>
       <div style={styles.spinner}>
-        <div style={{ fontSize: 32 }}>⚠️</div>
+        <I8 name="error" size={40} color="e05c5c" />
         <div>Could not reach API: {error}</div>
         <div style={{ fontSize: 13, color: '#aaa' }}>Make sure the FastAPI backend is running on port 8000</div>
       </div>
@@ -129,7 +146,7 @@ export default function App() {
       {/* ── Header ── */}
       <header style={styles.header}>
         <div style={styles.title}>
-          🪂 Soaralarm NL
+          Soaralarm NL
           {status?.updating_forecast    && <span style={styles.badge('#e6a817')}>Updating forecast…</span>}
           {status?.updating_measurements && <span style={styles.badge('#3a7bd5')}>Updating measurements…</span>}
           {!forecastReady && !status?.updating_forecast &&
@@ -137,7 +154,15 @@ export default function App() {
         </div>
         <nav style={styles.tabBar}>
           {TABS.map((t, i) => (
-            <button key={t} style={styles.tab(activeTab === i)} onClick={() => setActiveTab(i)}>{t}</button>
+            <button key={t.label} style={styles.tab(activeTab === i)} onClick={() => setActiveTab(i)}>
+              <I8
+                name={t.icon}
+                size={14}
+                color={activeTab === i ? '7eb8f7' : '888888'}
+                style={{ marginRight: 5 }}
+              />
+              {t.label}
+            </button>
           ))}
         </nav>
       </header>
@@ -207,7 +232,7 @@ export default function App() {
 function LoadingPanel({ msg }) {
   return (
     <div style={{ textAlign: 'center', padding: '60px 20px', color: '#888' }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div>
+      <I8 name="sand-timer" size={40} color="888888" style={{ marginBottom: 12 }} />
       <div>{msg}</div>
     </div>
   )

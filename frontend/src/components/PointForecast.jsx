@@ -125,34 +125,29 @@ function buildTempData(dayFc) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function PointForecast({ data }) {
-  const { rawForecast, displayForecast, points, measurements, wings, dateIdx, model, certainty } = data
+  const { rawForecast, displayForecast, points, measurements, wings, dateIdx, model } = data
   const [ptIdx, setPtIdx] = useState(0)
 
   const point   = points[ptIdx]
   const dayFc   = rawForecast?.[dateIdx]?.[ptIdx]
 
-  // Default to the best point for the selected day.
-  // Prefers the point with the highest multi-model confidence (best_pi from backend),
-  // falling back to the selected model's flyable hours when certainty isn't ready.
+  // Default to the best point for the selected day (same logic as MapForecast bar chart)
   useEffect(() => {
     if (!displayForecast) return
-    if (certainty?.[dateIdx]?.best_pi != null) {
-      setPtIdx(certainty[dateIdx].best_pi)
-      return
-    }
     const dayPf = displayForecast[dateIdx] || []
     let bestFly = 0
     dayPf.forEach((pf) => {
       const fly = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
       if (fly > bestFly) bestFly = fly
     })
+    // Among all points tied at bestFly, pick the one with the most good hours (lowest index breaks ties)
     let best = 0, bestGood = -1
     dayPf.forEach((pf, pi) => {
       const fly = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
       if (fly === bestFly && pf.good_hours > bestGood) { bestGood = pf.good_hours; best = pi }
     })
     setPtIdx(best)
-  }, [dateIdx, displayForecast, certainty])
+  }, [dateIdx, displayForecast])
 
   // Compute heading bounds early so dirData memo can use them
   const heading    = point?.heading ?? 0
@@ -201,7 +196,12 @@ export default function PointForecast({ data }) {
         target="_blank" rel="noopener noreferrer"
         style={{ display: 'inline-block', marginBottom: 16, marginLeft: 12, fontSize: 13, color: '#7eb8f7', textDecoration: 'none' }}
       >
-        📍 Location
+        <img
+          src="https://img.icons8.com/ios-filled/28/7eb8f7/marker.png"
+          width={14} height={14}
+          style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: 4 }}
+          alt=""
+        /> Location
       </a>
 
       {/* Wind Speed & Gusts */}

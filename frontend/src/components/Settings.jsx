@@ -452,7 +452,7 @@ export default function Settings({ data }) {
         </div>
 
         <button style={saveBtn} onClick={handleSave}>Save &amp; Apply</button>
-        {saved && <span style={savedMsg}>✓ Saved</span>}
+        {saved && <span style={savedMsg}><img src="https://img.icons8.com/ios-filled/24/1fd100/checkmark.png" width={12} height={12} style={{ verticalAlign: 'middle', marginRight: 4 }} alt="" />Saved</span>}
       </div>
 
       {/* Status panel */}
