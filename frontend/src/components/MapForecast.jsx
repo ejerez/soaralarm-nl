@@ -174,7 +174,7 @@ function GanttChart({ ganttRows, days, certByDay }) {
             <text x={LEFT - 4} y={y + DAY_H / 2} fontSize={11} fill="#aaa" textAnchor="end">{day}</text>
             {/* Point name — only when there are flyable hours */}
             {pointName && (
-              <text x={LEFT - 4} y={y + DAY_H / 2 + 12} fontSize={9} fill="#666" textAnchor="end" fontStyle="italic">
+              <text x={LEFT - 4} y={y + DAY_H / 2 + 12} fontSize="clamp(8px, 1.4vw, 10px)" fill="#666" textAnchor="end" fontStyle="italic">
                 {pointName}
               </text>
             )}
@@ -311,31 +311,49 @@ export default function MapForecast({ data }) {
       {/* Flyable Hours Bar */}
       <h3 style={{ marginBottom: 12, color: '#ccc', fontSize: 16 }}>Possible Flyable Hours (Best Locations)</h3>
 
-      {/* Certainty row */}
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart data={barData} margin={{ top: 24, right: 20, left: 0, bottom: 4 }}>
+          <XAxis dataKey="day" tick={{ fill: '#aaa', fontSize: 12 }} />
+          <YAxis tick={{ fill: '#aaa', fontSize: 12 }} />
+          <Tooltip
+            contentStyle={{ background: '#1e1e2e', border: '1px solid #3a3a5e', borderRadius: 6 }}
+            labelStyle={{ color: '#ccc' }}
+            formatter={(val, name) => val > 0 ? [`${val}h`, name] : [null, null]}
+          />
+          <Bar dataKey="good"        name="Good wind"        stackId="a" fill="#1fd100" radius={[0, 0, 0, 0]} />
+          <Bar dataKey="cross"       name="Crosswind"        stackId="a" fill="#d68800" radius={[0, 0, 0, 0]} />
+          <Bar dataKey="gusty"       name="Gusty"            stackId="a" fill="#c12e0d" radius={[0, 0, 0, 0]} />
+          <Bar dataKey="cross_gusty" name="Crosswind, Gusty" stackId="a" fill="#80220d" radius={[0, 0, 0, 0]}>
+            <LabelList dataKey="label" position="top" style={{ fill: '#888', fontSize: 'clamp(8px, 1.4vw, 10px)' }} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+
+      {/* Certainty row — below chart, above legend */}
       {certainty && certainty.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', marginTop: 4, marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginTop: 2 }}>
           {/* Left spacer matching the recharts YAxis width (~38px) */}
-          <div style={{ width: 38, flexShrink: 0, fontSize: 12, color: '#d7d7d7', textAlign: 'right', paddingRight: 6 }}>
-          
-          </div>
+          <div style={{ width: 38, flexShrink: 0 }} />
           <div style={{ flex: 1, display: 'flex', paddingRight: 20 }}>
             {barData.map((d, i) => {
               const totalHours = (d.good || 0) + (d.cross || 0) + (d.gusty || 0) + (d.cross_gusty || 0)
               const c = certainty[i]
               if (!c || totalHours === 0) return <div key={i} style={{ flex: 1 }} />
               const { label, color } = certLabel(c.agree, c.total)
+              const shortLabel = label.replace(' Confidence', '')
               return (
                 <div key={i} style={{ flex: 1, textAlign: 'center' }}>
                   <span style={{
-                    fontSize: 10,
+                    fontSize: 'clamp(7px, 1.4vw, 10px)',
                     fontWeight: 700,
                     color,
                     background: color + '22',
-                    padding: '2px 5px',
+                    padding: '2px 3px',
                     borderRadius: 4,
-                    whiteSpace: 'nowrap',
+                    lineHeight: 1.2,
+                    display: 'inline-block',
                   }}>
-                    {label}
+                    {shortLabel}
                   </span>
                 </div>
               )
@@ -343,25 +361,21 @@ export default function MapForecast({ data }) {
           </div>
         </div>
       )}
-      
-      <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={barData} margin={{ top: 24, right: 20, left: 0, bottom: 4 }}>
-          <XAxis dataKey="day" tick={{ fill: '#aaa', fontSize: 12 }} />
-          <YAxis tick={{ fill: '#aaa', fontSize: 12 }} label={{ value: 'Hours', angle: -90, position: 'insideLeft', fill: '#888', fontSize: 12 }} />
-          <Tooltip
-            contentStyle={{ background: '#1e1e2e', border: '1px solid #3a3a5e', borderRadius: 6 }}
-            labelStyle={{ color: '#ccc' }}
-            formatter={(val, name) => val > 0 ? [`${val}h`, name] : [null, null]}
-          />
-          <Legend wrapperStyle={{ color: '#aaa', fontSize: 13 }} />
-          <Bar dataKey="good"        name="Good wind"        stackId="a" fill="#1fd100" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="cross"       name="Crosswind"        stackId="a" fill="#d68800" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="gusty"       name="Gusty"            stackId="a" fill="#c12e0d" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="cross_gusty" name="Crosswind, Gusty" stackId="a" fill="#80220d" radius={[0, 0, 0, 0]}>
-            <LabelList dataKey="label" position="top" style={{ fill: '#888', fontSize: 10 }} />
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+
+      {/* Manual legend */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', justifyContent: 'center', padding: '8px 0 4px', fontSize: 13, color: '#aaa' }}>
+        {[
+          { color: '#1fd100', name: 'Good wind' },
+          { color: '#d68800', name: 'Crosswind' },
+          { color: '#c12e0d', name: 'Gusty' },
+          { color: '#80220d', name: 'Crosswind, Gusty' },
+        ].map(({ color, name }) => (
+          <span key={name} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ display: 'inline-block', width: 10, height: 10, background: color, borderRadius: 2, flexShrink: 0 }} />
+            {name}
+          </span>
+        ))}
+      </div>
 
       <h3 style={{ margin: '24px 0 12px', color: '#ccc', fontSize: 16 }}>Possible Flyable Windows (Best Locations)</h3>
       <div style={{ background: '#1e1e2e', borderRadius: 8, padding: '12px 4px', border: '1px solid #2a2a3e', overflowX: 'auto' }}>
