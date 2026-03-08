@@ -331,7 +331,7 @@ export default function MapForecast({ data }) {
 
       {/* Certainty row — below chart, above legend */}
       {certainty && certainty.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', marginTop: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginTop: 'clamp(-18px, -2.5vw, -10px)' }}>
           {/* Left spacer must exactly match YAxis width (28) + BarChart left margin (0) */}
           <div style={{ width: 28, flexShrink: 0 }} />
           <div style={{ flex: 1, display: 'flex', paddingRight: 8 }}>
@@ -396,8 +396,8 @@ export default function MapForecast({ data }) {
       </div>
     
       {/* Disclaimer */}
-      <h3 style={{ margin: '24px 0 12px', color: '#ccc', fontSize: 16 }}>DISCLAIMER</h3>
-      <div style={{ background: '#1e1e2e', borderRadius: 8, padding: '12px 4px', border: '1px solid #2a2a3e', overflowX: 'auto' }}>
+      <h3 style={{ margin: '24px 0 12px', color: '#ccc', fontSize: 12 }}>DISCLAIMER</h3>
+      <div style={{ fontSize: 12, background: '#1e1e2e', borderRadius: 8, padding: '12px 4px', border: '1px solid #2a2a3e', overflowX: 'auto' }}>
         {FLYABLE_DISCLAIMER}
       </div> 
     </div>
