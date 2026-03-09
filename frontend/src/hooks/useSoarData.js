@@ -83,6 +83,10 @@ export function useSoarData() {
   // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
     async function init() {
+      // Kick off the display fetch immediately using settings already in
+      // localStorage — don't wait for the metadata calls to complete first.
+      fetchDisplay()
+
       const MAX_ATTEMPTS = 5
       const DELAYS = [1000, 2000, 3000, 5000, 8000]
       for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
@@ -103,12 +107,11 @@ export function useSoarData() {
             setSelectedWings(defaults)
           }
 
-          if (st.forecast_stale && !st.updating_forecast) {
-            await api.refreshForecast()
-          }
-          if (st.measurement_stale && !st.updating_measurements) {
-            await api.refreshMeasure()
-          }
+          // Fire-and-forget — these just kick off background jobs on the server,
+          // there's nothing useful in the response to wait for here.
+          if (st.forecast_stale && !st.updating_forecast) api.refreshForecast()
+          if (st.measurement_stale && !st.updating_measurements) api.refreshMeasure()
+
           setLoading(false)
           return  // success — exit retry loop
         } catch (e) {
@@ -122,22 +125,28 @@ export function useSoarData() {
       }
     }
     init()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Fetch display forecast ────────────────────────────────────────────────
   const fetchDisplay = useCallback(async () => {
     try {
-      const [disp, raw, meas] = await Promise.all([
-        api.displayForecast(
-          model, timeStart, timeEnd, selectedWings, weight,
-          customWind ? windMin : undefined,
-          customWind ? windMax : undefined,
-        ),
+      // Fetch the display forecast first — this is all MapForecast needs.
+      // Setting it immediately lets the charts render without waiting for
+      // the heavier raw forecast or measurements payloads.
+      const disp = await api.displayForecast(
+        model, timeStart, timeEnd, selectedWings, weight,
+        customWind ? windMin : undefined,
+        customWind ? windMax : undefined,
+      )
+      if (disp.display) setDisplay(disp.display)
+      if (disp.certainty) setCertainty(disp.certainty)
+
+      // Raw forecast + measurements load in the background; PointForecast
+      // will populate once they arrive without blocking the map view.
+      const [raw, meas] = await Promise.all([
         api.rawForecast(model),
         api.measurements(),
       ])
-      if (disp.display) setDisplay(disp.display)
-      if (disp.certainty) setCertainty(disp.certainty)
       if (raw.forecast) setRaw(raw.forecast)
       setMeasure(meas)
     } catch (e) {

@@ -141,7 +141,7 @@ export default function App() {
     </div>
   )
 
-  const forecastReady = status?.forecast_available && status?.measurements_available && !!data.displayForecast
+  const forecastReady = status?.forecast_available && !!data.displayForecast
 
   return (
     <div style={styles.app}>
