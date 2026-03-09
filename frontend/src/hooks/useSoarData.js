@@ -83,33 +83,42 @@ export function useSoarData() {
   // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
     async function init() {
-      try {
-        const [pts, d, st, wgs] = await Promise.all([
-          api.points(), api.days(), api.status(), api.wings()
-        ])
-        setPoints(pts)
-        setDays(d.days)
-        setStatus(st)
-        setWings(wgs)
+      const MAX_ATTEMPTS = 5
+      const DELAYS = [1000, 2000, 3000, 5000, 8000]
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        try {
+          const [pts, d, st, wgs] = await Promise.all([
+            api.points(), api.days(), api.status(), api.wings()
+          ])
+          setPoints(pts)
+          setDays(d.days)
+          setStatus(st)
+          setWings(wgs)
 
-        // Default to first wing if nothing is stored yet
-        const stored = loadSelectedWings()
-        const firstKey = Object.keys(wgs)[0]
-        if (stored.length === 0 && firstKey) {
-          const defaults = [{ key: firstKey, size: wgs[firstKey].default_size }]
-          setSelectedWings(defaults)
-        }
+          // Default to first wing if nothing is stored yet
+          const stored = loadSelectedWings()
+          const firstKey = Object.keys(wgs)[0]
+          if (stored.length === 0 && firstKey) {
+            const defaults = [{ key: firstKey, size: wgs[firstKey].default_size }]
+            setSelectedWings(defaults)
+          }
 
-        if (st.forecast_stale && !st.updating_forecast) {
-          await api.refreshForecast()
+          if (st.forecast_stale && !st.updating_forecast) {
+            await api.refreshForecast()
+          }
+          if (st.measurement_stale && !st.updating_measurements) {
+            await api.refreshMeasure()
+          }
+          setLoading(false)
+          return  // success — exit retry loop
+        } catch (e) {
+          if (attempt < MAX_ATTEMPTS - 1) {
+            await new Promise(r => setTimeout(r, DELAYS[attempt]))
+          } else {
+            setError(e.message)
+            setLoading(false)
+          }
         }
-        if (st.measurement_stale && !st.updating_measurements) {
-          await api.refreshMeasure()
-        }
-      } catch (e) {
-        setError(e.message)
-      } finally {
-        setLoading(false)
       }
     }
     init()

@@ -1,7 +1,23 @@
 const BASE = '/api'
+const TRANSIENT = new Set([502, 503, 504])
+const RETRY_DELAYS = [1000, 2000, 4000]  // 3 attempts, ~7 s total
 
-async function get(path) {
-  const res = await fetch(BASE + path)
+async function get(path, attempt = 0) {
+  let res
+  try {
+    res = await fetch(BASE + path)
+  } catch (e) {
+    // Network error (server not reachable yet)
+    if (attempt < RETRY_DELAYS.length) {
+      await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]))
+      return get(path, attempt + 1)
+    }
+    throw new Error(`Network error: ${path}`)
+  }
+  if (TRANSIENT.has(res.status) && attempt < RETRY_DELAYS.length) {
+    await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]))
+    return get(path, attempt + 1)
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${path}`)
   return res.json()
 }
