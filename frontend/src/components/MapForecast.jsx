@@ -404,7 +404,7 @@ export default function MapForecast({ data }) {
               const w = weatherByDay[d.day]
               if (!w?.has_fog && !w?.has_rain) return <div key={i} style={{ flex: 1 }} />
               return (
-                <div key={i} style={{ flex: 1, textAlign: 'center', display: 'flex', justifyContent: 'center', gap: 3 }}>
+                <div key={i} style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                   {w.has_rain && (
                     <span style={{ fontSize: 'clamp(7px, 1.4vw, 10px)', fontWeight: 700, color: '#3a7bd5', background: '#3a7bd522', padding: '2px 3px', borderRadius: 4, lineHeight: 1.2, display: 'inline-block' }}>
                       Rain
