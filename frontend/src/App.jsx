@@ -34,11 +34,6 @@ const styles = {
   },
   header: {
     padding: '16px 20px 0',
-    borderBottom: '1px solid #2a2a3e',
-    position: 'sticky',
-    top: 0,
-    zIndex: 100,
-    background: '#0f1117',
   },
   title: {
     fontSize: 22,
@@ -53,6 +48,12 @@ const styles = {
     display: 'flex',
     gap: 4,
     marginBottom: 0,
+    position: 'sticky',
+    top: 0,
+    zIndex: 100,
+    background: '#0f1117',
+    paddingTop: 4,
+    borderBottom: '1px solid #2a2a3e',
   },
   tab: (active) => ({
     padding: '8px 18px',
@@ -147,28 +148,31 @@ export default function App() {
       {/* ── Welcome modal (first visit only) ── */}
       <WelcomeModal />
 
-      {/* ── Header ── */}
+      {/* ── Header (title only, scrolls away) ── */}
       <header style={styles.header}>
         <div style={styles.title}>
+          Soaralarm NL
           {status?.updating_forecast    && <span style={styles.badge('#e6a817')}>Updating forecast…</span>}
           {status?.updating_measurements && <span style={styles.badge('#3a7bd5')}>Updating measurements…</span>}
           {!forecastReady && !status?.updating_forecast &&
             <span style={styles.badge('#e05c5c')}>No forecast data</span>}
         </div>
-        <nav style={styles.tabBar}>
-          {TABS.map((t, i) => (
-            <button key={t.label} style={styles.tab(activeTab === i)} onClick={() => setActiveTab(i)}>
-              <I8
-                name={t.icon}
-                size={14}
-                color={activeTab === i ? '7eb8f7' : '888888'}
-                style={{ marginRight: 5 }}
-              />
-              {t.label}
-            </button>
-          ))}
-        </nav>
       </header>
+
+      {/* ── Tab bar (sticky) ── */}
+      <nav style={styles.tabBar}>
+        {TABS.map((t, i) => (
+          <button key={t.label} style={styles.tab(activeTab === i)} onClick={() => setActiveTab(i)}>
+            <I8
+              name={t.icon}
+              size={14}
+              color={activeTab === i ? '7eb8f7' : '888888'}
+              style={{ marginRight: 5 }}
+            />
+            {t.label}
+          </button>
+        ))}
+      </nav>
 
       {/* ── Date bar ── */}
       {activeTab < 2 && (
@@ -195,14 +199,28 @@ export default function App() {
             )
             if (!hasFly) return null
             const { label, color } = certLabel(c.agree, c.total)
+            // Use best_pi from certainty to check weather flags for the highlighted point
+            const bestPf = dayBar?.[c.best_pi ?? 0]
             return (
-              <span style={{
-                fontSize: 11, fontWeight: 700, color,
-                background: color + '22',
-                padding: '2px 8px', borderRadius: 4,
-              }}>
-                {label}
-              </span>
+              <>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, color,
+                  background: color + '22',
+                  padding: '2px 8px', borderRadius: 4,
+                }}>
+                  {label}
+                </span>
+                {bestPf?.has_rain && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#3a7bd5', background: '#3a7bd522', padding: '2px 8px', borderRadius: 4 }}>
+                    Rain
+                  </span>
+                )}
+                {bestPf?.has_fog && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#9090b8', background: '#9090b822', padding: '2px 8px', borderRadius: 4 }}>
+                    Fog
+                  </span>
+                )}
+              </>
             )
           })()}
           {status?.forecast_age_seconds != null && (

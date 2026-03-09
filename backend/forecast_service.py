@@ -215,6 +215,7 @@ class ForecastService:
         weight:         float      = 75.0,
         wind_min: Optional[float]  = None,
         wind_max: Optional[float]  = None,
+        ignore_precip_vis: bool    = False,
     ) -> List[List[Dict]]:
         """
         Compute wind_pizza, good_hours, cross_hours, gantt for each day×point.
@@ -255,6 +256,12 @@ class ForecastService:
                 prev       = None
                 start      = None
                 last_time  = None
+                fog_gantt  = []
+                fog_prev   = None
+                fog_start  = None
+                rain_gantt = []
+                rain_prev  = None
+                rain_start = None
 
                 for i, iso_time in enumerate(pf["time"]):
                     t = pd.Timestamp(iso_time)
@@ -283,12 +290,32 @@ class ForecastService:
 
                     flyable = (
                         in_window
-                        and float(pf["precipitation"][i] or 0) <= 0.1
-                        and float(pf["visibility"][i]    or 9999) > 299
+                        and (ignore_precip_vis or float(pf["precipitation"][i] or 0) <= 0.1)
+                        and (ignore_precip_vis or float(pf["visibility"][i]    or 9999) > 299)
                         and wind_flyable
                     )
 
                     t_shifted = (t - timedelta(days=day_idx)).isoformat()
+
+                    # Track fog and rain windows independently of ignore_precip_vis —
+                    # these are always based on actual precipitation/visibility data.
+                    is_fog  = in_window and float(pf["visibility"][i]    or 9999) < 300
+                    is_rain = in_window and float(pf["precipitation"][i] or 0)    > 0.1
+
+                    fog_cat  = "fog"  if is_fog  else "no"
+                    rain_cat = "rain" if is_rain else "no"
+
+                    if fog_cat != fog_prev:
+                        if fog_prev is not None:
+                            fog_gantt.append({"type": fog_prev, "start": fog_start, "end": t_shifted})
+                        fog_prev  = fog_cat
+                        fog_start = t_shifted
+
+                    if rain_cat != rain_prev:
+                        if rain_prev is not None:
+                            rain_gantt.append({"type": rain_prev, "start": rain_start, "end": t_shifted})
+                        rain_prev  = rain_cat
+                        rain_start = t_shifted
 
                     if flyable:
                         rel = float(pf["wind_direction"][i] or 0) - point["heading"]
@@ -333,6 +360,10 @@ class ForecastService:
 
                 if prev is not None and last_time:
                     gantt.append({"type": prev, "start": start, "end": last_time})
+                if fog_prev is not None and last_time:
+                    fog_gantt.append({"type": fog_prev, "start": fog_start, "end": last_time})
+                if rain_prev is not None and last_time:
+                    rain_gantt.append({"type": rain_prev, "start": rain_start, "end": last_time})
 
                 day_disp.append({
                     "wind_pizza":    wind_pizza,
@@ -341,6 +372,10 @@ class ForecastService:
                     "gusty_hours":   wind_quality[2],
                     "cross_gusty_hours":   wind_quality[3],
                     "gantt":         gantt,
+                    "fog_gantt":     [g for g in fog_gantt  if g["type"] == "fog"],
+                    "rain_gantt":    [g for g in rain_gantt if g["type"] == "rain"],
+                    "has_fog":       any(g["type"] == "fog"  for g in fog_gantt),
+                    "has_rain":      any(g["type"] == "rain" for g in rain_gantt),
                     "wind_ranges":   (
                         [{"key": "custom", "range": [wind_min, wind_max]}]
                         if custom_mode else eff_ranges[pt_idx]

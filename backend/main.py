@@ -224,32 +224,35 @@ def get_display_forecast(
     # Normalise the wings JSON for use as a cache key
     wings_key = json.dumps(selected_wings, sort_keys=True)
 
-    def _cached_display(mk: str):
+    def _cached_display(mk: str, ignore_precip_vis: bool = False):
         """Return display result for model mk, computing and caching if needed."""
-        cache_key = (mk, time_start, time_end, wings_key, weight, wind_min, wind_max)
+        cache_key = (mk, time_start, time_end, wings_key, weight, wind_min, wind_max, ignore_precip_vis)
         if cache_key in _display_cache:
             return _display_cache[cache_key]
         raw_mk = state["forecast"].get(mk)
         if not raw_mk:
             return None
         svc = ForecastService(state["soar_points"])
-        result = svc.display(raw_mk, t_start, t_end, selected_wings, state["wings"], weight, wind_min, wind_max)
+        result = svc.display(raw_mk, t_start, t_end, selected_wings, state["wings"], weight, wind_min, wind_max,
+                             ignore_precip_vis=ignore_precip_vis)
         _display_cache[cache_key] = result
         return result
 
-    disp = _cached_display(model)
+    disp = _cached_display(model, ignore_precip_vis=False)
     if disp is None:
         return {"error": "forecast not available"}
 
     # ── Certainty: count model agreement at each day's best location ─────────
+    # Uses ignore_precip_vis=True so rain/fog don't reduce confidence scores —
+    # confidence reflects wind agreement only; display hours still apply those thresholds.
     ALL_MODELS = ["soar_knmi", "soar_ecmwf", "soar_icon", "soar_arome"]
-    model_disps = {mk: _cached_display(mk) for mk in ALL_MODELS if state["forecast"].get(mk)}
+    model_disps = {mk: _cached_display(mk, ignore_precip_vis=True) for mk in ALL_MODELS if state["forecast"].get(mk)}
 
     certainty = []
     for day_idx, day_disp in enumerate(disp):
         # KNMI seamless transitions to ECMWF IFS at ~2.5 days ahead (from today = index 1).
         # Include KNMI only for yesterday (0), today (1), tomorrow (2).
-        use_models = ALL_MODELS if day_idx < 3 else [m for m in ALL_MODELS if m != "soar_knmi"]
+        use_models = ALL_MODELS if day_idx < 4 else [m for m in ALL_MODELS if m != "soar_knmi"]
         total = sum(1 for mk in use_models if mk in model_disps and model_disps[mk] is not None)
 
         # Count model agreement per point — pick the point most models agree is flyable.

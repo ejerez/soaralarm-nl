@@ -105,23 +105,18 @@ function InfoTooltip({ text }) {
 }
 
 export function certLabel(agree, total) {
-  if (total === 4) {
-    if (agree === 4) return { label: 'Very High Confidence', color: '#00e676' }
-    if (agree === 3) return { label: 'High Confidence',      color: '#c6ef00' }
-    if (agree === 2) return { label: 'Medium Confidence',    color: '#ffa726' }
-    return                  { label: 'Low Confidence',       color: '#ef5350' }
-  }
-  // 3-model scale (KNMI excluded for day 4+)
-  if (agree === 3) return { label: 'High Confidence',   color: '#c6ef00' }
-  if (agree === 2) return { label: 'Medium Confidence', color: '#ffa726' }
-  return                  { label: 'Low Confidence',    color: '#ef5350' }
+  if (agree === 4) return { label: 'Very High Confidence', color: '#00e6bc' }
+  if (agree === 3) return { label: 'High Confidence',      color: '#8fef00' }
+  if (agree === 2) return { label: 'Medium Confidence',    color: '#ffa726' }
+  return                  { label: 'Low Confidence',       color: '#ef5350' }
 }
 
-
-function GanttChart({ ganttRows, days, certByDay }) {
-  // ganttRows: array of { day, point, type, start, end }
-  const COLOR = { good: '#1fd100', cross: '#d68800', good_gusty: '#c12e0d', cross_gusty: '#80220d', no: 'transparent' }
-  const DAY_H = 44
+function GanttChart({ ganttRows, weatherRows, days, certByDay }) {
+  // ganttRows: array of { day, point, type, start, end }  (flyable windows)
+  // weatherRows: array of { day, type, start, end }       (fog / rain windows)
+  const COLOR = { good: '#1fd100', cross: '#d1bb16', good_gusty: '#d68800', cross_gusty: '#c12e0d', no: 'transparent' }
+  const WEATHER_COLOR = { fog: '#b0b0c8', rain: '#3a7bd5' }
+  const DAY_H = 52
   const LEFT  = 90
   const RIGHT = 20
   const W     = 700
@@ -137,6 +132,11 @@ function GanttChart({ ganttRows, days, certByDay }) {
   for (const r of ganttRows) {
     if (!grouped[r.day]) grouped[r.day] = []
     grouped[r.day].push(r)
+  }
+  const weatherGrouped = {}
+  for (const r of (weatherRows || [])) {
+    if (!weatherGrouped[r.day]) weatherGrouped[r.day] = []
+    weatherGrouped[r.day].push(r)
   }
   const dayKeys = [...new Set(ganttRows.map(r => r.day))]
 
@@ -168,6 +168,7 @@ function GanttChart({ ganttRows, days, certByDay }) {
         const rows = grouped[day] || []
         const flyableRows = rows.filter(r => r.type !== 'no')
         const pointName   = flyableRows.length > 0 ? rows[0].point : null
+        const wRows = weatherGrouped[day] || []
         return (
           <g key={day}>
             {/* Day name */}
@@ -188,13 +189,25 @@ function GanttChart({ ganttRows, days, certByDay }) {
                 </text>
               )
             })()}
+            {/* Flyable bars — main band */}
             {flyableRows.map((r, i) => {
               const x1 = scale(r.start)
               const x2 = scale(r.end)
               return (
-                <rect key={i} x={x1} y={y + 14} width={Math.max(x2 - x1, 1)} height={DAY_H - 12}
+                <rect key={i} x={x1} y={y + 14} width={Math.max(x2 - x1, 1)} height={22}
                   fill={COLOR[r.type] || '#555'} rx={2} opacity={0.85}>
                   <title>{r.type} – {r.point}</title>
+                </rect>
+              )
+            })}
+            {/* Weather strip — fog/rain band below flyable bars */}
+            {wRows.map((r, i) => {
+              const x1 = scale(r.start)
+              const x2 = scale(r.end)
+              return (
+                <rect key={'w' + i} x={x1} y={y + 14} width={Math.max(x2 - x1, 1)} height={22}
+                  fill={WEATHER_COLOR[r.type] || '#888'} rx={2} opacity={0.85}>
+                  <title>{r.type}</title>
                 </rect>
               )
             })}
@@ -259,12 +272,14 @@ export default function MapForecast({ data }) {
   }, [displayForecast, points, dateIdx])
 
   // ── Bar chart data ────────────────────────────────────────────────────────
-  const { barData, ganttRows, certByDay } = useMemo(() => {
-    if (!displayForecast || !points.length) return { barData: [], ganttRows: [] }
+  const { barData, ganttRows, weatherRows, certByDay, weatherByDay } = useMemo(() => {
+    if (!displayForecast || !points.length) return { barData: [], ganttRows: [], weatherRows: [], certByDay: {}, weatherByDay: {} }
 
     const bar = []
     const gantt = []
+    const weather = []
     const certByDayMap = {}
+    const weatherByDayMap = {}
 
     displayForecast.forEach((dayPf, di) => {
       let bestFly = 0
@@ -293,14 +308,32 @@ export default function MapForecast({ data }) {
       const dayName = days[di] || `Day ${di}`
       if (certainty?.[di]) certByDayMap[dayName] = certainty[di]
 
+      // Weather (fog/rain) flags — use best point for this day
+      const hasFly = bestFly > 0
+      weatherByDayMap[dayName] = {
+        has_fog:  hasFly && !!(bpf?.has_fog),
+        has_rain: hasFly && !!(bpf?.has_rain),
+      }
+
       if (bpf?.gantt) {
         bpf.gantt.forEach(g => {
-          gantt.push({ day: days[di] || `Day ${di}`, point: bpt?.name || '', type: g.type, start: g.start, end: g.end })
+          gantt.push({ day: dayName, point: bpt?.name || '', type: g.type, start: g.start, end: g.end })
+        })
+      }
+      // Fog/rain gantt strips — only on flyable days
+      if (bestFly > 0 && bpf?.fog_gantt) {
+        bpf.fog_gantt.forEach(g => {
+          weather.push({ day: dayName, type: g.type, start: g.start, end: g.end })
+        })
+      }
+      if (bestFly > 0 && bpf?.rain_gantt) {
+        bpf.rain_gantt.forEach(g => {
+          weather.push({ day: dayName, type: g.type, start: g.start, end: g.end })
         })
       }
     })
 
-    return { barData: bar, ganttRows: gantt, certByDay: certByDayMap }
+    return { barData: bar, ganttRows: gantt, weatherRows: weather, certByDay: certByDayMap, weatherByDay: weatherByDayMap }
   }, [displayForecast, points, days, certainty])
 
   return (
@@ -321,9 +354,9 @@ export default function MapForecast({ data }) {
             formatter={(val, name) => val > 0 ? [`${val}h`, name] : [null, null]}
           />
           <Bar dataKey="good"        name="Good wind"        stackId="a" fill="#1fd100" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="cross"       name="Crosswind"        stackId="a" fill="#d68800" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="gusty"       name="Gusty"            stackId="a" fill="#c12e0d" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="cross_gusty" name="Crosswind, Gusty" stackId="a" fill="#80220d" radius={[0, 0, 0, 0]}>
+          <Bar dataKey="cross"       name="Crosswind"        stackId="a" fill="#d1bb16" radius={[0, 0, 0, 0]} />
+          <Bar dataKey="gusty"       name="Gusty"            stackId="a" fill="#d68800" radius={[0, 0, 0, 0]} />
+          <Bar dataKey="cross_gusty" name="Crosswind, Gusty" stackId="a" fill="#c12e0d" radius={[0, 0, 0, 0]}>
             <LabelList dataKey="label" position="top" style={{ fill: '#888', fontSize: 'clamp(8px, 1.4vw, 10px)' }} />
           </Bar>
         </BarChart>
@@ -362,13 +395,40 @@ export default function MapForecast({ data }) {
         </div>
       )}
 
+      {/* Weather badges row — fog / rain on flyable days */}
+      {barData.some((d, i) => weatherByDay[d.day]?.has_fog || weatherByDay[d.day]?.has_rain) && (
+        <div style={{ display: 'flex', alignItems: 'center', marginTop: 4 }}>
+          <div style={{ width: 28, flexShrink: 0 }} />
+          <div style={{ flex: 1, display: 'flex', paddingRight: 8 }}>
+            {barData.map((d, i) => {
+              const w = weatherByDay[d.day]
+              if (!w?.has_fog && !w?.has_rain) return <div key={i} style={{ flex: 1 }} />
+              return (
+                <div key={i} style={{ flex: 1, textAlign: 'center', display: 'flex', justifyContent: 'center', gap: 3 }}>
+                  {w.has_rain && (
+                    <span style={{ fontSize: 'clamp(7px, 1.4vw, 10px)', fontWeight: 700, color: '#3a7bd5', background: '#3a7bd522', padding: '2px 3px', borderRadius: 4, lineHeight: 1.2, display: 'inline-block' }}>
+                      Rain
+                    </span>
+                  )}
+                  {w.has_fog && (
+                    <span style={{ fontSize: 'clamp(7px, 1.4vw, 10px)', fontWeight: 700, color: '#9090b8', background: '#9090b822', padding: '2px 3px', borderRadius: 4, lineHeight: 1.2, display: 'inline-block' }}>
+                      Fog
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Manual legend */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', justifyContent: 'center', padding: '8px 0 4px', fontSize: 13, color: '#aaa' }}>
         {[
           { color: '#1fd100', name: 'Good wind' },
-          { color: '#d68800', name: 'Crosswind' },
-          { color: '#c12e0d', name: 'Gusty' },
-          { color: '#80220d', name: 'Crosswind, Gusty' },
+          { color: '#d1bb16', name: 'Crosswind' },
+          { color: '#d68800', name: 'Gusty' },
+          { color: '#c12e0d', name: 'Crosswind, Gusty' },
         ].map(({ color, name }) => (
           <span key={name} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{ display: 'inline-block', width: 10, height: 10, background: color, borderRadius: 2, flexShrink: 0 }} />
@@ -379,13 +439,15 @@ export default function MapForecast({ data }) {
 
       <h3 style={{ margin: '24px 0 12px', color: '#ccc', fontSize: 16 }}>Possible Flyable Windows (Best Locations)</h3>
       <div style={{ background: '#1e1e2e', borderRadius: 8, padding: '12px 4px', border: '1px solid #2a2a3e', overflowX: 'auto' }}>
-        <GanttChart ganttRows={ganttRows} days={days} certByDay={certByDay} />
+        <GanttChart ganttRows={ganttRows} weatherRows={weatherRows} days={days} certByDay={certByDay} />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', padding: '8px 12px 0', fontSize: 'clamp(10px, 1.8vw, 12px)', color: '#888' }}>
           {[
             { color: '#1fd100', name: 'Good wind' },
-            { color: '#d68800', name: 'Crosswind' },
-            { color: '#c12e0d', name: 'Gusty' },
-            { color: '#80220d', name: 'Crosswind, Gusty' },
+            { color: '#d1bb16', name: 'Crosswind' },
+            { color: '#d68800', name: 'Gusty' },
+            { color: '#c12e0d', name: 'Crosswind, Gusty' },
+            { color: '#2b5fa7', name: 'Rain' },
+            { color: '#9d9dad', name: 'Fog' },
           ].map(({ color, name }) => (
             <span key={name} style={{ display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
               <span style={{ display: 'inline-block', width: 10, height: 10, background: color, borderRadius: 2, marginRight: 4, flexShrink: 0 }} />
