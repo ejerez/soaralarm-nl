@@ -206,6 +206,11 @@ def get_display_forecast(
     wind_max:   Optional[float] = Query(None, description='Custom maximum gust speed (km/h)'),
 ):
     """Returns per-day, per-point display data (gantt, wind_pizza, hours)."""
+    # If a forecast refresh is in progress the data may be partially written —
+    # return a clean pending response rather than risking a mid-write crash.
+    if state["updating_forecast"]:
+        return {"error": "forecast updating, please retry shortly"}
+
     raw = state["forecast"].get(model)
     if not raw:
         return {"error": "forecast not available"}
@@ -232,9 +237,13 @@ def get_display_forecast(
         raw_mk = state["forecast"].get(mk)
         if not raw_mk:
             return None
-        svc = ForecastService(state["soar_points"])
-        result = svc.display(raw_mk, t_start, t_end, selected_wings, state["wings"], weight, wind_min, wind_max,
-                             ignore_precip_vis=ignore_precip_vis)
+        try:
+            svc = ForecastService(state["soar_points"])
+            result = svc.display(raw_mk, t_start, t_end, selected_wings, state["wings"], weight, wind_min, wind_max,
+                                 ignore_precip_vis=ignore_precip_vis)
+        except Exception as exc:
+            print(f"[display] ERROR for {mk}: {exc}")
+            return None
         _display_cache[cache_key] = result
         return result
 
@@ -290,6 +299,8 @@ def get_raw_forecast(
     model: str = Query("soar_knmi", enum=["soar_knmi", "soar_ecmwf", "soar_icon", "soar_arome"]),
 ):
     """Returns full hourly forecast data per day per point for the point-detail view."""
+    if state["updating_forecast"]:
+        return {"error": "forecast updating, please retry shortly"}
     raw = state["forecast"].get(model)
     if not raw:
         return {"error": "forecast not available"}
