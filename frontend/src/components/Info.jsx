@@ -50,25 +50,20 @@ export default function Info({ data }) {
   return (
     <div style={{ maxWidth: 720 }}>
       <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <p style={{ ...p, margin: 5 }}>
-            <h2 style={h2}>About Soaralarm NL</h2>
-              Soaralarm NL is a <b style={{ color: '#ccc' }}>free and open-source</b> project,
-              built as a free service for the community of pilots who soar the dunes along the
-              Dutch coast. It combines offshore wind forecasts using four major European weather models
-              with live RWS measurements to give you an overview of the best spots to fly in the
-              upcoming 7 days, plus detailed forecasts and measurements to judge the conditions 
-              when you go fly.
-            </p>
-          <div>
-            <img
-            src="/paraglider.png"
-            width={160} height={160}
-            style={{ flexShrink: 0, opacity: 0.9 }}
-            alt=""
-          />
-          </div>
-        </div>
+        <img
+          src="/paraglider.png"
+          style={{ display: 'block', width: 'clamp(100px, 14vw, 160px)', height: 'clamp(100px, 14vw, 160px)', opacity: 0.9, marginBottom: 16 }}
+          alt=""
+        />
+        <h2 style={h2}>About Soaralarm NL</h2>
+        <p style={{ ...p, margin: 0 }}>
+          Soaralarm NL is a <b style={{ color: '#ccc' }}>free and open-source</b> project,
+          built as a free service for the community of pilots who soar the dunes along the
+          Dutch coast. It combines offshore wind forecasts using four major European weather models
+          with live RWS measurements to give you an overview of the best spots to fly in the
+          upcoming 7 days, plus detailed forecasts and measurements to judge the conditions 
+          when you go fly.
+        </p>
       </div>
 
       {/* ── How flyability is calculated ── */}

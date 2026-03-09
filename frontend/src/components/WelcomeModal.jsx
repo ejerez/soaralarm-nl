@@ -84,7 +84,7 @@ export default function WelcomeModal() {
             <b style={{ color: '#ccc' }}>Best Location?</b>
             <p style={{ ...p, margin: '2px 0 0' }}>
               The best location is chosen as the one most models agree has flyable weather (ignoring rain and fog), with the selected model's
-              flyable hours used to break ties. The more models agree, the higher the confidence score, from <b style={{ color: '#ef5350' }}>Low</b>
+              flyable hours used to break ties. The more models agree, the higher the confidence score, from <b style={{ color: '#ef5350' }}>Low</b> 
               for just one model to <b style={{ color: '#00e676' }}>Very High</b> for all four. 
             </p>
           </div>

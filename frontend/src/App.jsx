@@ -154,7 +154,9 @@ export default function App() {
           Soaralarm NL
           {status?.updating_forecast    && <span style={styles.badge('#e6a817')}>Updating forecast…</span>}
           {status?.updating_measurements && <span style={styles.badge('#3a7bd5')}>Updating measurements…</span>}
-          {!forecastReady && !status?.updating_forecast &&
+          {!status?.updating_forecast && status?.forecast_available && !data.displayForecast &&
+            <span style={styles.badge('#e6a817')}>Loading forecast…</span>}
+          {!status?.updating_forecast && !status?.forecast_available &&
             <span style={styles.badge('#e05c5c')}>No forecast data</span>}
         </div>
       </header>
