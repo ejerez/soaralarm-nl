@@ -125,7 +125,7 @@ export default function App() {
   if (loading) return (
     <div style={styles.app}>
       <div style={styles.spinner}>
-        <img src="/paraglider.png" width={300} height={300} style={{ display: 'inline-block', verticalAlign: 'middle' }} alt="" />
+        <img src="/icon.png" width={50} height={50} style={{ display: 'inline-block', verticalAlign: 'middle' }} alt="" />
         <div>Loading Soaralarm NL…</div>
       </div>
     </div>
@@ -253,7 +253,7 @@ export default function App() {
 function LoadingPanel({ msg }) {
   return (
     <div style={{ textAlign: 'center', padding: '60px 20px', color: '#888' }}>
-      <I8 name="sand-timer" size={40} color="888888" style={{ marginBottom: 12 }} />
+      <img src="/icon.png" width={50} height={50} style={{ display: 'inline-block', verticalAlign: 'middle' }} alt="" />
       <div>{msg}</div>
     </div>
   )

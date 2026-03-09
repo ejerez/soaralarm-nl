@@ -49,6 +49,27 @@ export default function Info({ data }) {
 
   return (
     <div style={{ maxWidth: 720 }}>
+      <div style={card}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          <p style={{ ...p, margin: 5 }}>
+            <h2 style={h2}>About Soaralarm NL</h2>
+              Soaralarm NL is a <b style={{ color: '#ccc' }}>free and open-source</b> project,
+              built as a free service for the community of pilots who soar the dunes along the
+              Dutch coast. It combines offshore wind forecasts using four major European weather models
+              with live RWS measurements to give you an overview of the best spots to fly in the
+              upcoming 7 days, plus detailed forecasts and measurements to judge the conditions 
+              when you go fly.
+            </p>
+          <div>
+            <img
+            src="/paraglider.png"
+            width={160} height={160}
+            style={{ flexShrink: 0, opacity: 0.9 }}
+            alt=""
+          />
+          </div>
+        </div>
+      </div>
 
       {/* ── How flyability is calculated ── */}
       <div style={card}>
@@ -227,14 +248,17 @@ export default function Info({ data }) {
         <h3 style={h3}>Multi-model confidence scores</h3>
         <p style={p}>
           For each day, every location is scored by how many of the four models agree there will be flyable
-          hours. The location with the highest score is selected as the "best" location shown in the
+          hours <b style={{ color: '#ccc' }}>based solely on wind speed and heading</b>, that is, ignoring rain
+          or fog – since these tend to introduce quite some variability to the calculation of flyability, and 
+          their forcasted values are usually more volatile than the forecasted wind. The location with 
+          the highest score is selected as the "best" location shown in the
           flyable-hours chart, Gantt chart, and Point Forecast default. When multiple locations share the
           same score, the selected model's total flyable hours – and then good-quality hours – are used as
           a tie-breaker. The badge is shown whenever at least one model forecasts flyable weather.
         </p>
         <p style={p}>
           Beyond day 3, KNMI is excluded because it blends into ECMWF IFS after 2.5 days – including it
-          would double-count the same source. From day 5 onward, AROME drops out too (4-day limit), leaving
+          would double-count the same source. From day 5 onward, AROME doesn't produce any forecasts, leaving
           only ECMWF and ICON.
         </p>
 

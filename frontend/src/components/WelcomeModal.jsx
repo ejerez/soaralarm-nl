@@ -57,28 +57,35 @@ export default function WelcomeModal() {
         </div>
 
         {/* Intro */}
-        <p style={p}>
-          Soaralarm NL is a <b style={{ color: '#ccc' }}>free and open-source</b> project,
-          built as a free service for the community of pilots who soar the dunes along the
-          Dutch coast. It combines offshore wind forecasts using four major European weather models
-          with live RWS measurements to give you an overview of the best spots to fly in the
-          upcoming 7 days, plus detailed forecasts and measurements to judge the conditions 
-          when you go fly.
-        </p>
+        <h3 style={h3}>About</h3>
+        Soaralarm.nl is a forecasting tool for soaring at the Dutch coast. It includes many more features than other existing tools,
+        and places everything together for convenience. At first glance, it might seem a somewhat overwhelming amount of information,
+        but everything you need to know when you can fly is there!
 
         {/* How to use */}
-        <h3 style={h3}>What does it include?</h3>
+        <h3 style={h3}>What is where</h3>
 
         <div style={section}>
           <I8 name="map" size={18} color="7eb8f7" style={{ flexShrink: 0, marginTop: 1 }} />
           <div>
             <b style={{ color: '#ccc' }}>Map Forecast</b>
             <p style={{ ...p, margin: '2px 0 0' }}>
-              Overview of all locations for the selected date. A bar chart shows estimated flyable hours at
-              the best location each day, and a Gantt chart shows the estimated flyable windows. The best
-              location is chosen as the one most models agree has flyable weather, with the selected model's
-              flyable hours used to break ties. Both charts include a <b style={{ color: '#ccc' }}>confidence score</b> 
+              The map shows an overview of the conditions at each location for the selected day. Below it, you can see
+              a chart showing the estimated flyable hours at the best location each day, and further down a Gantt chart 
+              shows the estimated flyable windows. Both charts include a <b style={{ color: '#ccc' }}>confidence score</b> 
               showing how many of the four weather models agree on the forecast.
+            </p>
+          </div>
+        </div>
+
+        <div style={section}>
+          <I8 name="map" size={18} color="7eb8f7" style={{ flexShrink: 0, marginTop: 1 }} />
+          <div>
+            <b style={{ color: '#ccc' }}>Best Location?</b>
+            <p style={{ ...p, margin: '2px 0 0' }}>
+              The best location is chosen as the one most models agree has flyable weather (ignoring rain and fog), with the selected model's
+              flyable hours used to break ties. The more models agree, the higher the confidence score, from <b style={{ color: '#ef5350' }}>Low</b>
+              for just one model to <b style={{ color: '#00e676' }}>Very High</b> for all four. 
             </p>
           </div>
         </div>
@@ -88,10 +95,9 @@ export default function WelcomeModal() {
           <div>
             <b style={{ color: '#ccc' }}>Point Forecast</b>
             <p style={{ ...p, margin: '2px 0 0' }}>
-              Detailed hourly forecasts and live measurements for the selected location and day, conveniently
-              defaults to the best location for the selected day — the one with the highest multi-model
-              confidence score: wind speed &amp; gusts, 
-              precipitation, wind heading, temperature, and visibility.
+              Here you will find detailed hourly forecasts and live measurements for the selected location and day.
+              When you enter this tab, you are automatically taken to the best calculated location, based on confidence scores.
+              The data you can see here includes wind speed &amp; gusts, precipitation, wind heading, temperature, and visibility.
             </p>
           </div>
         </div>
@@ -101,9 +107,9 @@ export default function WelcomeModal() {
           <div>
             <b style={{ color: '#ccc' }}>Settings</b>
             <p style={{ ...p, margin: '2px 0 0' }}>
-              Select your wing type and size (up to 5 wings), total weight in flight, preferred forecast
+              In this tab you can select your wing type and size (for up to 5 wings), total weight in flight, preferred forecast
               model, and daily availability window. Tap <b style={{ color: '#ccc' }}>Save &amp; Apply </b>
-              to update all charts. Advanced pilots can enable <b style={{ color: '#ccc' }}>Custom Wind Range</b> to
+              to update all charts. Advanced pilots can enable the <b style={{ color: '#ccc' }}>Custom Wind Range</b> to
               bypass wing and weight calculations and set their own minimum and maximum wind speed directly.
             </p>
           </div>
@@ -114,9 +120,8 @@ export default function WelcomeModal() {
           <div>
             <b style={{ color: '#ccc' }}>Info</b>
             <p style={{ ...p, margin: '2px 0 0' }}>
-              Explains how flyability is calculated, the wind range scaling formula, the
-              data sources used, and shows the exact wind ranges and headings for every
-              location given your current wings and weight selection.
+              Here you will find information about Soaralarm and how each thing, the forecasts, the wind ranges, the flyability, etc.
+              is obtained and/or calculated.
             </p>
           </div>
         </div>

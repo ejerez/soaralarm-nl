@@ -83,7 +83,7 @@ Forecasts are fetched in parallel from [Open-Meteo](https://open-meteo.com/) for
 The active model is selected in Settings and shown in the date bar. All four models are always fetched and cached regardless of the active selection.
 
 ### Multi-model confidence scores
-For each day, the backend scores every location by how many of the four models agree it has flyable hours. The location with the **highest agreement score** is selected as the "best" location shown in the flyable-hours chart, Gantt chart, and as the default in Point Forecast. When multiple locations share the same score, the selected model's total flyable hours – and then good-quality hours – are used to break ties. A confidence badge is shown whenever at least one model forecasts flyable weather, even if the selected model does not. This agreement score is shown as a colour-coded badge in three places:
+For each day, the backend scores every location by how many of the four models agree it has flyable hours, excluding rain and fog from the calculation (as they increase the volatility of the flyability estimation significantly). The location with the **highest agreement score** is selected as the "best" location shown in the flyable-hours chart, Gantt chart, and as the default in Point Forecast. When multiple locations share the same score, the selected model's total flyable hours – and then good-quality hours – are used to break ties. A confidence badge is shown whenever at least one model forecasts flyable weather, even if the selected model does not. This agreement score is shown as a colour-coded badge in three places:
 
 - Below the flyable-hours bar chart (one badge per day)
 - On each row of the Gantt chart (left column, between the day name and location name)
@@ -92,7 +92,8 @@ For each day, the backend scores every location by how many of the four models a
 | Period | Confidence levels |
 |--------|-------------------|
 | Days 0–3: all 4 models used | Very High (4/4) · High (3/4) · Medium (2/4) · Low (1/4) |
-| Days 4+: ECMWF, ICON, AROME only | High (3/3) · Medium (2/3) · Low (1/3) |
+| Day 4: ECMWF, ICON, AROME | High (3/3) · Medium (2/3) · Low (1/3) |
+| Day 4: ECMWF, ICON | Medium (2/3) · Low (1/3) |
 
 KNMI is excluded beyond day 3 because it transitions to ECMWF IFS data after 2.5 days, which would effectively double-count the same underlying source.
 
