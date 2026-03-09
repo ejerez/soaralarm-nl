@@ -20,7 +20,6 @@ function saveDisplayCache(key, display, certainty) {
   try {
     localStorage.setItem(key, JSON.stringify({ display, certainty, savedAt: Date.now() }))
   } catch {
-    // Storage full — evict old soar_display entries and retry
     try {
       Object.keys(localStorage).filter(k => k.startsWith('soar_display_v1:')).forEach(k => localStorage.removeItem(k))
       localStorage.setItem(key, JSON.stringify({ display, certainty, savedAt: Date.now() }))
@@ -36,105 +35,153 @@ function loadSelectedWings() {
   return []
 }
 
-// Returns true if now is within 90 minutes of sunrise/sunset for today's first point
-function isInDaylightWindow(rawForecast) {
-  try {
-    const todayFc = rawForecast?.[1]?.[0]  // dateIdx=1 is today, first point
-    if (!todayFc?.sunrise || !todayFc?.sunset) return true  // if unknown, allow refresh
-    const now     = Date.now()
-    const sunrise = new Date(todayFc.sunrise).getTime()
-    const sunset  = new Date(todayFc.sunset).getTime()
-    const MARGIN  = 90 * 60 * 1000  // 90 minutes in ms
-    return now >= sunrise - MARGIN && now <= sunset + MARGIN
-  } catch {
-    return true  // if anything fails, allow refresh
+// Read all settings from localStorage once — single consistent snapshot
+function readSettingsFromStorage() {
+  return {
+    model:         localStorage.getItem('model')        || 'soar_knmi',
+    timeStart:     localStorage.getItem('timeStart')    || '00:00',
+    timeEnd:       localStorage.getItem('timeEnd')      || '23:59',
+    selectedWings: loadSelectedWings(),
+    weight:        parseFloat(localStorage.getItem('weight')  ?? '75'),
+    customWind:    localStorage.getItem('customWind') === 'true',
+    windMin:       parseFloat(localStorage.getItem('windMin') ?? '15'),
+    windMax:       parseFloat(localStorage.getItem('windMax') ?? '60'),
   }
 }
 
+// Returns true if now is within 90 minutes of sunrise/sunset for today's first point
+function isInDaylightWindow(rawForecast) {
+  try {
+    const todayFc = rawForecast?.[1]?.[0]
+    if (!todayFc?.sunrise || !todayFc?.sunset) return true
+    const now     = Date.now()
+    const sunrise = new Date(todayFc.sunrise).getTime()
+    const sunset  = new Date(todayFc.sunset).getTime()
+    const MARGIN  = 90 * 60 * 1000
+    return now >= sunrise - MARGIN && now <= sunset + MARGIN
+  } catch { return true }
+}
+
 export function useSoarData() {
-  const [status, setStatus]               = useState(null)
-  const [points, setPoints]               = useState([])
-  const [days, setDays]                   = useState([])
-  const [wings, setWings]                 = useState({})
-  const [displayForecast, setDisplay]     = useState(() => {
-    const key = displayCacheKey(
-      localStorage.getItem('model') || 'soar_knmi',
-      localStorage.getItem('timeStart') || '00:00',
-      localStorage.getItem('timeEnd')   || '23:59',
-      loadSelectedWings(),
-      parseFloat(localStorage.getItem('weight') ?? '75'),
-      localStorage.getItem('customWind') === 'true',
-      parseFloat(localStorage.getItem('windMin') ?? '15'),
-      parseFloat(localStorage.getItem('windMax') ?? '60'),
-    )
-    return loadDisplayCache(key)?.display ?? null
-  })
-  const [certainty, setCertainty]         = useState(() => {
-    const key = displayCacheKey(
-      localStorage.getItem('model') || 'soar_knmi',
-      localStorage.getItem('timeStart') || '00:00',
-      localStorage.getItem('timeEnd')   || '23:59',
-      loadSelectedWings(),
-      parseFloat(localStorage.getItem('weight') ?? '75'),
-      localStorage.getItem('customWind') === 'true',
-      parseFloat(localStorage.getItem('windMin') ?? '15'),
-      parseFloat(localStorage.getItem('windMax') ?? '60'),
-    )
-    return loadDisplayCache(key)?.certainty ?? null
-  })
-  const [rawForecast, setRaw]             = useState(null)
-  const [measurements, setMeasure]        = useState(null)
-  const [loading, setLoading]             = useState(true)
-  const [error, setError]                 = useState(null)
+  // ── Read initial settings + cache in a single pass ───────────────────────
+  const initSettings = readSettingsFromStorage()
+  const initCacheKey = displayCacheKey(
+    initSettings.model, initSettings.timeStart, initSettings.timeEnd,
+    initSettings.selectedWings, initSettings.weight,
+    initSettings.customWind, initSettings.windMin, initSettings.windMax,
+  )
+  const initCache = loadDisplayCache(initCacheKey)
+
+  const [status, setStatus]           = useState(null)
+  const [points, setPoints]           = useState([])
+  const [days, setDays]               = useState([])
+  const [wings, setWings]             = useState({})
+  const [displayForecast, setDisplay] = useState(initCache?.display ?? null)
+  const [certainty, setCertainty]     = useState(initCache?.certainty ?? null)
+  const [rawForecast, setRaw]         = useState(null)
+  const [measurements, setMeasure]    = useState(null)
+  const [loading, setLoading]         = useState(!initCache)   // skip spinner on cache hit
+  const [error, setError]             = useState(null)
 
   // User settings (persisted in localStorage)
-  const [model, setModel]               = useState(() => localStorage.getItem('model')     || 'soar_knmi')
-  const [timeStart, setTimeStart]       = useState(() => localStorage.getItem('timeStart') || '00:00')
-  const [timeEnd, setTimeEnd]           = useState(() => localStorage.getItem('timeEnd')   || '23:59')
-  // selectedWings: Array<{ key: string, size: number }>
-  const [selectedWings, setSelectedWings] = useState(loadSelectedWings)
-  const [weight, setWeight]             = useState(() => {
-    const s = localStorage.getItem('weight')
-    return s !== null ? parseFloat(s) : 75.0
-  })
-  const [customWind, setCustomWind]     = useState(() => localStorage.getItem('customWind') === 'true')
-  const [windMin, setWindMin]           = useState(() => {
-    const s = localStorage.getItem('windMin'); return s !== null ? parseFloat(s) : 15
-  })
-  const [windMax, setWindMax]           = useState(() => {
-    const s = localStorage.getItem('windMax'); return s !== null ? parseFloat(s) : 60
-  })
+  const [model, setModel]               = useState(initSettings.model)
+  const [timeStart, setTimeStart]       = useState(initSettings.timeStart)
+  const [timeEnd, setTimeEnd]           = useState(initSettings.timeEnd)
+  const [selectedWings, setSelectedWings] = useState(initSettings.selectedWings)
+  const [weight, setWeight]             = useState(initSettings.weight)
+  const [customWind, setCustomWind]     = useState(initSettings.customWind)
+  const [windMin, setWindMin]           = useState(initSettings.windMin)
+  const [windMax, setWindMax]           = useState(initSettings.windMax)
   const [dateIdx, setDateIdx]           = useState(1)
 
-  const prevModelRef      = useRef(model)
-  const prevTsRef         = useRef(timeStart)
-  const prevTeRef         = useRef(timeEnd)
-  const prevWingsRef      = useRef(selectedWings)
-  const prevWeightRef     = useRef(weight)
-  const prevCustomWindRef = useRef(customWind)
-  const prevWindMinRef    = useRef(windMin)
-  const prevWindMaxRef    = useRef(windMax)
-  const prevMeasAgeRef    = useRef(null)
+  // ── Refs ──────────────────────────────────────────────────────────────────
+  // Mirror of current settings so fetchDisplay() can stay stable (no deps)
+  const settingsRef = useRef(initSettings)
+
+  // If fetchDisplay() is called while one is in-flight, pendingFetch is set
+  // so the finally block re-runs with the latest settings automatically.
+  const isFetchingDisplay = useRef(false)
+  const pendingFetch      = useRef(false)
+
+  const prevMeasAgeRef     = useRef(null)
   const prevForecastAgeRef = useRef(null)
+  const rawForecastRef     = useRef(null)   // stable ref so poll never recreates the interval
+
+  // ── Keep refs in sync with state ─────────────────────────────────────────
+  useEffect(() => {
+    settingsRef.current = { model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax }
+  }, [model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax])
+
+  useEffect(() => { rawForecastRef.current = rawForecast }, [rawForecast])
 
   // ── Save settings to localStorage ────────────────────────────────────────
-  useEffect(() => { localStorage.setItem('model',      model) },      [model])
-  useEffect(() => { localStorage.setItem('timeStart',  timeStart) },  [timeStart])
-  useEffect(() => { localStorage.setItem('timeEnd',    timeEnd) },    [timeEnd])
+  useEffect(() => { localStorage.setItem('model',         model) },        [model])
+  useEffect(() => { localStorage.setItem('timeStart',     timeStart) },    [timeStart])
+  useEffect(() => { localStorage.setItem('timeEnd',       timeEnd) },      [timeEnd])
+  useEffect(() => { localStorage.setItem('selectedWings', JSON.stringify(selectedWings)) }, [selectedWings])
+  useEffect(() => { localStorage.setItem('weight',        weight) },       [weight])
+  useEffect(() => { localStorage.setItem('customWind',    customWind) },   [customWind])
+  useEffect(() => { localStorage.setItem('windMin',       windMin) },      [windMin])
+  useEffect(() => { localStorage.setItem('windMax',       windMax) },      [windMax])
+
+  // ── Fetch display forecast ────────────────────────────────────────────────
+  // Stable (no deps) — reads current settings from settingsRef so it never
+  // needs to be recreated when settings change, which keeps the poll interval
+  // alive and avoids the 10 s gap a teardown/recreate would introduce.
+  const fetchDisplay = useCallback(async () => {
+    if (isFetchingDisplay.current) {
+      pendingFetch.current = true   // re-fetch with latest settings once this one lands
+      return
+    }
+    isFetchingDisplay.current = true
+    pendingFetch.current = false
+    try {
+      const { model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax } = settingsRef.current
+      const disp = await api.displayForecast(
+        model, timeStart, timeEnd, selectedWings, weight,
+        customWind ? windMin : undefined,
+        customWind ? windMax : undefined,
+      )
+      if (disp.display) {
+        setDisplay(disp.display)
+        const key = displayCacheKey(model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax)
+        saveDisplayCache(key, disp.display, disp.certainty)
+      }
+      if (disp.certainty) setCertainty(disp.certainty)
+
+      // Raw forecast + measurements in the background — MapForecast already
+      // rendered from displayForecast above, these feed PointForecast.
+      const [raw, meas] = await Promise.all([
+        api.rawForecast(model),
+        api.measurements(),
+      ])
+      if (raw.forecast) setRaw(raw.forecast)
+      setMeasure(meas)
+    } catch (e) {
+      console.error('fetchDisplay', e)
+    } finally {
+      isFetchingDisplay.current = false
+      // Settings changed while we were in-flight → fetch again with latest values
+      if (pendingFetch.current) {
+        pendingFetch.current = false
+        fetchDisplay()
+      }
+    }
+  }, [])  // stable — never recreated
+
+  // ── Re-fetch immediately when settings change (don't wait for poll) ───────
+  const isFirstRender = useRef(true)
   useEffect(() => {
-    localStorage.setItem('selectedWings', JSON.stringify(selectedWings))
-  }, [selectedWings])
-  useEffect(() => { localStorage.setItem('weight',     weight) },     [weight])
-  useEffect(() => { localStorage.setItem('customWind', customWind) }, [customWind])
-  useEffect(() => { localStorage.setItem('windMin',    windMin) },    [windMin])
-  useEffect(() => { localStorage.setItem('windMax',    windMax) },    [windMax])
+    if (isFirstRender.current) { isFirstRender.current = false; return }
+    fetchDisplay()
+  }, [model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax, fetchDisplay])
 
   // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
     async function init() {
-      // Kick off the display fetch immediately using settings already in
-      // localStorage — don't wait for the metadata calls to complete first.
-      fetchDisplay()
+      // Cache miss → fetch display immediately; cache hit → wait until we
+      // confirm the server is up (below), then fetch fresh in background.
+      if (!initCache) fetchDisplay()
 
       const MAX_ATTEMPTS = 5
       const DELAYS = [1000, 2000, 3000, 5000, 8000]
@@ -148,21 +195,21 @@ export function useSoarData() {
           setStatus(st)
           setWings(wgs)
 
-          // Default to first wing if nothing is stored yet
           const stored = loadSelectedWings()
           const firstKey = Object.keys(wgs)[0]
           if (stored.length === 0 && firstKey) {
-            const defaults = [{ key: firstKey, size: wgs[firstKey].default_size }]
-            setSelectedWings(defaults)
+            setSelectedWings([{ key: firstKey, size: wgs[firstKey].default_size }])
           }
 
-          // Fire-and-forget — these just kick off background jobs on the server,
-          // there's nothing useful in the response to wait for here.
+          // Fire-and-forget background refresh jobs
           if (st.forecast_stale && !st.updating_forecast) api.refreshForecast()
           if (st.measurement_stale && !st.updating_measurements) api.refreshMeasure()
 
+          // Cache hit: now that we know the server is up, refresh in the background
+          if (initCache && st.forecast_available) fetchDisplay()
+
           setLoading(false)
-          return  // success — exit retry loop
+          return
         } catch (e) {
           if (attempt < MAX_ATTEMPTS - 1) {
             await new Promise(r => setTimeout(r, DELAYS[attempt]))
@@ -176,104 +223,39 @@ export function useSoarData() {
     init()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Fetch display forecast ────────────────────────────────────────────────
-  const fetchDisplay = useCallback(async () => {
-    try {
-      const disp = await api.displayForecast(
-        model, timeStart, timeEnd, selectedWings, weight,
-        customWind ? windMin : undefined,
-        customWind ? windMax : undefined,
-      )
-      if (disp.display) {
-        setDisplay(disp.display)
-        // Persist to localStorage so next page load is instant
-        const key = displayCacheKey(model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax)
-        saveDisplayCache(key, disp.display, disp.certainty)
-      }
-      if (disp.certainty) setCertainty(disp.certainty)
-
-      const [raw, meas] = await Promise.all([
-        api.rawForecast(model),
-        api.measurements(),
-      ])
-      if (raw.forecast) setRaw(raw.forecast)
-      setMeasure(meas)
-    } catch (e) {
-      console.error('fetchDisplay', e)
-    }
-  }, [model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax])
-
   // ── Poll status ───────────────────────────────────────────────────────────
+  // fetchDisplay is stable → this interval is created once and never recreated.
   useEffect(() => {
     const poll = setInterval(async () => {
       try {
         const st = await api.status()
         setStatus(st)
 
-        const wingsChanged = JSON.stringify(selectedWings) !== JSON.stringify(prevWingsRef.current)
-        const settingsChanged =
-          model      !== prevModelRef.current      ||
-          timeStart  !== prevTsRef.current         ||
-          timeEnd    !== prevTeRef.current         ||
-          weight     !== prevWeightRef.current     ||
-          customWind !== prevCustomWindRef.current ||
-          windMin    !== prevWindMinRef.current    ||
-          windMax    !== prevWindMaxRef.current    ||
-          wingsChanged
-
-        prevModelRef.current      = model
-        prevTsRef.current         = timeStart
-        prevTeRef.current         = timeEnd
-        prevWingsRef.current      = selectedWings
-        prevWeightRef.current     = weight
-        prevCustomWindRef.current = customWind
-        prevWindMinRef.current    = windMin
-        prevWindMaxRef.current    = windMax
-
         if (st.forecast_stale && !st.updating_forecast) api.refreshForecast()
-
-        // Only refresh measurements during the daylight window (±90 min of sunrise/sunset)
-        if (st.measurement_stale && !st.updating_measurements && isInDaylightWindow(rawForecast)) {
+        if (st.measurement_stale && !st.updating_measurements && isInDaylightWindow(rawForecastRef.current)) {
           api.refreshMeasure()
         }
 
-        // Detect when a measurement refresh just completed (age reset to a small value)
-        // and pull the updated data into UI state without waiting for a full fetchDisplay
+        // Measurement refresh just completed → pull live data
         const prevMeasAge = prevMeasAgeRef.current
         const currMeasAge = st.measurement_age_seconds
-        const measJustRefreshed = (
-          prevMeasAge != null &&
-          currMeasAge != null &&
-          currMeasAge < prevMeasAge - 30   // age dropped → refresh completed
-        )
-        prevMeasAgeRef.current = currMeasAge
-        if (measJustRefreshed) {
-          try {
-            const meas = await api.measurements()
-            setMeasure(meas)
-          } catch (e) { console.error('meas live-update', e) }
+        if (prevMeasAge != null && currMeasAge != null && currMeasAge < prevMeasAge - 30) {
+          try { setMeasure(await api.measurements()) } catch (e) { console.error('meas live-update', e) }
         }
+        prevMeasAgeRef.current = currMeasAge
 
-        // Detect when a forecast refresh just completed (age dropped back to a small value)
-        // and immediately re-fetch the display forecast so charts update without user action.
+        // Forecast refresh just completed → re-fetch display immediately
         const prevForecastAge = prevForecastAgeRef.current
         const currForecastAge = st.forecast_age_seconds
-        const forecastJustRefreshed = (
-          prevForecastAge != null &&
-          currForecastAge != null &&
-          currForecastAge < prevForecastAge - 30   // age dropped → refresh completed
-        )
         prevForecastAgeRef.current = currForecastAge
-        if (forecastJustRefreshed) {
+        if (prevForecastAge != null && currForecastAge != null && currForecastAge < prevForecastAge - 30) {
           fetchDisplay()
           return
         }
 
-        if (
-          (st.forecast_available && st.measurements_available && !displayForecast) ||
-          settingsChanged
-        ) {
-          fetchDisplay()
+        // No display data yet → try to fetch (in case init missed it)
+        if (st.forecast_available && !isFetchingDisplay.current) {
+          setDisplay(d => { if (!d) fetchDisplay(); return d })
         }
       } catch (e) {
         console.error('poll', e)
@@ -281,20 +263,11 @@ export function useSoarData() {
     }, POLL_MS)
 
     return () => clearInterval(poll)
-  }, [model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax, displayForecast, fetchDisplay, rawForecast])
-
-  // Initial display fetch once data is available
-  useEffect(() => {
-    if (status?.forecast_available && status?.measurements_available && !displayForecast) {
-      fetchDisplay()
-    }
-  }, [status, displayForecast, fetchDisplay])
+  }, [fetchDisplay])
 
   return {
-    // data
     status, points, days, wings, displayForecast, certainty, rawForecast, measurements,
     loading, error,
-    // state
     model, setModel,
     timeStart, setTimeStart,
     timeEnd, setTimeEnd,
@@ -304,7 +277,6 @@ export function useSoarData() {
     windMin, setWindMin,
     windMax, setWindMax,
     dateIdx, setDateIdx,
-    // actions
     refreshForecast: api.refreshForecast,
     refreshMeasure:  api.refreshMeasure,
     refetchDisplay:  fetchDisplay,
