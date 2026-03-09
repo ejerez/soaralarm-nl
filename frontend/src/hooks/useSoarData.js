@@ -3,6 +3,31 @@ import { api } from '../api.js'
 
 const POLL_MS = 10_000   // poll status every 10 s
 
+// ── Display forecast cache (localStorage) ────────────────────────────────
+function displayCacheKey(model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax) {
+  return 'soar_display_v1:' + JSON.stringify({ model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax })
+}
+function loadDisplayCache(key) {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    const { display, certainty, savedAt } = JSON.parse(raw)
+    if (Date.now() - savedAt > 2 * 60 * 60 * 1000) return null  // stale after 2 h
+    return { display, certainty }
+  } catch { return null }
+}
+function saveDisplayCache(key, display, certainty) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ display, certainty, savedAt: Date.now() }))
+  } catch {
+    // Storage full — evict old soar_display entries and retry
+    try {
+      Object.keys(localStorage).filter(k => k.startsWith('soar_display_v1:')).forEach(k => localStorage.removeItem(k))
+      localStorage.setItem(key, JSON.stringify({ display, certainty, savedAt: Date.now() }))
+    } catch {}
+  }
+}
+
 function loadSelectedWings() {
   try {
     const raw = localStorage.getItem('selectedWings')
@@ -31,8 +56,32 @@ export function useSoarData() {
   const [points, setPoints]               = useState([])
   const [days, setDays]                   = useState([])
   const [wings, setWings]                 = useState({})
-  const [displayForecast, setDisplay]     = useState(null)
-  const [certainty, setCertainty]         = useState(null)
+  const [displayForecast, setDisplay]     = useState(() => {
+    const key = displayCacheKey(
+      localStorage.getItem('model') || 'soar_knmi',
+      localStorage.getItem('timeStart') || '00:00',
+      localStorage.getItem('timeEnd')   || '23:59',
+      loadSelectedWings(),
+      parseFloat(localStorage.getItem('weight') ?? '75'),
+      localStorage.getItem('customWind') === 'true',
+      parseFloat(localStorage.getItem('windMin') ?? '15'),
+      parseFloat(localStorage.getItem('windMax') ?? '60'),
+    )
+    return loadDisplayCache(key)?.display ?? null
+  })
+  const [certainty, setCertainty]         = useState(() => {
+    const key = displayCacheKey(
+      localStorage.getItem('model') || 'soar_knmi',
+      localStorage.getItem('timeStart') || '00:00',
+      localStorage.getItem('timeEnd')   || '23:59',
+      loadSelectedWings(),
+      parseFloat(localStorage.getItem('weight') ?? '75'),
+      localStorage.getItem('customWind') === 'true',
+      parseFloat(localStorage.getItem('windMin') ?? '15'),
+      parseFloat(localStorage.getItem('windMax') ?? '60'),
+    )
+    return loadDisplayCache(key)?.certainty ?? null
+  })
   const [rawForecast, setRaw]             = useState(null)
   const [measurements, setMeasure]        = useState(null)
   const [loading, setLoading]             = useState(true)
@@ -130,19 +179,19 @@ export function useSoarData() {
   // ── Fetch display forecast ────────────────────────────────────────────────
   const fetchDisplay = useCallback(async () => {
     try {
-      // Fetch the display forecast first — this is all MapForecast needs.
-      // Setting it immediately lets the charts render without waiting for
-      // the heavier raw forecast or measurements payloads.
       const disp = await api.displayForecast(
         model, timeStart, timeEnd, selectedWings, weight,
         customWind ? windMin : undefined,
         customWind ? windMax : undefined,
       )
-      if (disp.display) setDisplay(disp.display)
+      if (disp.display) {
+        setDisplay(disp.display)
+        // Persist to localStorage so next page load is instant
+        const key = displayCacheKey(model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax)
+        saveDisplayCache(key, disp.display, disp.certainty)
+      }
       if (disp.certainty) setCertainty(disp.certainty)
 
-      // Raw forecast + measurements load in the background; PointForecast
-      // will populate once they arrive without blocking the map view.
       const [raw, meas] = await Promise.all([
         api.rawForecast(model),
         api.measurements(),

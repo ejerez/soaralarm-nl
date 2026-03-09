@@ -141,7 +141,8 @@ export default function App() {
     </div>
   )
 
-  const forecastReady = status?.forecast_available && !!data.displayForecast
+  // Show the map as soon as we have display data — even from cache before status loads
+  const forecastReady = !!data.displayForecast
 
   return (
     <div style={styles.app}>
