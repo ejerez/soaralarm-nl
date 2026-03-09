@@ -339,7 +339,7 @@ export default function MapForecast({ data }) {
   return (
     <div>
       {/* Map */}
-      <div ref={mapRef} style={{ height: 420, borderRadius: 8, overflow: 'hidden', marginBottom: 24, border: '1px solid #2a2a3e' }} />
+      <div ref={mapRef} style={{ height: 420, borderRadius: 8, overflow: 'hidden', marginBottom: 24, border: '1px solid #2a2a3e', zIndex: 0, position: 'relative' }} />
 
       {/* Flyable Hours Bar */}
       <h3 style={{ marginBottom: 12, color: '#ccc', fontSize: 16 }}>Possible Flyable Hours (Best Locations)</h3>
@@ -458,8 +458,8 @@ export default function MapForecast({ data }) {
       </div>
     
       {/* Disclaimer */}
-      <h3 style={{ margin: '24px 0 12px', color: '#ccc', fontSize: 12 }}>DISCLAIMER</h3>
-      <div style={{ fontSize: 12, background: '#1e1e2e', borderRadius: 8, padding: '12px 4px', border: '1px solid #2a2a3e', overflowX: 'auto' }}>
+      <h3 style={{ margin: '24px 0 12px', color: '#ccc', fontSize: 'clamp(8px, 1.2vw, 10px)' }}>DISCLAIMER</h3>
+      <div style={{ fontSize: 'clamp(8px, 1.2vw, 10px)', background: '#1e1e2e', borderRadius: 8, padding: '12px 4px', border: '1px solid #2a2a3e', overflowX: 'auto' }}>
         {FLYABLE_DISCLAIMER}
       </div> 
     </div>

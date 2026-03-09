@@ -125,7 +125,7 @@ export default function App() {
   if (loading) return (
     <div style={styles.app}>
       <div style={styles.spinner}>
-        <I8 name="paragliding" size={40} color="7eb8f7" />
+        <img src="/paraglider.png" width={40} height={40} style={{ display: 'inline-block', verticalAlign: 'middle' }} alt="" />
         <div>Loading Soaralarm NL…</div>
       </div>
     </div>

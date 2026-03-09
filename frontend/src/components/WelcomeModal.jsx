@@ -52,7 +52,7 @@ export default function WelcomeModal() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
           <I8 name="paragliding" size={28} color="7eb8f7" />
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#7eb8f7' }}>
-            Welcome to Soaralarm NL
+            <img src="/paraglider.png" width={40} height={40} style={{ display: 'inline-block', verticalAlign: 'middle' }} alt="" /> Welcome to Soaralarm NL
           </h2>
         </div>
 
@@ -154,7 +154,7 @@ export default function WelcomeModal() {
                 cursor: 'pointer',
               }}
             >
-              Continue to Soaralarm NL <I8 name="paragliding" size={16} color="ffffff" style={{ marginLeft: 4 }} />
+              Continue <I8 name="paragliding" size={16} color="ffffff" style={{ marginLeft: 4 }} />
             </button>
           </div>
         </div>
