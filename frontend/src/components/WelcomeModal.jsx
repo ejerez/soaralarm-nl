@@ -159,7 +159,7 @@ export default function WelcomeModal() {
                 cursor: 'pointer',
               }}
             >
-              Continue <img src="/icon.png" width={40} height={40} style={{ display: 'inline-block', verticalAlign: 'middle' }} alt="" />
+              Continue <img src="/paraglider_small.png" width={40} height={40} style={{ display: 'inline-block', verticalAlign: 'middle' }} alt="" />
             </button>
           </div>
         </div>
