@@ -50,7 +50,7 @@ export default function WelcomeModal() {
 
         {/* Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <img src="/paraglider.png" width={'clamp(60px, 14vw, 120px)'} style={{ display: 'inline-block', verticalAlign: 'middle' }} alt="" />
+          <img src="/paraglider.png" width={'clamp(50px, 3vw, 100px)'} style={{ display: 'inline-block', verticalAlign: 'middle' }} alt="" />
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#7eb8f7' }}>
             Welcome to Soaralarm NL!
           </h2>
