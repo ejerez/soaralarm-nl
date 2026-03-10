@@ -50,9 +50,9 @@ export default function WelcomeModal() {
 
         {/* Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <img src="/paraglider.png" width={50} height={50} style={{ display: 'inline-block', verticalAlign: 'middle' }} alt="" />
+          <img src="/paraglider.png" width={'clamp(60px, 14vw, 120px)'} style={{ display: 'inline-block', verticalAlign: 'middle' }} alt="" />
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#7eb8f7' }}>
-            Welcome to Soaralarm NL
+            Welcome to Soaralarm NL!
           </h2>
         </div>
 
@@ -84,8 +84,8 @@ export default function WelcomeModal() {
             <b style={{ color: '#ccc' }}>Best Location?</b>
             <p style={{ ...p, margin: '2px 0 0' }}>
               The best location is chosen as the one most models agree has flyable weather (ignoring rain and fog), with the selected model's
-              flyable hours used to break ties. The more models agree, the higher the confidence score, from <b style={{ color: '#ef5350' }}>Low</b> 
-              for just one model to <b style={{ color: '#00e676' }}>Very High</b> for all four. 
+              flyable hours used to break ties. The more models agree, the higher the confidence score, 
+              from <b style={{ color: '#ef5350' }}>Low</b> for just one model to <b style={{ color: '#00e676' }}>Very High</b> for all four. 
             </p>
           </div>
         </div>
@@ -159,7 +159,7 @@ export default function WelcomeModal() {
                 cursor: 'pointer',
               }}
             >
-              Continue <img src="/paraglider_small.png" width={40} height={40} style={{ display: 'inline-block', verticalAlign: 'middle' }} alt="" />
+              <img src="/paraglider_small.png" width={40} height={40} style={{ display: 'inline-block', verticalAlign: 'middle' }} alt="" /> Continue 
             </button>
           </div>
         </div>
