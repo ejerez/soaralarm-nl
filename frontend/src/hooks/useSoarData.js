@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api.js'
 
 const POLL_MS = 10_000   // poll status every 10 s
+const CACHE_TTL = 2 * 60 * 60 * 1000   // 2 h — matches server TTL
 
-// ── Display forecast cache (localStorage) ────────────────────────────────
+// ── Display forecast cache ────────────────────────────────────────────────
 function displayCacheKey(model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax) {
   return 'soar_display_v1:' + JSON.stringify({ model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax })
 }
@@ -12,7 +13,7 @@ function loadDisplayCache(key) {
     const raw = localStorage.getItem(key)
     if (!raw) return null
     const { display, certainty, savedAt } = JSON.parse(raw)
-    if (Date.now() - savedAt > 2 * 60 * 60 * 1000) return null  // stale after 2 h
+    if (Date.now() - savedAt > CACHE_TTL) return null
     return { display, certainty }
   } catch { return null }
 }
@@ -25,6 +26,23 @@ function saveDisplayCache(key, display, certainty) {
       localStorage.setItem(key, JSON.stringify({ display, certainty, savedAt: Date.now() }))
     } catch {}
   }
+}
+
+// ── Measurements cache ────────────────────────────────────────────────────
+const MEAS_CACHE_KEY = 'soar_measurements_v1'
+function loadMeasCache() {
+  try {
+    const raw = localStorage.getItem(MEAS_CACHE_KEY)
+    if (!raw) return null
+    const { data, savedAt } = JSON.parse(raw)
+    if (Date.now() - savedAt > CACHE_TTL) return null
+    return data
+  } catch { return null }
+}
+function saveMeasCache(data) {
+  try {
+    localStorage.setItem(MEAS_CACHE_KEY, JSON.stringify({ data, savedAt: Date.now() }))
+  } catch {}
 }
 
 function loadSelectedWings() {
@@ -63,24 +81,34 @@ function isInDaylightWindow(rawForecast) {
 }
 
 export function useSoarData() {
-  // ── Read initial settings + cache in a single pass ───────────────────────
-  const initSettings = readSettingsFromStorage()
-  const initCacheKey = displayCacheKey(
-    initSettings.model, initSettings.timeStart, initSettings.timeEnd,
-    initSettings.selectedWings, initSettings.weight,
-    initSettings.customWind, initSettings.windMin, initSettings.windMax,
-  )
-  const initCache = loadDisplayCache(initCacheKey)
+  // ── Read initial settings + cache exactly once (inside useRef) ───────────
+  // Computed at the top of the hook body these would re-run on every render;
+  // storing in a ref means they run once on mount and never again.
+  const initRef = useRef(null)
+  if (!initRef.current) {
+    const settings = readSettingsFromStorage()
+    const cacheKey = displayCacheKey(
+      settings.model, settings.timeStart, settings.timeEnd,
+      settings.selectedWings, settings.weight,
+      settings.customWind, settings.windMin, settings.windMax,
+    )
+    initRef.current = {
+      settings,
+      cache: loadDisplayCache(cacheKey),
+      measCache: loadMeasCache(),
+    }
+  }
+  const { settings: initSettings, cache: initCache, measCache: initMeasCache } = initRef.current
 
   const [status, setStatus]           = useState(null)
   const [points, setPoints]           = useState([])
   const [days, setDays]               = useState([])
   const [wings, setWings]             = useState({})
-  const [displayForecast, setDisplay] = useState(initCache?.display ?? null)
+  const [displayForecast, setDisplay] = useState(initCache?.display   ?? null)
   const [certainty, setCertainty]     = useState(initCache?.certainty ?? null)
   const [rawForecast, setRaw]         = useState(null)
-  const [measurements, setMeasure]    = useState(null)
-  const [loading, setLoading]         = useState(!initCache)   // skip spinner on cache hit
+  const [measurements, setMeasure]    = useState(initMeasCache ?? null)  // warm from cache
+  const [loading, setLoading]         = useState(!initCache)  // skip spinner on cache hit
   const [error, setError]             = useState(null)
 
   // User settings (persisted in localStorage)
@@ -95,17 +123,19 @@ export function useSoarData() {
   const [dateIdx, setDateIdx]           = useState(1)
 
   // ── Refs ──────────────────────────────────────────────────────────────────
-  // Mirror of current settings so fetchDisplay() can stay stable (no deps)
+  // Mirror of current settings so fetchDisplay() stays stable (no deps)
   const settingsRef = useRef(initSettings)
 
-  // If fetchDisplay() is called while one is in-flight, pendingFetch is set
+  // pendingFetch: if fetchDisplay() is called while in-flight, set this flag
   // so the finally block re-runs with the latest settings automatically.
   const isFetchingDisplay = useRef(false)
   const pendingFetch      = useRef(false)
 
+  // Stable ref for displayForecast — lets the poll check it without depending on it
+  const displayRef         = useRef(initCache?.display ?? null)
   const prevMeasAgeRef     = useRef(null)
   const prevForecastAgeRef = useRef(null)
-  const rawForecastRef     = useRef(null)   // stable ref so poll never recreates the interval
+  const rawForecastRef     = useRef(null)
 
   // ── Keep refs in sync with state ─────────────────────────────────────────
   useEffect(() => {
@@ -125,12 +155,10 @@ export function useSoarData() {
   useEffect(() => { localStorage.setItem('windMax',       windMax) },      [windMax])
 
   // ── Fetch display forecast ────────────────────────────────────────────────
-  // Stable (no deps) — reads current settings from settingsRef so it never
-  // needs to be recreated when settings change, which keeps the poll interval
-  // alive and avoids the 10 s gap a teardown/recreate would introduce.
+  // Stable (no deps) — reads settings from settingsRef.
   const fetchDisplay = useCallback(async () => {
     if (isFetchingDisplay.current) {
-      pendingFetch.current = true   // re-fetch with latest settings once this one lands
+      pendingFetch.current = true
       return
     }
     isFetchingDisplay.current = true
@@ -144,24 +172,26 @@ export function useSoarData() {
       )
       if (disp.display) {
         setDisplay(disp.display)
+        displayRef.current = disp.display
         const key = displayCacheKey(model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax)
         saveDisplayCache(key, disp.display, disp.certainty)
       }
       if (disp.certainty) setCertainty(disp.certainty)
 
-      // Raw forecast + measurements in the background — MapForecast already
-      // rendered from displayForecast above, these feed PointForecast.
+      // Raw forecast + measurements in background — MapForecast already rendered
       const [raw, meas] = await Promise.all([
         api.rawForecast(model),
         api.measurements(),
       ])
       if (raw.forecast) setRaw(raw.forecast)
-      setMeasure(meas)
+      if (meas) {
+        setMeasure(meas)
+        saveMeasCache(meas)   // keep measurements warm for next reload
+      }
     } catch (e) {
       console.error('fetchDisplay', e)
     } finally {
       isFetchingDisplay.current = false
-      // Settings changed while we were in-flight → fetch again with latest values
       if (pendingFetch.current) {
         pendingFetch.current = false
         fetchDisplay()
@@ -179,8 +209,8 @@ export function useSoarData() {
   // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
     async function init() {
-      // Cache miss → fetch display immediately; cache hit → wait until we
-      // confirm the server is up (below), then fetch fresh in background.
+      // Cache miss → fetch display immediately
+      // Cache hit → wait until server is confirmed up, then refresh in background
       if (!initCache) fetchDisplay()
 
       const MAX_ATTEMPTS = 5
@@ -201,11 +231,10 @@ export function useSoarData() {
             setSelectedWings([{ key: firstKey, size: wgs[firstKey].default_size }])
           }
 
-          // Fire-and-forget background refresh jobs
           if (st.forecast_stale && !st.updating_forecast) api.refreshForecast()
           if (st.measurement_stale && !st.updating_measurements) api.refreshMeasure()
 
-          // Cache hit: now that we know the server is up, refresh in the background
+          // Cache hit → silently refresh in background now we know server is up
           if (initCache && st.forecast_available) fetchDisplay()
 
           setLoading(false)
@@ -224,7 +253,6 @@ export function useSoarData() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Poll status ───────────────────────────────────────────────────────────
-  // fetchDisplay is stable → this interval is created once and never recreated.
   useEffect(() => {
     const poll = setInterval(async () => {
       try {
@@ -236,15 +264,19 @@ export function useSoarData() {
           api.refreshMeasure()
         }
 
-        // Measurement refresh just completed → pull live data
+        // Measurement refresh completed → pull fresh data and cache it
         const prevMeasAge = prevMeasAgeRef.current
         const currMeasAge = st.measurement_age_seconds
         if (prevMeasAge != null && currMeasAge != null && currMeasAge < prevMeasAge - 30) {
-          try { setMeasure(await api.measurements()) } catch (e) { console.error('meas live-update', e) }
+          try {
+            const meas = await api.measurements()
+            setMeasure(meas)
+            saveMeasCache(meas)
+          } catch (e) { console.error('meas live-update', e) }
         }
         prevMeasAgeRef.current = currMeasAge
 
-        // Forecast refresh just completed → re-fetch display immediately
+        // Forecast refresh completed → re-fetch display
         const prevForecastAge = prevForecastAgeRef.current
         const currForecastAge = st.forecast_age_seconds
         prevForecastAgeRef.current = currForecastAge
@@ -253,9 +285,9 @@ export function useSoarData() {
           return
         }
 
-        // No display data yet → try to fetch (in case init missed it)
-        if (st.forecast_available && !isFetchingDisplay.current) {
-          setDisplay(d => { if (!d) fetchDisplay(); return d })
+        // No display data yet → fetch now (guards against init race)
+        if (st.forecast_available && !displayRef.current && !isFetchingDisplay.current) {
+          fetchDisplay()
         }
       } catch (e) {
         console.error('poll', e)

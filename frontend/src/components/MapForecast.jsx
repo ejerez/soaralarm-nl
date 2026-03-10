@@ -115,7 +115,7 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay }) {
   // ganttRows: array of { day, point, type, start, end }  (flyable windows)
   // weatherRows: array of { day, type, start, end }       (fog / rain windows)
   const COLOR = { good: '#1fd100', cross: '#d1bb16', good_gusty: '#d68800', cross_gusty: '#c12e0d', no: 'transparent' }
-  const WEATHER_COLOR = { fog: '#b0b0c8', rain: '#3a7bd5' }
+  const WEATHER_COLOR = { fog: '#c7c9db', rain: '#2db8de' }
   const DAY_H = 52
   const LEFT  = 90
   const RIGHT = 20
@@ -347,19 +347,19 @@ export default function MapForecast({ data }) {
       <div style={{ position: 'relative' }}>
         {/* Weather badges — pinned to top of chart area, aligned to bar columns */}
         {barData.some(d => weatherByDay[d.day]?.has_fog || weatherByDay[d.day]?.has_rain) && (
-          <div style={{ position: 'absolute', top: 2, left: 28, right: 8, display: 'flex', zIndex: 1, pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', top: 'clamp(20px, -2.5vw, 14px)', left: 28, right: 8, display: 'flex', zIndex: 1, pointerEvents: 'none' }}>
             {barData.map((d, i) => {
               const w = weatherByDay[d.day]
               if (!w?.has_fog && !w?.has_rain) return <div key={i} style={{ flex: 1 }} />
               return (
                 <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                   {w.has_rain && (
-                    <span style={{ fontSize: 'clamp(7px, 1.4vw, 10px)', fontWeight: 700, color: '#3a7bd5', background: '#3a7bd522', padding: '1px 3px', borderRadius: 4, lineHeight: 1.2, display: 'inline-block' }}>
+                    <span style={{ fontSize: 'clamp(7px, 1.4vw, 10px)', fontWeight: 700, color: '#2db8de', background: '#3a7bd522', padding: '1px 3px', borderRadius: 4, lineHeight: 1.2, display: 'inline-block' }}>
                       Rain
                     </span>
                   )}
                   {w.has_fog && (
-                    <span style={{ fontSize: 'clamp(7px, 1.4vw, 10px)', fontWeight: 700, color: '#9090b8', background: '#9090b822', padding: '1px 3px', borderRadius: 4, lineHeight: 1.2, display: 'inline-block' }}>
+                    <span style={{ fontSize: 'clamp(7px, 1.4vw, 10px)', fontWeight: 700, color: '#c7c9db', background: '#9090b822', padding: '1px 3px', borderRadius: 4, lineHeight: 1.2, display: 'inline-block' }}>
                       Fog
                     </span>
                   )}
