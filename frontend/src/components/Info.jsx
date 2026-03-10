@@ -52,7 +52,7 @@ export default function Info({ data }) {
       <div style={card}>
         <img
           src="/paraglider.png"
-          style={{ display: 'block', width: 'clamp(300px, 14vw, 400px)', height: 'clamp(300px, 14vw, 400px)', opacity: 0.9, marginBottom: 16 }}
+          style={{ display: 'block', width: 'clamp(250px, 14vw, 350px)', opacity: 0.9, marginBottom: 16 }}
           alt=""
         />
         <h2 style={h2}>About Soaralarm NL</h2>
