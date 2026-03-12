@@ -280,14 +280,15 @@ def get_display_forecast(
                     if fly_m > 0:
                         point_agree[pi] += 1
 
-        best_pi, best_agree, best_fly, best_good = 0, -1, -1, -1
+        best_pi, best_agree, best_quality, best_fly = 0, -1, -1, -1
         for pi, pf in enumerate(day_disp):
-            fly = pf["good_hours"] + pf["cross_hours"] + pf["gusty_hours"] + pf["cross_gusty_hours"]
-            ag  = point_agree[pi]
+            fly     = pf["good_hours"] + pf["cross_hours"] + pf["gusty_hours"] + pf["cross_gusty_hours"]
+            quality = pf["good_hours"] + pf["gusty_hours"]
+            ag      = point_agree[pi]
             if (ag > best_agree
-                    or (ag == best_agree and fly > best_fly)
-                    or (ag == best_agree and fly == best_fly and pf["good_hours"] > best_good)):
-                best_agree, best_fly, best_good, best_pi = ag, fly, pf["good_hours"], pi
+                    or (ag == best_agree and quality > best_quality)
+                    or (ag == best_agree and quality == best_quality and fly > best_fly)):
+                best_agree, best_quality, best_fly, best_pi = ag, quality, fly, pi
 
         certainty.append({"agree": best_agree, "total": total, "best_pi": best_pi})
 

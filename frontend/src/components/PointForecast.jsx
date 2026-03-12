@@ -165,12 +165,13 @@ export default function PointForecast({ data }) {
   useEffect(() => {
     if (!displayForecast) return
     const dayPf = displayForecast[dateIdx] || []
-    let bestFly = 0
-    dayPf.forEach(pf => { const f = pf.good_hours+pf.cross_hours+pf.gusty_hours+pf.cross_gusty_hours; if(f>bestFly) bestFly=f })
-    let best=0, bestGood=-1
+    let bestQuality = -1
+    dayPf.forEach(pf => { const q = pf.good_hours+pf.gusty_hours; if(q>bestQuality) bestQuality=q })
+    let best=0, bestFly=-1
     dayPf.forEach((pf,pi) => {
+      const q=pf.good_hours+pf.gusty_hours
       const f=pf.good_hours+pf.cross_hours+pf.gusty_hours+pf.cross_gusty_hours
-      if(f===bestFly&&pf.good_hours>bestGood){bestGood=pf.good_hours;best=pi}
+      if(q===bestQuality&&f>bestFly){bestFly=f;best=pi}
     })
     setPtIdx(best)
   }, [dateIdx, displayForecast])
