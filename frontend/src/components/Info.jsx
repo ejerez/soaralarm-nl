@@ -247,7 +247,7 @@ export default function Info({ data }) {
           their forcasted values are usually more volatile than the forecasted wind. The location with 
           the highest score is selected as the "best" location shown in the
           flyable-hours chart, Gantt chart, and Point Forecast default. When multiple locations share the
-          same score, the selected model's total flyable hours – and then good-quality hours – are used as
+          same score, the selected model's good-quality hours – and then total flyable hours  – are used as
           a tie-breaker. The badge is shown whenever at least one model forecasts flyable weather.
         </p>
         <p style={p}>

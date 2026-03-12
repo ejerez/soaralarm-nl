@@ -65,15 +65,13 @@ export default function WelcomeModal() {
         </div>
 
         <p style={p_}>
-          Soaralarm NL is a <b style={{ color: T.text }}>free and open-source</b> forecasting tool built for pilots soaring the dunes along the Dutch coast. It may seem like a lot at first glance — here's a quick overview.
+          Soaralarm NL is a <b style={{ color: T.text }}>free and open-source</b> forecasting tool built for pilots soaring the dunes along the Dutch coast. It may feel like too much information at first glance, here's a quick overview of what to expect:
         </p>
 
-        <h3 style={h3_}>What is where</h3>
-
         {[
-          { icon: 'map',      title: 'Map Forecast',   body: 'An overview of conditions at each location for the selected day — with a bar chart of estimated flyable hours and a Gantt chart of flyable windows. Both include a confidence score based on agreement across four weather models.' },
-          { icon: 'marker',   title: 'Point Forecast', body: 'Hourly forecasts and live RWS measurements for a selected location. When you open this tab you\'re automatically taken to the best calculated location for the day.' },
-          { icon: 'settings', title: 'Settings',       body: 'Select your wing type and size (up to 5 wings), total flight weight, preferred forecast model, and daily availability window. Advanced pilots can set a custom wind range directly.' },
+          { icon: 'map',      title: 'Map Forecast',   body: 'An overview of conditions at each location for the selected day, with a bar chart of estimated flyable hours and a Gantt chart of flyable windows. Both include a confidence score based on agreement across four weather models.' },
+          { icon: 'marker',   title: 'Point Forecast', body: 'Hourly forecasts and live RWS measurements for the selected location. When you open this tab you\'re automatically taken to the best calculated location for the day.' },
+          { icon: 'settings', title: 'Settings',       body: 'Select your wing type and size (up to 5 wings), total flight weight, preferred forecast model, and daily availability window. If you prefer, you can instead set a custom wind range directly.' },
           { icon: 'info',     title: 'Info',           body: 'Detailed explanation of how flyability is calculated, what the confidence scores mean, and how wind ranges are derived from your settings.' },
         ].map(it => (
           <div key={it.title} style={row_}>
