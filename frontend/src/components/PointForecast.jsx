@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react'
+import React, { useMemo, useEffect, useRef } from 'react'
 import {
   ComposedChart, Area, Line, XAxis, YAxis, Scatter,
   CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine,
@@ -161,7 +161,10 @@ export default function PointForecast({ data }) {
   const point = points[ptIdx]
   const dayFc = rawForecast?.[dateIdx]?.[ptIdx]
 
+  const prevDateIdxRef = useRef(dateIdx)
   useEffect(() => {
+    if (prevDateIdxRef.current === dateIdx) return  // no change — don't override explicit selection
+    prevDateIdxRef.current = dateIdx
     if (!displayForecast) return
     const dayPf = displayForecast[dateIdx] || []
     let bestQuality = -1
