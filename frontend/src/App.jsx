@@ -6,8 +6,33 @@ import Settings      from './components/Settings.jsx'
 import Info          from './components/Info.jsx'
 import WelcomeModal  from './components/WelcomeModal.jsx'
 
-// icons8 ios-filled icon helper
-function I8({ name, size = 16, color = 'aaaaaa', style: s = {} }) {
+// Inject Inter font once
+if (typeof document !== 'undefined' && !document.getElementById('soar-inter')) {
+  const link = document.createElement('link')
+  link.id   = 'soar-inter'
+  link.rel  = 'stylesheet'
+  link.href = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap'
+  document.head.appendChild(link)
+}
+
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const T = {
+  bg:        '#1a1a1a',
+  surface:   '#262626',
+  card:      '#262626',
+  raised:    '#2e2e2e',
+  borderDim: '#353535',
+  border:    '#3d3d3d',
+  borderEm:  '#484848',
+  text:      '#dedede',
+  text2:     '#9a9a9a',
+  text3:     '#757575',
+  accent:    '#5578e8',
+  accentBg:  'rgba(85,120,232,0.12)',
+  font:      "'DM Sans', system-ui, sans-serif",
+}
+
+function I8({ name, size = 16, color = '5e5e7a', style: s = {} }) {
   return (
     <img
       src={`https://img.icons8.com/ios-filled/${size * 2}/${color}/${name}.png`}
@@ -19,180 +44,198 @@ function I8({ name, size = 16, color = 'aaaaaa', style: s = {} }) {
 }
 
 const TABS = [
-  { label: 'Map Forecast',   icon: 'map'      },
-  { label: 'Point Forecast', icon: 'marker'   },
-  { label: 'Settings',       icon: 'settings' },
-  { label: 'Info',           icon: 'info'     },
+  { label: 'Map',         icon: 'map'      },
+  { label: 'Point',       icon: 'marker'   },
+  { label: 'Settings',    icon: 'settings' },
+  { label: 'Info',        icon: 'info'     },
 ]
 
-const styles = {
+const MODEL_NAMES = {
+  soar_knmi:  'KNMI HARMONIE',
+  soar_ecmwf: 'ECMWF IFS',
+  soar_icon:  'DWD ICON D2',
+  soar_arome: 'AROME HD',
+}
+
+const s = {
   app: {
     minHeight: '100vh',
-    background: '#0f1117',
-    color: '#e0e0e0',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
+    background: T.bg,
+    color: T.text,
+    fontFamily: T.font,
+    fontSize: 14,
   },
   header: {
-    padding: '16px 20px 0',
+    padding: '18px 20px 0',
+  },
+  titleRow: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: 10,
+    marginBottom: 16,
   },
   title: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 700,
-    color: '#7eb8f7',
-    marginBottom: 12,
+    color: T.text,
+    letterSpacing: '-0.3px',
+    margin: 0,
+  },
+  statusDot: (color) => ({
+    width: 6,
+    height: 6,
+    borderRadius: '50%',
+    background: color,
+    display: 'inline-block',
+    marginRight: 5,
+    verticalAlign: 'middle',
+    flexShrink: 0,
+  }),
+  statusText: {
+    fontSize: 12,
+    color: T.text2,
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
+    flexWrap: 'wrap',
   },
   tabBar: {
     display: 'flex',
-    gap: 4,
-    marginBottom: 0,
+    borderBottom: `1px solid ${T.borderDim}`,
     position: 'sticky',
     top: 0,
     zIndex: 100,
-    background: '#0f1117',
-    paddingTop: 4,
-    borderBottom: '1px solid #2a2a3e',
+    background: T.bg,
+    padding: '0 20px',
+    gap: 0,
   },
   tab: (active) => ({
-    padding: '8px 18px',
+    padding: '10px 14px',
     border: 'none',
-    borderRadius: '8px 8px 0 0',
+    borderBottom: active ? `2px solid ${T.accent}` : '2px solid transparent',
     cursor: 'pointer',
     fontWeight: active ? 600 : 400,
-    fontSize: 14,
-    background: active ? '#1e1e2e' : 'transparent',
-    color: active ? '#7eb8f7' : '#888',
-    borderBottom: active ? '2px solid #7eb8f7' : '2px solid transparent',
-    transition: 'all 0.15s',
+    fontSize: 13,
+    background: 'transparent',
+    color: active ? T.text : T.text2,
+    fontFamily: T.font,
+    transition: 'color 0.15s, border-color 0.15s',
+    marginBottom: -1,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
   }),
   controls: {
     display: 'flex',
     alignItems: 'center',
-    gap: 12,
-    padding: '12px 20px',
-    background: '#1e1e2e',
-    borderBottom: '1px solid #2a2a3e',
+    gap: 10,
+    padding: '10px 20px',
+    background: T.surface,
+    borderBottom: `1px solid ${T.borderDim}`,
     flexWrap: 'wrap',
   },
   select: {
-    background: '#2a2a3e',
-    color: '#e0e0e0',
-    border: '1px solid #3a3a5e',
+    background: T.raised,
+    color: T.text,
+    border: `1px solid ${T.borderEm}`,
     borderRadius: 6,
-    padding: '6px 10px',
-    fontSize: 14,
+    padding: '5px 10px',
+    fontSize: 13,
     cursor: 'pointer',
+    fontFamily: T.font,
   },
-  label: { fontSize: 13, color: '#aaa', marginRight: 4 },
-  badge: (color) => ({
-    padding: '3px 8px',
-    borderRadius: 4,
-    fontSize: 12,
-    background: color,
-    color: '#fff',
+  label: { fontSize: 12, color: T.text2 },
+  pill: (color, bg) => ({
+    padding: '2px 8px',
+    borderRadius: 20,
+    fontSize: 11,
     fontWeight: 600,
+    color,
+    background: bg,
+    letterSpacing: '0.01em',
   }),
   content: { padding: '16px 20px' },
-  spinner: {
+  center: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     height: '50vh',
     gap: 12,
-    color: '#7eb8f7',
+    color: T.text2,
   },
-}
-
-const MODEL_NAMES = {
-  soar_knmi:  'KNMI HARMONIE',
-  soar_ecmwf: 'ECMWF IFS',
-  soar_icon:  'DWD ICON D2',
-  soar_arome: 'Météo-France AROME HD',
 }
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(0)
   const data = useSoarData()
-  const {
-    status, days, loading, error,
-    dateIdx, setDateIdx,
-    certainty, model,
-  } = data
+  const { status, days, loading, error, dateIdx, setDateIdx, certainty, model } = data
 
   if (loading) return (
-    <div style={styles.app}>
-      <div style={styles.spinner}>
-        <img src="/paraglider_small.png" width={50} height={50} style={{ display: 'inline-block', verticalAlign: 'middle' }} alt="" />
-        <div>Loading Soaralarm NL…</div>
+    <div style={s.app}>
+      <div style={s.center}>
+        <img src="/paraglider_small.png" width={44} height={44} alt="" />
+        <span style={{ fontSize: 13 }}>Loading Soaralarm NL…</span>
       </div>
     </div>
   )
 
   if (error) return (
-    <div style={styles.app}>
-      <div style={styles.spinner}>
-        <I8 name="error" size={40} color="e05c5c" />
-        <div>Could not reach API: {error}</div>
-        <div style={{ fontSize: 13, color: '#aaa' }}>Make sure the FastAPI backend is running on port 8000</div>
+    <div style={s.app}>
+      <div style={s.center}>
+        <I8 name="error" size={36} color="d64040" />
+        <span>Could not reach API: {error}</span>
+        <span style={{ fontSize: 12 }}>Make sure the FastAPI backend is running on port 8000</span>
       </div>
     </div>
   )
 
-  // Show the map as soon as we have display data — even from cache before status loads
   const forecastReady = !!data.displayForecast
 
+  // Status indicators — show only what's actually happening
+  const statusItems = []
+  if (status?.updating_forecast)     statusItems.push({ color: '#e6a817', label: 'Updating forecast' })
+  if (status?.updating_measurements) statusItems.push({ color: '#3a7bd5', label: 'Updating measurements' })
+  if (!status?.updating_forecast && status?.forecast_available && !data.displayForecast)
+    statusItems.push({ color: '#e6a817', label: 'Loading forecast' })
+  if (!status?.updating_forecast && !status?.forecast_available)
+    statusItems.push({ color: '#ef5350', label: 'No forecast data' })
+
   return (
-    <div style={styles.app}>
-      {/* ── Welcome modal (first visit only) ── */}
+    <div style={s.app}>
       <WelcomeModal />
 
-      {/* ── Header (title only, scrolls away) ── */}
-      <header style={styles.header}>
-        <div style={styles.title}>
-          Soaralarm NL
-          {status?.updating_forecast    && <span style={styles.badge('#e6a817')}>Updating forecast…</span>}
-          {status?.updating_measurements && <span style={styles.badge('#3a7bd5')}>Updating measurements…</span>}
-          {!status?.updating_forecast && status?.forecast_available && !data.displayForecast &&
-            <span style={styles.badge('#e6a817')}>Loading forecast…</span>}
-          {!status?.updating_forecast && !status?.forecast_available &&
-            <span style={styles.badge('#e05c5c')}>No forecast data</span>}
-        </div>
-      </header>
-
-      {/* ── Tab bar (sticky) ── */}
-      <nav style={styles.tabBar}>
+      {/* ── Tab bar ── */}
+      <nav style={s.tabBar}>
         {TABS.map((t, i) => (
-          <button key={t.label} style={styles.tab(activeTab === i)} onClick={() => setActiveTab(i)}>
+          <button key={t.label} style={s.tab(activeTab === i)} onClick={() => setActiveTab(i)}>
             <I8
               name={t.icon}
-              size={14}
-              color={activeTab === i ? '7eb8f7' : '888888'}
-              style={{ marginRight: 5 }}
+              size={13}
+              color={activeTab === i ? '5578e8' : '5e5e7a'}
             />
             {t.label}
           </button>
         ))}
       </nav>
 
-      {/* ── Date bar ── */}
+      {/* ── Date / model bar ── */}
       {activeTab < 2 && (
-        <div style={styles.controls}>
-          <span style={styles.label}>Date:</span>
+        <div style={s.controls}>
+          <span style={s.label}>Date</span>
           <select
-            style={styles.select}
+            style={s.select}
             value={dateIdx}
             onChange={e => setDateIdx(Number(e.target.value))}
           >
             {days.map((d, i) => <option key={d} value={i}>{d}</option>)}
           </select>
-          {/* Model name */}
-          <span style={{ fontSize: 12, color: '#666' }}>
+
+          <span style={{ fontSize: 11, color: T.text3, borderLeft: `1px solid ${T.borderDim}`, paddingLeft: 10 }}>
             {MODEL_NAMES[model] ?? model}
           </span>
-          {/* Confidence badge for selected day */}
+
+          {/* Confidence + weather pills */}
           {(() => {
             const c = certainty?.[dateIdx]
             if (!c) return null
@@ -202,50 +245,28 @@ export default function App() {
             )
             if (!hasFly) return null
             const { label, color } = certLabel(c.agree, c.total)
-            // Use best_pi from certainty to check weather flags for the highlighted point
             const bestPf = dayBar?.[c.best_pi ?? 0]
             return (
               <>
-                <span style={{
-                  fontSize: 11, fontWeight: 700, color,
-                  background: color + '22',
-                  padding: '2px 8px', borderRadius: 4,
-                }}>
-                  {label}
-                </span>
-                {bestPf?.has_rain && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#3a7bd5', background: '#3a7bd522', padding: '2px 8px', borderRadius: 4 }}>
-                    Rain
-                  </span>
-                )}
-                {bestPf?.has_fog && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#9090b8', background: '#9090b822', padding: '2px 8px', borderRadius: 4 }}>
-                    Fog
-                  </span>
-                )}
+                <span style={s.pill(color, color + '1a')}>{label}</span>
+                {bestPf?.has_rain && <span style={s.pill('#3a7bd5', '#4a8fd41a')}>Rain</span>}
+                {bestPf?.has_fog  && <span style={s.pill('#8888aa', '#8888aa1a')}>Fog</span>}
               </>
             )
           })()}
+
           {status?.forecast_age_seconds != null && (
-            <span style={{ fontSize: 12, color: '#666' }}>
+            <span style={{ fontSize: 11, color: T.text3, marginLeft: 'auto' }}>
               Forecast updated {Math.round(status.forecast_age_seconds / 60)} min ago
             </span>
           )}
         </div>
       )}
 
-      {/* ── Tab content ── */}
-      <main style={styles.content}>
-        {activeTab === 0 && (
-          forecastReady
-            ? <MapForecast data={data} />
-            : <LoadingPanel msg="Fetching forecast data, please wait…" />
-        )}
-        {activeTab === 1 && (
-          forecastReady
-            ? <PointForecast data={data} />
-            : <LoadingPanel msg="Fetching forecast data, please wait…" />
-        )}
+      {/* ── Content ── */}
+      <main style={s.content}>
+        {activeTab === 0 && (forecastReady ? <MapForecast data={data} /> : <LoadingPanel />)}
+        {activeTab === 1 && (forecastReady ? <PointForecast data={data} /> : <LoadingPanel />)}
         {activeTab === 2 && <Settings data={data} />}
         {activeTab === 3 && <Info data={data} />}
       </main>
@@ -253,11 +274,11 @@ export default function App() {
   )
 }
 
-function LoadingPanel({ msg }) {
+function LoadingPanel() {
   return (
-    <div style={{ textAlign: 'center', padding: '60px 20px', color: '#888' }}>
-      <img src="/paraglider_small.png" width={50} height={50} style={{ display: 'inline-block', verticalAlign: 'middle' }} alt="" />
-      <div>{msg}</div>
+    <div style={{ textAlign: 'center', padding: '64px 20px', color: '#888888' }}>
+      <img src="/paraglider_small.png" width={44} height={44} alt="" style={{ marginBottom: 12 }} />
+      <div style={{ fontSize: 13 }}>Fetching forecast data…</div>
     </div>
   )
 }

@@ -14,21 +14,20 @@ function wrapDeg(deg) {
 }
 
 const card = {
-  background: '#1e1e2e',
-  border: '1px solid #2a2a3e',
+  background: '#262626',
+  border: '1px solid #1e1e32',
   borderRadius: 8,
   padding: '20px 24px',
-  marginBottom: 20,
+  marginBottom: 16,
 }
-
-const h2 = { fontSize: 16, fontWeight: 600, color: '#ccc', marginBottom: 12, marginTop: 0 }
-const h3 = { fontSize: 14, fontWeight: 600, color: '#aaa', marginBottom: 8, marginTop: 16 }
-const p  = { fontSize: 13, color: '#888', lineHeight: 1.7, margin: '0 0 8px' }
+const h2 = { fontSize: 15, fontWeight: 600, color: '#dedede', marginBottom: 12, marginTop: 0 }
+const h3 = { fontSize: 11, fontWeight: 600, color: '#9a9a9a', marginBottom: 8, marginTop: 16, textTransform: 'uppercase', letterSpacing: '0.04em' }
+const p  = { fontSize: 13, color: '#9a9a9a', lineHeight: 1.7, margin: '0 0 8px' }
 
 const code = {
   display: 'inline-block',
-  background: '#252535',
-  border: '1px solid #3a3a5e',
+  background: '#2e2e2e',
+  border: '1px solid #1e1e32',
   borderRadius: 4,
   padding: '2px 8px',
   fontFamily: 'monospace',
@@ -57,7 +56,7 @@ export default function Info({ data }) {
         />
         <h2 style={h2}>About Soaralarm NL</h2>
         <p style={{ ...p, margin: 0 }}>
-          Soaralarm NL is a <b style={{ color: '#ccc' }}>free and open-source</b> project,
+          Soaralarm NL is a <b style={{ color: '#dedede' }}>free and open-source</b> project,
           built as a free service for the community of pilots who soar the dunes along the
           Dutch coast. It combines offshore wind forecasts using four major European weather models
           with live RWS measurements to give you an overview of the best spots to fly in the
@@ -72,13 +71,13 @@ export default function Info({ data }) {
 
         <p style={p}>
           The flyable wind ranges and wind headings are calculated based on an experienced pilot of{' '}
-          <b style={{ color: '#ccc' }}>75 kg</b> flying the following wings:
+          <b style={{ color: '#dedede' }}>75 kg</b> flying the following wings:
         </p>
 
         <ul style={{ ...p, paddingLeft: 20 }}>
           {wingKeys.map(k => (
             <li key={k}>
-              <b style={{ color: '#ccc' }}>{wings[k].display_name}</b>
+              <b style={{ color: '#dedede' }}>{wings[k].display_name}</b>
               {' → '}
               {k === 'scraper_16'   && 'Dune Rider Scraper 16 m²'}
               {k === 'hopper_16'    && 'Dune Rider Hopper 16 m²'}
@@ -89,7 +88,7 @@ export default function Info({ data }) {
           ))}
         </ul>
 
-        <h3 style={h3}>Wind range scaling:</h3>
+        <h3 style={h3}>Wind range scaling</h3>
         <p style={p}>
           Wind ranges for different sizes and pilot weights are derived from the base ranges by solving
           for constant lift:
@@ -110,16 +109,16 @@ export default function Info({ data }) {
         </p>
         <ul style={{ ...p, paddingLeft: 20 }}>
           <li><b style={{ color: '#1fd100' }}>Good wind</b> – Comfortable wind heading.</li>
-          <li><b style={{ color: '#d68800' }}>Crosswind</b> – Noticeably cross.</li>
-          <li><b style={{ color: '#c12e0d' }}>Gusty</b> – Good wind heading, gusts &gt; 20 km/h over windspeed.</li>
-          <li><b style={{ color: '#80220d' }}>Crosswind, Gusty</b> – Noticeably cross, gusts &gt; 20 km/h over windspeed.</li>
+          <li><b style={{ color: '#d1bb16' }}>Crosswind</b> – Noticeably cross.</li>
+          <li><b style={{ color: '#d68800' }}>Gusty</b> – Good wind heading, gusts &gt; 20 km/h over windspeed.</li>
+          <li><b style={{ color: '#c12e0d' }}>Crosswind, Gusty</b> – Noticeably cross, gusts &gt; 20 km/h over windspeed.</li>
         </ul>
         <p style={p}>
           An hour counts as flyable only if the wind speed is within range for at least one of the selected
           wings, with precipitation ≤ 0.1 mm and visibility &gt; 300 m.
         </p>
         <p style={p}>
-          Alternatively, the <b style={{ color: '#ccc' }}>Custom Wind Range</b> option in Settings disables
+          Alternatively, the <b style={{ color: '#dedede' }}>Custom Wind Range</b> option in Settings disables
           wing and weight-based calculations and applies a single user-defined minimum wind speed and maximum
           gust speed uniformly to all locations.
         </p>
@@ -135,11 +134,11 @@ export default function Info({ data }) {
             : <>
                 {activeWings.map((aw, i) => (
                   <span key={aw.key}>
-                    <b style={{ color: '#ccc' }}>{wings[aw.key]?.display_name ?? aw.key}</b>{' '}
+                    <b style={{ color: '#dedede' }}>{wings[aw.key]?.display_name ?? aw.key}</b>{' '}
                     {aw.size} m²{i < activeWings.length - 1 ? ', ' : ''}
                   </span>
                 ))}
-                {' '}at <b style={{ color: '#ccc' }}>{w} kg</b>
+                {' '}at <b style={{ color: '#dedede' }}>{w} kg</b>
               </>
           }.
         </p>
@@ -153,11 +152,11 @@ export default function Info({ data }) {
                 <th style={th}>Good range</th>
                 <th style={th}>Cross range</th>
                 {customWind
-                  ? <th style={th}>Wind (km/h)<br /><span style={{ color: '#666', fontWeight: 400 }}>custom range</span></th>
+                  ? <th style={th}>Wind (km/h)<br /><span style={{ color: '#828282', fontWeight: 400 }}>custom range</span></th>
                   : activeWings.map(aw => (
                       <th key={aw.key} style={th}>
                         {wings[aw.key]?.display_name ?? aw.key}<br />
-                        <span style={{ color: '#666', fontWeight: 400 }}>{aw.size} m² wind (km/h)</span>
+                        {aw.size} m² <span style={{ color: '#828282', fontWeight: 400 }}>[km/h]</span>
                       </th>
                     ))
                 }
@@ -166,7 +165,7 @@ export default function Info({ data }) {
             <tbody>
               {points.map((pt, i) => (
                 <tr key={pt.name} style={{ borderBottom: '1px solid #252535', background: i % 2 === 0 ? 'transparent' : '#1a1a28' }}>
-                  <td style={td}><b style={{ color: '#ccc' }}>{pt.name}</b></td>
+                  <td style={td}><b style={{ color: '#dedede' }}>{pt.name}</b></td>
                   <td style={{ ...td, color: '#a0ccfc' }}>{wrapDeg(pt.heading)}°</td>
                   <td style={td}>
                     {wrapDeg(pt.heading + pt.head_range.good[0])}° –{' '}
@@ -216,20 +215,20 @@ export default function Info({ data }) {
         </p>
         <ul style={{ ...p, paddingLeft: 20 }}>
           <li>
-            <b style={{ color: '#ccc' }}>KNMI HARMONIE</b> – 2 km resolution. Uses KNMI HARMONIE AROME
+            <b style={{ color: '#dedede' }}>KNMI HARMONIE</b> – 2 km resolution. Uses KNMI HARMONIE AROME
             for the first 2.5 days, then blends into ECMWF IFS for the remainder of the forecast.
           </li>
           <li>
-            <b style={{ color: '#ccc' }}>ECMWF IFS</b> – 9 km resolution global model from the European
+            <b style={{ color: '#dedede' }}>ECMWF IFS</b> – 9 km resolution global model from the European
             Centre for Medium-Range Weather Forecasts. Most reliable for days 4–7.
           </li>
           <li>
-            <b style={{ color: '#ccc' }}>DWD ICON D2</b> – 2 km resolution model from Deutscher
+            <b style={{ color: '#dedede' }}>DWD ICON D2</b> – 2 km resolution model from Deutscher
             Wetterdienst. Uses ICON D2 for the first 2 days, and ICON EU afterwards. From 78h into the future,
             forecasted values are only 3-hourly and therefore interpolated for each hour in-between.
           </li>
           <li>
-            <b style={{ color: '#ccc' }}>Météo-France AROME HD</b> – 1.5 km resolution. Visibility is 
+            <b style={{ color: '#dedede' }}>Météo-France AROME HD</b> – 1.5 km resolution. Visibility is 
             not provided by this model and is patched in from KNMI HARMONIE. Forecast only for up to 4 days
             into the future.
           </li>
@@ -243,7 +242,7 @@ export default function Info({ data }) {
         <h3 style={h3}>Multi-model confidence scores</h3>
         <p style={p}>
           For each day, every location is scored by how many of the four models agree there will be flyable
-          hours <b style={{ color: '#ccc' }}>based solely on wind speed and heading</b>, that is, ignoring rain
+          hours <b style={{ color: '#dedede' }}>based solely on wind speed and heading</b>, that is, ignoring rain
           or fog – since these tend to introduce quite some variability to the calculation of flyability, and 
           their forcasted values are usually more volatile than the forecasted wind. The location with 
           the highest score is selected as the "best" location shown in the
