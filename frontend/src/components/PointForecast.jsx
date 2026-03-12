@@ -256,8 +256,8 @@ export default function PointForecast({ data }) {
             <ReferenceArea y1={lowerIdeal} y2={upperIdeal} fill="#25b863" fillOpacity={0.45} />
             <ReferenceArea y1={upperIdeal} y2={upperBound} fill="#d27a2d" fillOpacity={0.45} />
             <ReferenceLine y={heading} stroke={T.text3} strokeDasharray="4 2" label={{ value:`${heading}°`, fill: T.text3, fontSize:11 }} />
-            <Line type="monotone" dataKey="wind_dir" name="Forecast heading (°)" stroke={T.text}    dot={false} strokeWidth={2}   connectNulls />
-            <Line type="linear"   dataKey="meas_dir" name="Measured heading (°)" stroke="#aaaacc"   dot={false} strokeWidth={1.5} connectNulls strokeDasharray="5 3" />
+            <Line type="monotone" dataKey="wind_dir" name="Forecast heading (°)" stroke="#aaaacc" dot={false} strokeWidth={2}   connectNulls />
+            <Line type="linear"   dataKey="meas_dir" name="Measured heading (°)" stroke={T.text}    dot={false} strokeWidth={1.5} connectNulls strokeDasharray="5 3" />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

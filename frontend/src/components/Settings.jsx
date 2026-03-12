@@ -76,7 +76,7 @@ function WingRow({ entry, wings, isRemovable, onChange, onRemove }) {
   return (
     <div style={{ marginBottom: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <select style={{ ...select_, flex: 1 }} value={entry.key}
+        <select style={{ ...select_, flex: 1, minWidth: 0 }} value={entry.key}
           onChange={e => { setTipOpen(false); const k = e.target.value; onChange({ key: k, size: wings[k]?.default_size ?? entry.size }) }}
           disabled={wingKeys.length === 0}
         >
@@ -95,12 +95,12 @@ function WingRow({ entry, wings, isRemovable, onChange, onRemove }) {
           </span>
         ) : <div style={{ width: 20, flexShrink: 0 }} />}
 
-        <input type="text" inputMode="numeric" pattern="\d*" style={input_}
+        <input type="text" inputMode="numeric" pattern="\d*" style={{ ...input_, width: 48, flexShrink: 0 }}
           value={entry.size}
           onChange={e => { const v = e.target.value; if (v===''||/^\d+$/.test(v)) onChange({...entry,size:v===''?'':Number(v)}) }}
           placeholder="m²" title="Wing size in m²"
         />
-        <span style={{ fontSize: 12, color: T.text2, whiteSpace: 'nowrap' }}>m²</span>
+        <span style={{ fontSize: 12, color: T.text2, whiteSpace: 'nowrap', flexShrink: 0 }}>m²</span>
 
         {isRemovable
           ? <button onClick={onRemove} title="Remove" style={{ background:'transparent', border:`1px solid ${T.border}`, borderRadius:4, width:26, height:26, cursor:'pointer', color:T.text2, fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>✕</button>
