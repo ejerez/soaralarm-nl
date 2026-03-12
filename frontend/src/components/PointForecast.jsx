@@ -20,7 +20,7 @@ const T = {
 const card_ = { background: T.card, border: `1px solid ${T.borderDim}`, borderRadius: 8, padding: '14px 0', marginBottom: 16 }
 const sectionTitle_ = { fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 12, paddingLeft: 14, letterSpacing: '0.04em', textTransform: 'uppercase' }
 const select_ = { background: T.raised, color: T.text, border: `1px solid ${T.border}`, borderRadius: 6, padding: '6px 10px', fontSize: 13, cursor: 'pointer', marginBottom: 14, fontFamily: T.font }
-const TOOLTIP = { contentStyle: { background: T.card, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: 12, fontFamily: T.font }, labelStyle: { color: T.text2 } }
+const TOOLTIP = { contentStyle: { background: T.card, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: 12, fontFamily: T.font }, labelStyle: { color: T.text2 }, labelFormatter: fmtTime }
 const GRID_STROKE = '#2a2a2a'
 const TICK  = { fill: T.text2, fontSize: 11, fontFamily: T.font }
 
@@ -30,23 +30,58 @@ function fmtTime(ms) {
 }
 
 function buildWindData(dayFc, meas, station, sunrise, sunset) {
-  const points = dayFc.time.map((t, i) => ({
-    ts: new Date(t).getTime(),
+  const fcPoints = dayFc.time.map((t, i) => ({
+    ts:            new Date(t).getTime(),
     wind_speed:    parseFloat(dayFc.wind_speed[i]?.toFixed(1)),
     wind_gusts:    parseFloat(dayFc.wind_gusts[i]?.toFixed(1)),
     precipitation: parseFloat(dayFc.precipitation[i]?.toFixed(2)),
   }))
+
   const ws = meas?.[station]?.WINDSHD
-  if (ws?.timestamps?.length && ws?.values?.length) {
-    ws.timestamps.forEach((ts, i) => {
-      const v = ws.values[i]; if (v==null||!isFinite(v)) return
-      const t = new Date(ts); if (isNaN(t.getTime())) return
-      if (sunrise && t < new Date(sunrise)) return
-      if (sunset  && t > new Date(sunset))  return
-      points.push({ ts: t.getTime(), meas_wind: parseFloat(v.toFixed(1)) })
+  if (!ws?.timestamps?.length || !ws?.values?.length) return fcPoints
+
+  // Group readings by exact timestamp (multiple sensors share the same ts)
+  const byTs = new Map()
+  ws.timestamps.forEach((ts, i) => {
+    const v = ws.values[i]; if (v==null||!isFinite(v)) return
+    const t = new Date(ts); if (isNaN(t.getTime())) return
+    if (sunrise && t < new Date(sunrise)) return
+    if (sunset  && t > new Date(sunset))  return
+    const key = t.getTime()
+    if (!byTs.has(key)) byTs.set(key, [])
+    byTs.get(key).push(parseFloat(v.toFixed(1)))
+  })
+
+  // For each measurement interval, build a point with min/max
+  const measPoints = []
+  byTs.forEach((vals, ts) => {
+    measPoints.push({
+      ts,
+      meas_wind_min: Math.min(...vals),
+      meas_wind_max: Math.max(...vals),
+      meas_wind_count: vals.length,
     })
-  }
-  return points.sort((a,b) => a.ts - b.ts)
+  })
+
+  // Merge: attach measurement min/max onto any forecast point within 5 min
+  const FIVE_MIN = 5 * 60 * 1000
+  fcPoints.forEach(fp => {
+    const near = measPoints.find(m => Math.abs(m.ts - fp.ts) <= FIVE_MIN)
+    if (near) {
+      fp.meas_wind_min   = near.meas_wind_min
+      fp.meas_wind_max   = near.meas_wind_max
+      fp.meas_wind_count = near.meas_wind_count
+    }
+  })
+
+  // Add band field (max - min) for stacked fill-between rendering
+  measPoints.forEach(m => { m.meas_wind_band = parseFloat((m.meas_wind_max - m.meas_wind_min).toFixed(1)) })
+  fcPoints.forEach(fp => {
+    if (fp.meas_wind_min != null) fp.meas_wind_band = parseFloat((fp.meas_wind_max - fp.meas_wind_min).toFixed(1))
+  })
+
+  // Combine and sort; measurement-only points (between forecast hours) keep null forecast fields
+  return [...fcPoints, ...measPoints].sort((a, b) => a.ts - b.ts)
 }
 
 function buildDirData(dayFc, meas, station, sunrise, sunset, heading) {
@@ -78,6 +113,44 @@ function buildTempData(dayFc) {
     temperature: parseFloat(dayFc.temperature[i]?.toFixed(1)),
     visibility:  parseFloat((dayFc.visibility[i]/1000)?.toFixed(2)),
   }))
+}
+
+function WindTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  const d = payload[0]?.payload ?? {}
+
+  const box = (children) => (
+    <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 6, padding: '8px 10px', fontSize: 12, fontFamily: T.font }}>
+      <div style={{ color: T.text2, marginBottom: 6 }}>{fmtTime(label)}</div>
+      {children}
+    </div>
+  )
+
+  // If measurement data exists at this point, show that instead of forecast
+  if (d.meas_wind_min != null) {
+    return box(
+      <div style={{ color: T.text2 }}>
+        <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: 3 }}>Measured wind</div>
+        <div>max: <span style={{ color: T.text }}>{d.meas_wind_max} km/h</span></div>
+        <div>min: <span style={{ color: T.text }}>{d.meas_wind_min} km/h</span></div>
+      </div>
+    )
+  }
+
+  // No measurement — show forecast
+  if (d.wind_speed == null) return null
+  const items = []
+  payload.forEach(p => {
+    if (p.dataKey === 'wind_gusts')    items.push({ name: 'Gusts',         value: p.value, color: p.color })
+    if (p.dataKey === 'wind_speed')    items.push({ name: 'Wind Speed',    value: p.value, color: p.color })
+    if (p.dataKey === 'precipitation') items.push({ name: 'Precipitation', value: p.value, color: p.color, unit: 'mm' })
+  })
+  return box(items.map(it => (
+    <div key={it.name} style={{ color: T.text2, marginBottom: 2 }}>
+      <span style={{ color: it.color }}>{it.name}:</span>{' '}
+      <span style={{ color: T.text }}>{it.value} {it.unit ?? 'km/h'}</span>
+    </div>
+  )))
 }
 
 const DASH = ['4 2','10 10','8 2 2 2','10 5 2 4','5 10 4 2']
@@ -141,10 +214,10 @@ export default function PointForecast({ data }) {
         <ResponsiveContainer width="100%" height={250}>
           <ComposedChart data={windData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-            <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin','dataMax']} tickFormatter={fmtTime} tick={TICK} />
+            <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin','dataMax']} ticks={dayFc.time.map(t => new Date(t).getTime())} tickFormatter={fmtTime} tick={TICK} />
             <YAxis yAxisId="wind" tick={TICK} width={30} />
             <YAxis yAxisId="rain" orientation="right" tick={{ ...TICK, fill: '#4a7ab8' }} width={24} />
-            <Tooltip {...TOOLTIP} />
+            <Tooltip content={<WindTooltip />} />
             <Legend wrapperStyle={{ fontSize: 12, color: T.text2, fontFamily: T.font }} />
             {wind_ranges.map((wing, i) => {
               const dash = DASH[i % DASH.length]
@@ -158,11 +231,12 @@ export default function PointForecast({ data }) {
                 <ReferenceLine key={`max-${wing.key}`} yAxisId="wind" y={wMax} stroke="#3aaa80" strokeWidth={1.5} strokeDasharray={dash} label={{ value:`↓ ${label} ↓`, fill:'#6be655', fontSize:8, position:posMax }} />,
               ]
             })}
-            <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"    name="Gusts (km/h)"         fill="#c07028" stroke="#c07028" fillOpacity={0.25} dot={false} connectNulls />
-            <Area yAxisId="wind" type="monotone" dataKey="wind_speed"    name="Wind Speed (km/h)"    fill="#7aaaee" stroke="#7aaaee" fillOpacity={0.25} dot={false} connectNulls />
-            <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precipitation (mm)"   fill="#3a6bbf" stroke="#3a6bbf" fillOpacity={0.9}  dot={false} connectNulls />
-            <Scatter yAxisId="wind" dataKey="meas_wind" name="Measured wind (km/h)" fill="#ffffff" opacity={0.1}
-              shape={props => (!props.meas_wind||!isFinite(props.cy)) ? null : <circle cx={props.cx} cy={props.cy} r={3} fill="#fff" opacity={0.7} />} />
+            <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"    name="Gusts (km/h)"       fill="#c07028" stroke="#c07028" fillOpacity={0.25} dot={false} connectNulls />
+            <Area yAxisId="wind" type="monotone" dataKey="wind_speed"    name="Wind Speed (km/h)"  fill="#7aaaee" stroke="#7aaaee" fillOpacity={0.25} dot={false} connectNulls />
+            <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precipitation (mm)" fill="#3a6bbf" stroke="#3a6bbf" fillOpacity={0.9}  dot={false} connectNulls />
+            {/* Measurement band — stacked fill-between: min base (transparent) + band on top */}
+            <Area yAxisId="wind" type="linear" dataKey="meas_wind_min"  name="Measured wind (km/h)" stackId="meas" stroke="rgba(255,255,255,0.75)" strokeWidth={1.5} fill="transparent" dot={false} connectNulls />
+            <Area yAxisId="wind" type="linear" dataKey="meas_wind_band" name="Measured wind max"     stackId="meas" stroke="rgba(255,255,255,0.75)" strokeWidth={1.5} fill="rgba(255,255,255,0.18)" fillOpacity={1} dot={false} connectNulls legendType="none" />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
