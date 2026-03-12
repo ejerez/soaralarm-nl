@@ -57,15 +57,14 @@ export default function WelcomeModal() {
       }}>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-          <img src="/paraglider.png" width={64} style={{ display:'block', flexShrink:0, opacity:0.9 }} alt="" />
+          <img src="/paraglider.png" width={100} style={{ display:'block', flexShrink:0, opacity:0.9 }} alt="" />
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, color: T.text, lineHeight: 1.2 }}>Welcome to Soaralarm NL</div>
-            <div style={{ fontSize: 12, color: T.text2, marginTop: 4 }}>Soaring forecast for the Dutch coast</div>
           </div>
         </div>
 
         <p style={p_}>
-          Soaralarm NL is a <b style={{ color: T.text }}>free and open-source</b> forecasting tool built for pilots soaring the dunes along the Dutch coast. It may feel like too much information at first glance, here's a quick overview of what to expect:
+          Soaralarm NL is a <b style={{ color: T.text }}>free and open-source</b> forecasting tool built for pilots soaring the dunes along the Dutch coast. It may feel a bit overwhelming at first glance, so here's a quick overview of what to expect:
         </p>
 
         {[
@@ -84,7 +83,7 @@ export default function WelcomeModal() {
         ))}
 
         <div style={{ marginTop: 16, padding: '10px 14px', background: T.raised, borderRadius: 6, borderLeft: `3px solid ${T.border}`, fontSize: 12, color: T.text2, lineHeight: 1.6 }}>
-          The flyable hours shown are an <b style={{ color: T.text }}>optimistic estimate</b> to help quickly identify potentially flyable days. They are not a guarantee. Always use your own judgement — check that conditions suit your wing, skill, and risk tolerance before flying.
+          The flyable hours shown are an <b style={{ color: T.text }}>optimistic estimate</b> to help quickly identify potentially flyable days, they are no guarantee that you'll be able to fly. Always use your own judgement – check whether conditions are suitable for your exact wing, skill level, and risk tolerance before attempting to flying.
         </div>
 
         <div style={{ marginTop: 20 }}>

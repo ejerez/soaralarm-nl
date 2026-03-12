@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useMemo, useEffect } from 'react'
 import {
   ComposedChart, Area, Line, XAxis, YAxis, Scatter,
   CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine,
@@ -156,8 +156,7 @@ function WindTooltip({ active, payload, label }) {
 const DASH = ['4 2','10 10','8 2 2 2','10 5 2 4','5 10 4 2']
 
 export default function PointForecast({ data }) {
-  const { rawForecast, displayForecast, points, measurements, wings, dateIdx } = data
-  const [ptIdx, setPtIdx] = useState(0)
+  const { rawForecast, displayForecast, points, measurements, wings, dateIdx, ptIdx, setPtIdx } = data
 
   const point = points[ptIdx]
   const dayFc = rawForecast?.[dateIdx]?.[ptIdx]

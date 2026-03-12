@@ -265,7 +265,7 @@ export default function App() {
 
       {/* ── Content ── */}
       <main style={s.content}>
-        {activeTab === 0 && (forecastReady ? <MapForecast data={data} /> : <LoadingPanel />)}
+        {activeTab === 0 && (forecastReady ? <MapForecast data={data} onNavigateToPoint={() => setActiveTab(1)} /> : <LoadingPanel />)}
         {activeTab === 1 && (forecastReady ? <PointForecast data={data} /> : <LoadingPanel />)}
         {activeTab === 2 && <Settings data={data} />}
         {activeTab === 3 && <Info data={data} />}

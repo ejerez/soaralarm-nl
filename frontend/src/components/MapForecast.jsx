@@ -204,7 +204,7 @@ const Legendsmall_ = ({ items }) => (
   </div>
 )
 
-export default function MapForecast({ data }) {
+export default function MapForecast({ data, onNavigateToPoint }) {
   const { displayForecast, certainty, points, days, dateIdx } = data
   const mapRef    = useRef(null)
   const leafletRef = useRef(null)
@@ -234,11 +234,26 @@ export default function MapForecast({ data }) {
         )
       })
       const color = markerColor(pf)
-      layersRef.current.push(
-        L.circleMarker([point.lat, point.lon], { radius: 6, color, fillColor: color, fillOpacity: 1, weight: 2 })
-          .bindPopup(`<b>${point.name}</b><br/>Good: ${pf.wind_pizza[1]}h | Cross: ${pf.wind_pizza[0]+pf.wind_pizza[2]}h`)
-          .addTo(map)
-      )
+      const marker = L.circleMarker([point.lat, point.lon], { radius: 6, color, fillColor: color, fillOpacity: 1, weight: 2 })
+        .bindPopup(
+          `<b>${point.name}</b><br/>Good heading: ${pf.wind_pizza[1]}h | Crosswind: ${pf.wind_pizza[0]+pf.wind_pizza[2]}h` +
+          `<br/><a href="#" data-ptidx="${ptIdx}" style="color:#5578e8;font-size:12px;text-decoration:none;display:inline-block;margin-top:4px;">` +
+          `Detailed Forecast</a>`
+        )
+      marker.on('popupopen', () => {
+        const container = marker.getPopup().getElement()
+        const link = container?.querySelector(`[data-ptidx="${ptIdx}"]`)
+        if (link) {
+          link.onclick = (e) => {
+            e.preventDefault()
+            data.setPtIdx(ptIdx)
+            marker.closePopup()
+            if (onNavigateToPoint) onNavigateToPoint()
+          }
+        }
+      })
+      marker.addTo(map)
+      layersRef.current.push(marker)
     })
   }, [displayForecast, points, dateIdx])
 

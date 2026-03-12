@@ -145,6 +145,7 @@ export function useSoarData() {
   const [windMin, setWindMin]           = useState(initSettings.windMin)
   const [windMax, setWindMax]           = useState(initSettings.windMax)
   const [dateIdx, setDateIdx]           = useState(1)
+  const [ptIdx,   setPtIdx]             = useState(0)
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   // Mirror of current settings so fetchDisplay() stays stable (no deps)
@@ -374,6 +375,7 @@ export function useSoarData() {
     windMin, setWindMin,
     windMax, setWindMax,
     dateIdx, setDateIdx,
+    ptIdx,   setPtIdx,
     refreshForecast: api.refreshForecast,
     refreshMeasure:  api.refreshMeasure,
     refetchDisplay:  fetchDisplay,
