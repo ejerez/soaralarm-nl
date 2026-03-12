@@ -124,11 +124,26 @@ export default function Info({ data }) {
         </p>
       </div>
 
+      <div style={card}>
+        <h2 style={h2}>Low end of wind ranges</h2>
+        <p style={{ ...p, marginBottom: 16 }}>
+          While different wings have different glide ratios, most wings have a similar c<sub>L max</sub>, and in any case the main limitations on the low end
+          of the range are the takeoff options, dune geometry and pilot skill – not the efficiency of the wing. 
+          This is trivial to show: the windspeeds theoretically required to achieve an upwards component of wind equal to the minimum sink 
+          of a wing like a Scraper 16 are much lower than the 
+          actual low range of the wing, in the order of around 10-15 km/h for the moderate quality dunes in the NW facing sites, but the wing must 
+          trade altitude to accelerate beyond stall speed before it can use the lift to stay up. Given these considerations, and in order to simplify
+          a quite complex topic, the minimum flyable speed for each wing has been assumed to be solely a function of wing area and location (that is,
+          all types of wings with the same area will show the same minimum speed at a given location).
+      </div>
+
       {/* ── Per-point table ── */}
       <div style={card}>
         <h2 style={h2}>Wind ranges and headings per location</h2>
         <p style={{ ...p, marginBottom: 16 }}>
-          Values for the current selection in "Settings":{' '}
+          The wind ranges are overestimates meant to indicate that you <b style={{ color: '#dedede' }}>may</b> be able to fly,
+          not a guarantee that you will be able to.
+          These are the values for the current selection in "Settings":{' '}
           {customWind
             ? <span>Custom wind range <b style={{ color: '#6be655' }}>{windMin}</b> – <b style={{ color: '#55e68f' }}>{windMax}</b> km/h</span>
             : <>
