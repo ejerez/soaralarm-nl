@@ -68,8 +68,8 @@ export default function WelcomeModal() {
         </p>
 
         {[
-          { icon: 'map',      title: 'Map Forecast',   body: 'An overview of conditions at each location for the selected day, with a bar chart of estimated flyable hours and a Gantt chart of flyable windows. Both include a confidence score based on agreement across four weather models.' },
-          { icon: 'marker',   title: 'Point Forecast', body: 'Hourly forecasts and live RWS measurements for the selected location. When you open this tab you\'re automatically taken to the best calculated location for the day.' },
+          { icon: 'map',      title: 'Map Forecast',   body: 'An overview of conditions at each location for the selected day (click on the points on the map and you will see a "Detailed forecast" link!), plus a bar chart of estimated flyable hours and a Gantt chart of flyable windows. Both include a confidence score based on agreement across four weather models.' },
+          { icon: 'marker',   title: 'Point Forecast', body: 'Hourly forecasts and live RWS measurements for the selected location. When you select a date, this tab automatically goes to the best calculated location for the day.' },
           { icon: 'settings', title: 'Settings',       body: 'Select your wing type and size (up to 5 wings), total flight weight, preferred forecast model, and daily availability window. If you prefer, you can instead set a custom wind range directly.' },
           { icon: 'info',     title: 'Info',           body: 'Detailed explanation of how flyability is calculated, what the confidence scores mean, and how wind ranges are derived from your settings.' },
         ].map(it => (
