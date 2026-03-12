@@ -217,7 +217,7 @@ export default function PointForecast({ data }) {
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin','dataMax']} ticks={dayFc.time.map(t => new Date(t).getTime())} tickFormatter={fmtTime} tick={TICK} />
             <YAxis yAxisId="wind" tick={TICK} width={30} />
-            <YAxis yAxisId="rain" orientation="right" tick={{ ...TICK, fill: '#4a7ab8' }} width={24} />
+            <YAxis yAxisId="rain" orientation="right" tick={false} width={1} />
             <Tooltip content={<WindTooltip />} />
             <Legend wrapperStyle={{ fontSize:"clamp(8px, 1.4vw, 12px)", color: T.text2, fontFamily: T.font }} />
             {wind_ranges.map((wing, i) => {
