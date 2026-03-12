@@ -135,6 +135,7 @@ export default function Info({ data }) {
           trade altitude to accelerate beyond stall speed before it can use the lift to stay up. Given these considerations, and in order to simplify
           a quite complex topic, the minimum flyable speed for each wing has been assumed to be solely a function of wing area and location (that is,
           all types of wings with the same area will show the same minimum speed at a given location).
+        </p>
       </div>
 
       {/* ── Per-point table ── */}
