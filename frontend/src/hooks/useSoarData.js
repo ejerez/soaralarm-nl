@@ -207,17 +207,18 @@ export function useSoarData() {
       if (disp.certainty) setCertainty(disp.certainty)
 
       // Raw forecast + measurements in background — MapForecast already rendered
-      const [raw, meas] = await Promise.all([
+      // Use allSettled so a measurements failure at night doesn't block rawForecast
+      const [rawResult, measResult] = await Promise.allSettled([
         api.rawForecast(model),
         api.measurements(),
       ])
-      if (raw.forecast) {
-        setRaw(raw.forecast)
-        saveRawCache(model, raw.forecast)
+      if (rawResult.status === 'fulfilled' && rawResult.value?.forecast) {
+        setRaw(rawResult.value.forecast)
+        saveRawCache(model, rawResult.value.forecast)
       }
-      if (meas) {
-        setMeasure(meas)
-        saveMeasCache(meas)   // keep measurements warm for next reload
+      if (measResult.status === 'fulfilled' && measResult.value) {
+        setMeasure(measResult.value)
+        saveMeasCache(measResult.value)
       }
     } catch (e) {
       console.error('fetchDisplay', e)
