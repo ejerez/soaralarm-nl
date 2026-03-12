@@ -193,6 +193,17 @@ const Legend_ = ({ items }) => (
   </div>
 )
 
+const Legendsmall_ = ({ items }) => (
+  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', fontSize: "clamp(6px, 1.4vw, 12px)", color: T.text2 }}>
+    {items.map(({ color, name }) => (
+      <span key={name} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+        <span style={{ width: 9, height: 9, background: color, borderRadius: 2, flexShrink: 0, display: 'inline-block' }} />
+        {name}
+      </span>
+    ))}
+  </div>
+)
+
 export default function MapForecast({ data }) {
   const { displayForecast, certainty, points, days, dateIdx } = data
   const mapRef    = useRef(null)
@@ -337,7 +348,7 @@ export default function MapForecast({ data }) {
       <div style={{ background: T.card, borderRadius: 8, padding: '12px 4px', border: `1px solid ${T.borderDim}`, overflowX: 'auto', marginTop: 8 }}>
         <GanttChart ganttRows={ganttRows} weatherRows={weatherRows} days={days} certByDay={certByDay} />
         <div style={{ padding: '6px 12px 0' }}>
-          <Legend_ items={[
+          <Legendsmall_ items={[
             { color: C.good, name: 'Good wind' }, { color: C.cross, name: 'Crosswind' },
             { color: C.gusty, name: 'Gusty' }, { color: C.crossGusty, name: 'Crosswind, Gusty' },
             { color: C.rain, name: 'Rain' }, { color: C.fog, name: 'Fog' },

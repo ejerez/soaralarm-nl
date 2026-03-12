@@ -27,12 +27,12 @@ const p  = { fontSize: 13, color: '#9a9a9a', lineHeight: 1.7, margin: '0 0 8px' 
 const code = {
   display: 'inline-block',
   background: '#2e2e2e',
-  border: '1px solid #1e1e32',
+  border: '1px solid #777777',
   borderRadius: 4,
   padding: '2px 8px',
   fontFamily: 'monospace',
   fontSize: 13,
-  color: '#a0ccfc',
+  color: '#cccccc',
   margin: '4px 0',
 }
 
@@ -146,7 +146,7 @@ export default function Info({ data }) {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #3a3a5e' }}>
+              <tr style={{ borderBottom: '1px solid #686868' }}>
                 <th style={th}>Location</th>
                 <th style={th}>Heading</th>
                 <th style={th}>Good range</th>
@@ -164,7 +164,7 @@ export default function Info({ data }) {
             </thead>
             <tbody>
               {points.map((pt, i) => (
-                <tr key={pt.name} style={{ borderBottom: '1px solid #252535', background: i % 2 === 0 ? 'transparent' : '#1a1a28' }}>
+                <tr key={pt.name} style={{ borderBottom: '1px solid #363636', background: i % 2 === 0 ? 'transparent' : '#363636' }}>
                   <td style={td}><b style={{ color: '#dedede' }}>{pt.name}</b></td>
                   <td style={{ ...td, color: '#a0ccfc' }}>{wrapDeg(pt.heading)}°</td>
                   <td style={td}>
@@ -260,7 +260,7 @@ export default function Info({ data }) {
         <div style={{ overflowX: 'auto', marginBottom: 8 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #3a3a5e' }}>
+              <tr style={{ borderBottom: '1px solid #676767' }}>
                 <th style={th}>Badge</th>
                 <th style={th}>Models agree</th>
                 <th style={th}>Available until</th>
@@ -273,7 +273,7 @@ export default function Info({ data }) {
                 { label: 'Medium',    color: '#ffa726', agree: '2 / 4', until: 'Always possible' },
                 { label: 'Low',       color: '#ef5350', agree: '1 / 4', until: 'Always possible' },
               ].map(({ label, color, agree, until }, i) => (
-                <tr key={label} style={{ borderBottom: '1px solid #252535', background: i % 2 === 0 ? 'transparent' : '#1a1a28' }}>
+                <tr key={label} style={{ borderBottom: '1px solid #363636', background: i % 2 === 0 ? 'transparent' : '#363636' }}>
                   <td style={td}>
                     <span style={{
                       display: 'inline-block',
