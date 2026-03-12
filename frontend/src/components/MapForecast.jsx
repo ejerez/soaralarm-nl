@@ -183,7 +183,7 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay }) {
 const FLYABLE_DISCLAIMER = "The calculated flyable hours and windows are only an optimistic estimate based on your indicated wing type and weight, and are in no case a replacement for the pilot's own judgement. Always verify that forecasted conditions are appropriate for your exact wing model, skill level, physical ability and risk tolerance. See the Info tab for details on how flyability is calculated."
 
 const Legend_ = ({ items }) => (
-  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: 12, color: T.text2 }}>
+  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: "clamp(8px, 1.4vw, 12px)", color: T.text2 }}>
     {items.map(({ color, name }) => (
       <span key={name} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
         <span style={{ width: 9, height: 9, background: color, borderRadius: 2, flexShrink: 0, display: 'inline-block' }} />

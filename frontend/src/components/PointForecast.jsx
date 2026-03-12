@@ -218,7 +218,7 @@ export default function PointForecast({ data }) {
             <YAxis yAxisId="wind" tick={TICK} width={30} />
             <YAxis yAxisId="rain" orientation="right" tick={{ ...TICK, fill: '#4a7ab8' }} width={24} />
             <Tooltip content={<WindTooltip />} />
-            <Legend wrapperStyle={{ fontSize: 12, color: T.text2, fontFamily: T.font }} />
+            <Legend wrapperStyle={{ fontSize:"clamp(8px, 1.4vw, 12px)", color: T.text2, fontFamily: T.font }} />
             {wind_ranges.map((wing, i) => {
               const dash = DASH[i % DASH.length]
               const displayName = wings[wing.key]?.display_name ?? wing.key
@@ -250,7 +250,7 @@ export default function PointForecast({ data }) {
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin','dataMax']} tickFormatter={fmtTime} tick={TICK} />
             <YAxis tick={TICK} domain={[domainLow, domainHigh]} width={30} allowDataOverflow />
             <Tooltip {...TOOLTIP} />
-            <Legend wrapperStyle={{ fontSize: 12, color: T.text2, fontFamily: T.font }} />
+            <Legend wrapperStyle={{ fontSize:"clamp(8px, 1.4vw, 12px)", color: T.text2, fontFamily: T.font }} />
             <ReferenceArea y1={lowerBound} y2={lowerIdeal} fill="#d27a2d" fillOpacity={0.45} />
             <ReferenceArea y1={lowerIdeal} y2={upperIdeal} fill="#25b863" fillOpacity={0.45} />
             <ReferenceArea y1={upperIdeal} y2={upperBound} fill="#d27a2d" fillOpacity={0.45} />
@@ -271,7 +271,7 @@ export default function PointForecast({ data }) {
             <YAxis yAxisId="temp" tick={{ ...TICK, fill: '#c09030' }} width={30} />
             <YAxis yAxisId="vis"  orientation="right" tick={TICK} width={24} />
             <Tooltip {...TOOLTIP} />
-            <Legend wrapperStyle={{ fontSize: 12, color: T.text2, fontFamily: T.font }} />
+            <Legend wrapperStyle={{ fontSize:"clamp(8px, 1.4vw, 12px)", color: T.text2, fontFamily: T.font }} />
             <ReferenceLine yAxisId="vis" y={0.1} stroke="#c04040" strokeDasharray="4 2" label={{ value:'Min visibility', fill:'#c12e0d', fontSize:11 }} />
             <Line yAxisId="temp" type="monotone" dataKey="temperature" name="Temp (°C)"       stroke="#c09030" dot={false} strokeWidth={2} />
             <Line yAxisId="vis"  type="monotone" dataKey="visibility"  name="Visibility (km)" stroke={T.text2} dot={false} strokeWidth={2} />
