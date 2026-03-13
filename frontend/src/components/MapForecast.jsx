@@ -114,7 +114,30 @@ function InfoTooltip({ text }) {
 function GanttChart({ ganttRows, weatherRows, days, certByDay }) {
   const COLOR         = { good: C.good, cross: C.cross, good_gusty: C.gusty, cross_gusty: C.crossGusty, no: 'transparent' }
   const WEATHER_COLOR = { fog: C.fog, rain: C.rain }
-  const DAY_H = 52, LEFT = 90, RIGHT = 20, W = 700
+
+  // Measure container so all sizes are in real pixels — no viewBox shrinkage on mobile
+  const containerRef = useRef(null)
+  const [W, setW] = useState(700)
+  useEffect(() => {
+    if (!containerRef.current) return
+    const ro = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect?.width
+      if (w > 0) setW(w)
+    })
+    ro.observe(containerRef.current)
+    return () => ro.disconnect()
+  }, [])
+
+  // All layout values scale with W
+  const LEFT   = Math.round(Math.max(58, Math.min(90, W * 0.21)))
+  const RIGHT  = 8
+  const DAY_H  = Math.round(Math.max(46, Math.min(58, W * 0.115)))
+  const BAR_Y  = Math.round(DAY_H * 0.27)   // top of coloured bar within row
+  const BAR_H  = Math.round(DAY_H * 0.46)   // height of coloured bar
+  const FS_HR  = Math.round(Math.max(9,  Math.min(11, W * 0.018)))   // hour labels
+  const FS_DAY = Math.round(Math.max(11, Math.min(14, W * 0.024)))   // day name
+  const FS_PT  = Math.round(Math.max(9,  Math.min(11, W * 0.019)))   // point name
+  const FS_CRT = Math.round(Math.max(8,  Math.min(10, W * 0.016)))   // certainty
 
   const allTimes = ganttRows.flatMap(r => [new Date(r.start), new Date(r.end)])
   const minT = allTimes.length ? Math.min(...allTimes.map(t => t.getTime())) : 0
@@ -132,58 +155,69 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay }) {
   const hourLabels = []
   if (minT && maxT) {
     const start = new Date(minT); start.setMinutes(0, 0, 0)
-    for (let t = start.getTime(); t <= maxT; t += 3600_000) {
+    // On narrow screens show only even hours to avoid crowding
+    const step = W < 400 ? 7200_000 : 3600_000
+    for (let t = start.getTime(); t <= maxT; t += step) {
       const x = scale(new Date(t))
       if (x > LEFT && x < W - RIGHT) hourLabels.push({ x, label: new Date(t).getHours() + ':00' })
     }
   }
 
   return (
-    <svg width="100%" viewBox={`0 0 ${W + 120} ${svgH}`} style={{ fontFamily: T.font }}>
-      {hourLabels.map(h => (
-        <g key={h.label + h.x}>
-          <line x1={h.x} y1={20} x2={h.x} y2={svgH} stroke="#2a2a2a" strokeWidth={0.5} />
-          <text x={h.x} y={14} fontSize={9} fill={T.text3} textAnchor="middle">{h.label}</text>
-        </g>
-      ))}
-      {dayKeys.map((day, di) => {
-        const y    = 20 + di * DAY_H
-        const rows = grouped[day] || []
-        const flyableRows = rows.filter(r => r.type !== 'no')
-        const pointName   = flyableRows.length > 0 ? rows[0].point : null
-        const wRows = weatherGrouped[day] || []
-        return (
-          <g key={day}>
-            <text x={LEFT - 5} y={y + DAY_H / 2} fontSize={11} fill={T.text2} textAnchor="end">{day}</text>
-            {pointName && (
-              <text x={LEFT - 5} y={y + DAY_H / 2 + 13} fontSize="clamp(8px, 1.4vw, 10px)" fill={T.text3} textAnchor="end" fontStyle="italic">
-                {pointName}
-              </text>
-            )}
-            {flyableRows.length > 0 && certByDay?.[day] && (() => {
-              const { label, color } = certLabel(certByDay[day].agree, certByDay[day].total)
-              return (
-                <text x={LEFT - 5} y={y + DAY_H / 2 + 24} fontSize={8} fill={color} textAnchor="end" fontWeight="600">
-                  {label}
-                </text>
-              )
-            })()}
-            {flyableRows.map((r, i) => (
-              <rect key={i} x={scale(r.start)} y={y + 14} width={Math.max(scale(r.end) - scale(r.start), 1)} height={22}
-                fill={COLOR[r.type] || '#444'} rx={2} opacity={0.88}>
-                <title>{r.type} – {r.point}</title>
-              </rect>
-            ))}
-            {wRows.map((r, i) => (
-              <rect key={'w' + i} x={scale(r.start)} y={y + 14} width={Math.max(scale(r.end) - scale(r.start), 1)} height={22}
-                fill={WEATHER_COLOR[r.type] || '#666'} rx={2} opacity={0.6}>
-                <title>{r.type}</title>
-              </rect>
-            ))}
+    <div ref={containerRef} style={{ width: '100%' }}>
+      <svg width={W} height={svgH} style={{ fontFamily: T.font, display: 'block' }}>
+        {hourLabels.map(h => (
+          <g key={h.label + h.x}>
+            <line x1={h.x} y1={20} x2={h.x} y2={svgH} stroke="#2a2a2a" strokeWidth={0.5} />
+            <text x={h.x} y={14} fontSize={FS_HR} fill={T.text3} textAnchor="middle">{h.label}</text>
           </g>
-        )
-      })}
-    </svg>
+        ))}
+        {dayKeys.map((day, di) => {
+          const y    = 20 + di * DAY_H
+          const rows = grouped[day] || []
+          const flyableRows = rows.filter(r => r.type !== 'no')
+          const pointName   = flyableRows.length > 0 ? rows[0].point : null
+          const wRows = weatherGrouped[day] || []
+          const hasCert = flyableRows.length > 0 && certByDay?.[day]
+          // Vertical layout within row: day name + optional point + optional cert
+          const lineCount = 1 + (pointName ? 1 : 0) + (hasCert ? 1 : 0)
+          const lineH = FS_DAY * 1.35
+          const blockH = lineCount * lineH
+          const textTop = y + (DAY_H - blockH) / 2 + FS_DAY * 0.85
+          return (
+            <g key={day}>
+              <text x={LEFT - 5} y={textTop} fontSize={FS_DAY} fill={T.text2} textAnchor="end">{day}</text>
+              {pointName && (
+                <text x={LEFT - 5} y={textTop + lineH} fontSize={FS_PT} fill={T.text3} textAnchor="end" fontStyle="italic">
+                  {pointName}
+                </text>
+              )}
+              {hasCert && (() => {
+                const { label, color } = certLabel(certByDay[day].agree, certByDay[day].total)
+                const certY = textTop + lineH * (pointName ? 2 : 1)
+                return (
+                  <text x={LEFT - 5} y={certY} fontSize={FS_CRT} fill={color} textAnchor="end" fontWeight="600">
+                    {label.replace(' Confidence', '')}
+                  </text>
+                )
+              })()}
+              {flyableRows.map((r, i) => (
+                <rect key={i} x={scale(r.start)} y={y + BAR_Y} width={Math.max(scale(r.end) - scale(r.start), 1)} height={BAR_H}
+                  fill={COLOR[r.type] || '#444'} rx={2} opacity={0.88}>
+                  <title>{r.type} – {r.point}</title>
+                </rect>
+              ))}
+              {wRows.map((r, i) => (
+                <rect key={'w' + i} x={scale(r.start)} y={y + BAR_Y} width={Math.max(scale(r.end) - scale(r.start), 1)} height={BAR_H}
+                  fill={WEATHER_COLOR[r.type] || '#666'} rx={2} opacity={0.6}>
+                  <title>{r.type}</title>
+                </rect>
+              ))}
+            </g>
+          )
+        })}
+      </svg>
+    </div>
   )
 }
 
@@ -358,7 +392,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         )}
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={barData} margin={{ top: 40, right: 8, left: 0, bottom: 0 }} onClick={e => e?.activePayload?.[0]?.payload?.di != null && setDateIdx(e.activePayload[0].payload.di)} style={{ cursor: 'pointer' }}>
-            <XAxis dataKey="day" tick={{ fill: T.text2, fontSize: 12, fontFamily: T.font }} />
+            <XAxis dataKey="day" tick={{ fill: T.text2, fontSize: 11, fontFamily: T.font }} interval={0} />
             <YAxis width={28} tick={{ fill: T.text2, fontSize: 12, fontFamily: T.font }} />
             <Tooltip {...TOOLTIP_STYLE} formatter={(val, name) => val > 0 ? [`${val}h`, name] : [null, null]} />
             <Bar dataKey="good"        name="Good wind"        stackId="a" fill={C.good}       radius={[0,0,0,0]} />
