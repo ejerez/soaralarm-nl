@@ -456,7 +456,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
           <div style={{ flex: 1, display: 'flex', paddingRight: 8 }}>
             {barData.map((d, i) => {
               const totalHours = (d.good||0)+(d.cross||0)+(d.gusty||0)+(d.cross_gusty||0)
-              const c = certainty[i]
+              const c = certainty[d.di]
               if (!c || totalHours === 0) return <div key={i} style={{ flex: 1 }} />
               const { label, color } = certLabel(c.agree, c.total)
               return (
