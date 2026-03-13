@@ -18,12 +18,12 @@ const STEPS = [
   {
     tab: 0, selector: null, position: 'center',
     title: <><img src="/paraglider_small.png" width={22} height={22} style={{ verticalAlign: 'middle', marginRight: 8 }} alt="" />Welcome to Soaralarm NL</>,
-    body:  <>Soaralarm NL is a <b style={{ color: T.text }}>free and open-source</b>, feature-rich forecasting tool built for pilots soaring the dunes along the Dutch coast. This tutorial will show how to use it step by step.</>,
+    body:  <>Soaralarm NL is a <b style={{ color: T.text }}>free and open-source, feature-rich</b> forecasting tool built for pilots soaring the dunes along the Dutch coast. This tutorial will show how to use it step by step.</>,
   },
   {
     tab: 0, selector: '[data-tutorial="map"]', position: 'below',
     title: 'The map',
-    body:  <>Each dot marks a <b style={{ color: T.text }}>soaring location</b> along the Dutch coast. The <b style={{ color: T.text }}>wind slices</b> show estimated flyable hours for the selected day – a larger slice means more hours. Green indicates a <b style={{ color: '#1dbb02' }}>Good Heading</b> and yellow indicates <b style={{ color: '#ddb60a' }}>Crosswind</b>. Tap any marker to see a summary popup with a <b style={{ color: T.text }}>Detailed Forecast</b> link that will take you to the detailed forcast for that location on the selected day.</>,
+    body:  <>Each dot marks a <b style={{ color: T.text }}>soaring location</b> along the Dutch coast. The <b style={{ color: T.text }}>wind slices</b> show estimated flyable hours for the selected day – a larger slice means more hours. Green indicates a <b style={{ color: '#1dbb02' }}>Good Heading</b> and yellow indicates <b style={{ color: '#ddb60a' }}>Crosswind</b>. Tap any point marker to see a summary popup with a <b style={{ color: T.text }}>Detailed Forecast</b> link that will take you to the detailed forcast for that location on the selected day.</>,
   },
   {
     tab: 0, selector: '[data-tutorial="plotcontrols"]', position: 'below',
@@ -112,6 +112,31 @@ export default function Tutorial({ activeTab, onSwitchTab }) {
     if (tooltipRef.current) setTooltipH(tooltipRef.current.offsetHeight)
   })
 
+  // After tooltipH is first set for a step, the tooltip moves to its final
+  // position on the next render. Wait two rAF frames (React commit + browser paint)
+  // before reading the real rect and correcting the scroll.
+  const scrollCorrectedRef = useRef(false)
+  useEffect(() => {
+    if (tooltipH === 0 || !tooltipRef.current) return
+    if (scrollCorrectedRef.current) return
+    scrollCorrectedRef.current = true
+    let raf1, raf2
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        if (!tooltipRef.current) return
+        const r = tooltipRef.current.getBoundingClientRect()
+        const vh = window.innerHeight
+        const PADDING = 10
+        if (r.top < PADDING) {
+          window.scrollBy({ top: r.top - PADDING, behavior: 'smooth' })
+        } else if (r.bottom > vh - PADDING) {
+          window.scrollBy({ top: r.bottom - vh + PADDING, behavior: 'smooth' })
+        }
+      })
+    })
+    return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2) }
+  }, [tooltipH])
+
   useEffect(() => { stepRef.current = step }, [step])
   useEffect(() => { openRef.current = open }, [open])
 
@@ -169,6 +194,7 @@ export default function Tutorial({ activeTab, onSwitchTab }) {
     clearInterval(retryRef.current)
     setElRect(null)
     setTooltipH(0)  // hide until remeasured at new position
+    scrollCorrectedRef.current = false
 
     if (current.tab !== activeTab) {
       onSwitchTab(current.tab)
@@ -328,7 +354,7 @@ export default function Tutorial({ activeTab, onSwitchTab }) {
 
         {step === 0 && (
           <div style={{ textAlign: 'center', marginTop: 10, fontSize: 11, color: T.text3 }}>
-            Click anywhere outside this card or press Next to advance
+            Click anywhere outside this card or press 'Next' to advance.
           </div>
         )}
       </div>
