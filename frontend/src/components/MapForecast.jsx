@@ -111,7 +111,7 @@ function InfoTooltip({ text }) {
   )
 }
 
-function GanttChart({ ganttRows, weatherRows, days, certByDay }) {
+function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick }) {
   const COLOR         = { good: C.good, cross: C.cross, good_gusty: C.gusty, cross_gusty: C.crossGusty, no: 'transparent' }
   const WEATHER_COLOR = { fog: C.fog, rain: C.rain }
 
@@ -139,11 +139,38 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay }) {
   const FS_PT  = Math.round(Math.max(9,  Math.min(11, W * 0.019)))   // point name
   const FS_CRT = Math.round(Math.max(8,  Math.min(10, W * 0.016)))   // certainty
 
-  const allTimes = ganttRows.flatMap(r => [new Date(r.start), new Date(r.end)])
-  const minT = allTimes.length ? Math.min(...allTimes.map(t => t.getTime())) : 0
-  const maxT = allTimes.length ? Math.max(...allTimes.map(t => t.getTime())) : 1
+  const allTimes = [
+    ...ganttRows,
+    ...(weatherRows || []),
+  ].flatMap(r => [new Date(r.start), new Date(r.end)])
+  const rawMinT = allTimes.length ? Math.min(...allTimes.map(t => t.getTime())) : 0
+  const rawMaxT = allTimes.length ? Math.max(...allTimes.map(t => t.getTime())) : 1
+  const minT    = rawMinT - 1800_000  // -30 min so first bar gets its left padding
+  const maxT    = rawMaxT + 3600_000  // +1 h so last bar doesn't clip at edge
   const span = maxT - minT || 1
   const scale = (t) => LEFT + ((new Date(t).getTime() - minT) / span) * (W - LEFT - RIGHT)
+
+  // Compute visual x/width for a half-open interval [start, end)
+  // Single-point bars (start===end) get centered ±30min; all bars clamp to LEFT
+  const barGeom = (start, end) => {
+    const sMs = new Date(start).getTime()
+    const eMs = new Date(end).getTime()
+    const visStart = sMs - 1800_000
+    const visEnd   = sMs === eMs ? sMs + 1800_000 : eMs - 1800_000
+    const x  = Math.max(LEFT, scale(visStart))
+    const x2 = scale(visEnd)
+    return { x, width: Math.max(x2 - x, 1) }
+  }
+  const barTime = (start, end) => {
+    const sMs = new Date(start).getTime()
+    const eMs = new Date(end).getTime()
+    if (sMs === eMs) return fmtH(start)
+    return `${fmtH(start)} – ${fmtH(new Date(eMs - 3600_000))}`
+  }
+
+  const TYPE_LABEL = { good: 'Good', cross: 'Crosswind', good_gusty: 'Gusty', cross_gusty: 'Crosswind, Gusty', fog: 'Fog', rain: 'Rain' }
+  const fmtH = (iso) => { const d = new Date(iso); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
+  const [tooltip, setTooltip] = useState(null)
 
   const grouped = {}
   for (const r of ganttRows) { if (!grouped[r.day]) grouped[r.day] = []; grouped[r.day].push(r) }
@@ -159,12 +186,24 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay }) {
     const step = W < 400 ? 7200_000 : 3600_000
     for (let t = start.getTime(); t <= maxT; t += step) {
       const x = scale(new Date(t))
-      if (x > LEFT && x < W - RIGHT) hourLabels.push({ x, label: new Date(t).getHours() + ':00' })
+      if (x >= LEFT - FS_HR && x < W - RIGHT) hourLabels.push({ x, label: new Date(t).getHours() + ':00' })
     }
   }
 
   return (
-    <div ref={containerRef} style={{ width: '100%' }}>
+    <div ref={containerRef} style={{ width: '100%', position: 'relative' }} onClick={() => setTooltip(null)}>
+      {tooltip && (
+        <div style={{
+          position: 'absolute', left: Math.min(tooltip.x, W - 160), top: tooltip.y - 46,
+          background: T.card, border: `1px solid ${T.borderEm}`, borderRadius: 6,
+          padding: '6px 10px', fontSize: 12, color: T.text, fontFamily: T.font,
+          pointerEvents: 'none', zIndex: 10, whiteSpace: 'nowrap',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+        }}>
+          <div style={{ fontWeight: 600 }}>{tooltip.label}</div>
+          <div style={{ color: T.text2, marginTop: 2 }}>{tooltip.time}</div>
+        </div>
+      )}
       <svg width={W} height={svgH} style={{ fontFamily: T.font, display: 'block' }}>
         {hourLabels.map(h => (
           <g key={h.label + h.x}>
@@ -202,16 +241,16 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay }) {
                 )
               })()}
               {flyableRows.map((r, i) => (
-                <rect key={i} x={scale(r.start)} y={y + BAR_Y} width={Math.max(scale(r.end) - scale(r.start), 1)} height={BAR_H}
-                  fill={COLOR[r.type] || '#444'} rx={2} opacity={0.88}>
-                  <title>{r.type} – {r.point}</title>
-                </rect>
+                <rect key={i} {...barGeom(r.start, r.end)} y={y + BAR_Y} height={BAR_H}
+                  fill={COLOR[r.type] || '#444'} rx={2} opacity={0.88} style={{ cursor: 'pointer' }}
+                  onClick={e => { e.stopPropagation(); const di = days.indexOf(day); if (onDayClick && di !== -1) onDayClick(di); setTooltip({ label: TYPE_LABEL[r.type] || r.type, time: barTime(r.start, r.end), x: barGeom(r.start, r.end).x, y: y + BAR_Y }) }}
+                />
               ))}
               {wRows.map((r, i) => (
-                <rect key={'w' + i} x={scale(r.start)} y={y + BAR_Y} width={Math.max(scale(r.end) - scale(r.start), 1)} height={BAR_H}
-                  fill={WEATHER_COLOR[r.type] || '#666'} rx={2} opacity={0.6}>
-                  <title>{r.type}</title>
-                </rect>
+                <rect key={'w' + i} {...barGeom(r.start, r.end)} y={y + BAR_Y} height={BAR_H}
+                  fill={WEATHER_COLOR[r.type] || '#666'} rx={2} opacity={0.6} style={{ cursor: 'pointer' }}
+                  onClick={e => { e.stopPropagation(); const di = days.indexOf(day); if (onDayClick && di !== -1) onDayClick(di); setTooltip({ label: TYPE_LABEL[r.type] || r.type, time: barTime(r.start, r.end), x: barGeom(r.start, r.end).x, y: y + BAR_Y }) }}
+                />
               ))}
             </g>
           )
@@ -283,7 +322,9 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         .bindPopup(
           `<b>${point.name}</b><br/>Good heading: ${pf.wind_pizza[1]}h | Crosswind: ${pf.wind_pizza[0]+pf.wind_pizza[2]}h` +
           `<br/><a href="#" data-ptidx="${ptIdx}" style="color:#5578e8;font-size:12px;text-decoration:none;display:inline-block;margin-top:4px;">` +
-          `Detailed Forecast</a>`
+          `Detailed Forecast</a>` +
+          `<br/><a href="https://www.google.com/maps?q=${point.lat},${point.lon}" target="_blank" rel="noopener noreferrer" style="color:#5578e8;font-size:12px;text-decoration:none;display:inline-block;margin-top:2px;">` +
+          `Google Maps</a>`
         )
       marker.on('popupopen', () => {
         const container = marker.getPopup().getElement()
@@ -302,9 +343,9 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     })
   }, [displayForecast, points, dateIdx])
 
-  const { barData, ganttRows, weatherRows, certByDay, weatherByDay } = useMemo(() => {
+  const { barData, ganttRows, weatherRows, certByDay, weatherByDay, bestPtByDi } = useMemo(() => {
     if (!displayForecast || !points.length) return { barData: [], ganttRows: [], weatherRows: [], certByDay: {}, weatherByDay: {} }
-    const bar = [], gantt = [], weather = [], certByDayMap = {}, weatherByDayMap = {}
+    const bar = [], gantt = [], weather = [], certByDayMap = {}, weatherByDayMap = {}, bestPtByDiMap = {}
     // di=0 is Yesterday, di=1 is Today; plotDays counts forward from Today
     const maxDi = plotDays  // Today=1 … Today+plotDays-1 = plotDays
     displayForecast.forEach((dayPf, di) => {
@@ -319,6 +360,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         if (q === bestQuality && f > bestFly) { bestFly = f; best = pi }
       })
       const bpf = dayPf[best], bpt = points[best]
+      bestPtByDiMap[di] = best
       bar.push({
         day: shortenDay(days[di] || `Day ${di}`),
         di,
@@ -333,8 +375,9 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       if (bestFly > 0 && bpf?.fog_gantt)  bpf.fog_gantt.forEach(g => weather.push({ day: dayName, type: g.type, start: g.start, end: g.end }))
       if (bestFly > 0 && bpf?.rain_gantt) bpf.rain_gantt.forEach(g => weather.push({ day: dayName, type: g.type, start: g.start, end: g.end }))
     })
-    return { barData: bar, ganttRows: gantt, weatherRows: weather, certByDay: certByDayMap, weatherByDay: weatherByDayMap }
+    return { barData: bar, ganttRows: gantt, weatherRows: weather, certByDay: certByDayMap, weatherByDay: weatherByDayMap, bestPtByDi: bestPtByDiMap }
   }, [displayForecast, points, days, certainty, plotDays, showYesterday])
+  const selectDay = (di) => { setDateIdx(di); if (bestPtByDi[di] != null) data.setPtIdx(bestPtByDi[di]) }
 
   const TOOLTIP_STYLE = {
     contentStyle: { background: T.card, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: 12, fontFamily: T.font },
@@ -391,7 +434,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
           </div>
         )}
         <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={barData} margin={{ top: 40, right: 8, left: 0, bottom: 0 }} onClick={e => e?.activePayload?.[0]?.payload?.di != null && setDateIdx(e.activePayload[0].payload.di)} style={{ cursor: 'pointer' }}>
+          <BarChart data={barData} margin={{ top: 40, right: 8, left: 0, bottom: 0 }} onClick={e => { const d = e?.activePayload?.[0]?.payload; if (d?.di != null) selectDay(d.di) }} style={{ cursor: 'pointer' }}>
             <XAxis dataKey="day" tick={{ fill: T.text2, fontSize: 11, fontFamily: T.font }} interval={0} />
             <YAxis width={28} tick={{ fill: T.text2, fontSize: 12, fontFamily: T.font }} />
             <Tooltip {...TOOLTIP_STYLE} formatter={(val, name) => val > 0 ? [`${val}h`, name] : [null, null]} />
@@ -437,7 +480,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
 
       {/* Gantt */}
       <div style={{ background: T.card, borderRadius: 8, padding: '12px 4px', border: `1px solid ${T.borderDim}`, overflowX: 'auto', marginTop: 8 }}>
-        <GanttChart ganttRows={ganttRows} weatherRows={weatherRows} days={days} certByDay={certByDay} />
+        <GanttChart ganttRows={ganttRows} weatherRows={weatherRows} days={days} certByDay={certByDay} onDayClick={selectDay} />
         <div style={{ padding: '6px 12px 0' }}>
           <Legendsmall_ items={[
             { color: C.good, name: 'Good wind' }, { color: C.cross, name: 'Crosswind' },
