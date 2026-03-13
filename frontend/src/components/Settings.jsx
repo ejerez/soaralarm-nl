@@ -173,7 +173,7 @@ export default function Settings({ data }) {
     <div>
       <div style={{ marginBottom: 20, fontSize: 16, fontWeight: 600, color: T.text }}>Settings</div>
       <div style={card}>
-        <div style={field}>
+        <div data-tutorial="settings-model" style={field}>
           <label style={label_}>Forecast Model</label>
           <select style={{ ...select_, width: '100%' }} value={localModel} onChange={e => setLocalModel(e.target.value)}>
             <option value="soar_knmi">KNMI HARMONIE</option>
@@ -218,7 +218,7 @@ export default function Settings({ data }) {
         </div>
 
         <div style={{ opacity: localCustomWind ? 0.4 : 1, pointerEvents: localCustomWind ? 'none' : 'auto', transition: 'opacity 0.2s' }}>
-          <div style={field}>
+          <div data-tutorial="settings-wings" style={field}>
             <label style={label_}>Wings</label>
             {rows.map((entry, i) => (
               <WingRow key={i} entry={entry} wings={wings} isRemovable={i > 0}
@@ -232,7 +232,7 @@ export default function Settings({ data }) {
             <div style={{ fontSize: 11, color: T.text3, marginTop: 6 }}>Up to {MAX_WINGS} wings.</div>
           </div>
 
-          <div style={field}>
+          <div data-tutorial="settings-weight" style={field}>
             <label style={label_}>Total Weight in Flight</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input type="text" inputMode="decimal" style={{ ...input_, width: 80 }}
@@ -246,7 +246,7 @@ export default function Settings({ data }) {
           </div>
         </div>
 
-        <div style={field}>
+        <div data-tutorial="settings-window" style={field}>
           <label style={label_}>Availability Window</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <input type="time" style={input_} value={localTs} onChange={e => setLocalTs(e.target.value)} />
@@ -260,6 +260,24 @@ export default function Settings({ data }) {
           <button style={saveBtn} onClick={handleSave}>Save &amp; Apply</button>
           {saved && <span style={savedMsg}>✓ Applied</span>}
         </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', marginTop: 20 }}></div>
+        <button
+          onClick={() => window.dispatchEvent(new Event('soaralarm:start-tutorial'))}
+          style={{
+            background: 'transparent', color: T.text2,
+            border: `1px solid ${T.border}`, borderRadius: 8,
+            padding: '9px 22px', fontSize: 13, cursor: 'pointer',
+            fontFamily: T.font, display: 'inline-flex', alignItems: 'center', gap: 8,
+          }}
+        >
+          <img src="/paraglider_small.png" width={26} height={26} alt="" /> App Tutorial
+        </button>
+      </div>
+
+      {/* Tour button */}
+      <div style={{ textAlign: 'center', margin: '16px 0 4px' }}>
+        
       </div>
 
       {/* Status panel */}

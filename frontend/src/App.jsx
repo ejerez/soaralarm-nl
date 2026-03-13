@@ -5,6 +5,7 @@ import PointForecast from './components/PointForecast.jsx'
 import Settings      from './components/Settings.jsx'
 import Info          from './components/Info.jsx'
 import WelcomeModal  from './components/WelcomeModal.jsx'
+import Tutorial      from './components/Tutorial.jsx'
 
 // Inject Inter font once
 if (typeof document !== 'undefined' && !document.getElementById('soar-inter')) {
@@ -204,6 +205,7 @@ export default function App() {
   return (
     <div style={s.app}>
       <WelcomeModal />
+      <Tutorial activeTab={activeTab} onSwitchTab={setActiveTab} />
 
       {/* ── Tab bar ── */}
       <nav style={s.tabBar}>

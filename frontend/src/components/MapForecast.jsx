@@ -29,8 +29,8 @@ const T = {
 // Flyable colours — slightly desaturated for a more refined look
 const C = {
   good:        '#1dbb02',
-  cross:       '#d1bb16',
-  gusty:       '#d68800',
+  cross:       '#ddb60a',
+  gusty:       '#d67900',
   crossGusty:  '#c12e0d',
   rain:        '#1b8fe2',
   fog:         '#8888a0',
@@ -53,7 +53,7 @@ function windPolygons(point, pf, maxMag) {
         [point.lat + mag * Math.cos(ang1), point.lon + 1.63 * mag * Math.sin(ang1)],
         [point.lat + mag * Math.cos(ang2), point.lon + 1.63 * mag * Math.sin(ang2)],
       ],
-      color: i === 1 ? C.good : C.gusty,
+      color: i === 1 ? C.good : C.cross,
     }
   }).filter(Boolean)
 }
@@ -66,10 +66,10 @@ function markerColor(pf) {
 }
 
 export function certLabel(agree, total) {
-  if (agree === 4) return { label: 'Very High Confidence', color: '#00e6bc' }
-  if (agree === 3) return { label: 'High Confidence',      color: '#8fef00' }
-  if (agree === 2) return { label: 'Medium Confidence',    color: '#ffa726' }
-  return                  { label: 'Low Confidence',       color: '#ef5350' }
+  if (agree === 4) return { label: '★★★★', color: '#00e6bc' }
+  if (agree === 3) return { label: '★★★',      color: '#00ef3c' }
+  if (agree === 2) return { label: '★★',    color: '#dbff26' }
+  return                  { label: '★',       color: '#d3357c' }
 }
 
 function InfoTooltip({ text }) {
@@ -391,10 +391,10 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       <div ref={mapRef} style={{
         height: 420, borderRadius: 8, overflow: 'hidden', marginBottom: 24,
         border: `1px solid ${T.borderDim}`, zIndex: 0, position: 'relative',
-      }} />
+      }} data-tutorial="map" />
 
       {/* Plot controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10, flexWrap: 'wrap' }}>
+      <div data-tutorial="plotcontrols" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10, flexWrap: 'wrap' }}>
         <label style={{ fontSize: 12, color: T.text2, display: 'flex', alignItems: 'center', gap: 6 }}>
           Forecast days
           <select
@@ -419,7 +419,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       </div>
 
       {/* Bar chart */}
-      <div style={{ position: 'relative' }}>
+      <div data-tutorial="barchart" style={{ position: 'relative' }}>
         {barData.some(d => weatherByDay[d.day]?.has_fog || weatherByDay[d.day]?.has_rain) && (
           <div style={{ position: 'absolute', top: 'clamp(20px, -2.5vw, 14px)', left: 28, right: 8, display: 'flex', zIndex: 1, pointerEvents: 'none' }}>
             {barData.map((d, i) => {
@@ -451,7 +451,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
 
       {/* Certainty row */}
       {certainty && certainty.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', marginTop: 'clamp(-18px,-2.5vw,-10px)' }}>
+        <div data-tutorial="confidence" style={{ display: 'flex', alignItems: 'center', marginTop: 'clamp(-18px,-2.5vw,-10px)' }}>
           <div style={{ width: 28, flexShrink: 0 }} />
           <div style={{ flex: 1, display: 'flex', paddingRight: 8 }}>
             {barData.map((d, i) => {
@@ -480,7 +480,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       </div>
 
       {/* Gantt */}
-      <div style={{ background: T.card, borderRadius: 8, padding: '12px 4px', border: `1px solid ${T.borderDim}`, overflowX: 'auto', marginTop: 8 }}>
+      <div data-tutorial="gantt" style={{ background: T.card, borderRadius: 8, padding: '12px 4px', border: `1px solid ${T.borderDim}`, overflowX: 'auto', marginTop: 8 }}>
         <GanttChart ganttRows={ganttRows} weatherRows={weatherRows} days={days} certByDay={certByDay} onDayClick={selectDay} />
         <div style={{ padding: '6px 12px 0' }}>
           <Legendsmall_ items={[

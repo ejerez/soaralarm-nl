@@ -198,7 +198,7 @@ export default function PointForecast({ data }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div data-tutorial="pt-selectors" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
         <select style={select_} value={ptIdx} onChange={e => setPtIdx(Number(e.target.value))}>
           {points.map((p,i) => <option key={p.name} value={i}>{p.name}</option>)}
         </select>
@@ -212,7 +212,7 @@ export default function PointForecast({ data }) {
       </div>
 
       {/* Wind Speed */}
-      <div style={card_}>
+      <div data-tutorial="pt-wind" style={card_}>
         <div style={sectionTitle_}>Wind &amp; Gust Speed</div>
         <ResponsiveContainer width="100%" height={250}>
           <ComposedChart data={windData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
@@ -245,7 +245,7 @@ export default function PointForecast({ data }) {
       </div>
 
       {/* Wind Direction */}
-      <div style={card_}>
+      <div data-tutorial="pt-direction" style={card_}>
         <div style={sectionTitle_}>Wind Heading</div>
         <ResponsiveContainer width="100%" height={210}>
           <ComposedChart data={dirData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
@@ -284,7 +284,7 @@ export default function PointForecast({ data }) {
 
       {/* Wind ranges */}
       {wind_ranges.length > 0 && (
-        <div style={{ fontSize: 12, color: T.text2, marginTop: 4, lineHeight: 2 }}>
+        <div data-tutorial="pt-ranges" style={{ fontSize: 12, color: T.text2, marginTop: 4, lineHeight: 2 }}>
           <span style={{ color: T.text, fontWeight: 600 }}>Wind ranges at {point.name}:</span><br />
           {wind_ranges.map(wr => {
             const displayName = wings[wr.key]?.display_name ?? wr.key
