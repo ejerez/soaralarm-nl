@@ -329,6 +329,43 @@ export default function Info({ data }) {
           window (from 90 minutes before sunrise to 90 minutes after sunset).
         </p>
       </div>
+      
+      <div style={card}>
+        <h2 style={h2}>Credits</h2>
+        <p style={p}>
+          This web app was made possible by the help of some of the awesome pilots who soar the dunes frequently, 
+          including <b style={{ color: '#dedede' }}>Simon</b> from{' '}
+          <a href="https://paraglidingisfun.com/" target="_blank" rel="noopener noreferrer" style={link}>
+            Paragliding is Fun 
+          </a>{' '}
+          and <b style={{ color: '#dedede' }}>Bryan</b> from{' '}
+          <a href="https://www.dune-rider.com/" target="_blank" rel="noopener noreferrer" style={link}>
+            Dune Rider 
+          </a>,{' '}
+          whose fantastic wings introduced me to the life-changing art of dune soaring.
+        </p>
+
+        <p style={p}>
+          It was also made possible by{' '}
+          <a href="https://www.anthropic.com/claude" target="_blank" rel="noopener noreferrer" style={link}>
+            Claude
+          </a>{' '}
+          by Anthropic, which helped enormously in the design of the web service architecture and frontend development, given my 
+          limited experience in this kind of development and how little time I have available to work on this project.{' '}
+          <b style={{ color: '#dedede' }}>Claude</b> helped in planning the backend architecture{' '}
+          with <b style={{ color: '#dedede' }}>FastAPI</b>, developing most of the frontend with{' '}
+          <b style={{ color: '#dedede' }}>React.js</b> and helping add features and solve issues at a much faster rate than I could by hand.
+        </p>
+      </div>
+
+      <div style={card}>
+        <h2 style={h2}>Privacy</h2>
+        <p style={p}>
+          Since I do not have the experience to be able to identify any security issues in the web app architecture, the decision was simply made 
+          to not collect any data from the user. All your settings and preferences are only stored locally in your browser, and Soaralarm NL does 
+          not collect or store any information of any kind about its users.
+        </p>
+      </div>
 
       {/* ── GitHub link ── */}
       <div style={{ textAlign: 'center', padding: '8px 0 24px', fontSize: 15, color: '#555' }}>
@@ -336,7 +373,7 @@ export default function Info({ data }) {
           href="https://github.com/ejerez/soaralarm-nl"
           target="_blank"
           rel="noopener noreferrer"
-          style={{ ...link, color: '#555' }}
+          style={{ ...link, color: '#9e9e9e' }}
         >
           Source code on GitHub
         </a>
