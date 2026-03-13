@@ -260,7 +260,7 @@ export function useSoarData() {
           }
 
           if (st.forecast_stale && !st.updating_forecast) api.refreshForecast()
-          if (st.measurement_stale && !st.updating_measurements) api.refreshMeasure()
+          if (st.measurement_stale && !st.updating_measurements && isInDaylightWindow(rawForecastRef.current)) api.refreshMeasure()
 
           // Seed the updating refs so poll transition detection works from tick 1
           prevFcUpdatingRef.current = st.updating_forecast
