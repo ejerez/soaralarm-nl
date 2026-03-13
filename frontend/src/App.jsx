@@ -203,7 +203,6 @@ export default function App() {
 
   return (
     <div style={s.app}>
-      <WelcomeModal />
       <Tutorial activeTab={activeTab} onSwitchTab={setActiveTab} />
 
       {/* ── Tab bar ── */}
