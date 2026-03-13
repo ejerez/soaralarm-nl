@@ -261,7 +261,10 @@ def get_display_forecast(
     for day_idx, day_disp in enumerate(disp):
         # KNMI seamless transitions to ECMWF IFS at ~2.5 days ahead (from today = index 1).
         # Include KNMI only for yesterday (0), today (1), tomorrow (2).
-        use_models = ALL_MODELS if day_idx < 4 else [m for m in ALL_MODELS if m != "soar_knmi"]
+        use_models = [m for m in ALL_MODELS if not (
+            (m == "soar_knmi"  and day_idx > 3) or
+            (m == "soar_arome" and day_idx > 4)
+        )]
         total = sum(1 for mk in use_models if mk in model_disps and model_disps[mk] is not None)
 
         # Count model agreement per point — pick the point most models agree is flyable.

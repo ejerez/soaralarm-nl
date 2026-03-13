@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
 
 const STORAGE_KEY = 'soaralarm_welcomed'
 const SPOT_PAD    = 8
 const TOOLTIP_W   = 380
 const MARGIN      = 12
-const EST_H       = 280
-
 const T = {
   card:   '#262626',
   border: '#3d3d3d',
@@ -106,6 +104,13 @@ export default function Tutorial({ activeTab, onSwitchTab }) {
   const retreatRef          = useRef(null)
   const closeRef            = useRef(null)
   const current             = STEPS[step]
+  const tooltipRef          = useRef(null)
+  const [tooltipH, setTooltipH] = useState(0)  // measured tooltip height for positioning
+
+  // Measure tooltip height after every render so positioning uses real content size
+  useLayoutEffect(() => {
+    if (tooltipRef.current) setTooltipH(tooltipRef.current.offsetHeight)
+  })
 
   useEffect(() => { stepRef.current = step }, [step])
   useEffect(() => { openRef.current = open }, [open])
@@ -163,6 +168,7 @@ export default function Tutorial({ activeTab, onSwitchTab }) {
     cancelAnimationFrame(rafRef.current)
     clearInterval(retryRef.current)
     setElRect(null)
+    setTooltipH(0)  // hide until remeasured at new position
 
     if (current.tab !== activeTab) {
       onSwitchTab(current.tab)
@@ -212,38 +218,38 @@ export default function Tutorial({ activeTab, onSwitchTab }) {
     height: elRect.height + SPOT_PAD * 2,
   } : null
 
-  // Compute tooltip position in viewport coords
-  const tw = Math.min(TOOLTIP_W, vw - 32)
+  // Tooltip width scales with viewport
+  const tw = Math.min(TOOLTIP_W, vw - 24)
+  // Use measured height; fall back to 0 on first render (tooltip invisible until measured)
+  const th = tooltipH
   let tooltipStyle
+  let tooltipVisible = th > 0  // hide until we have a real measurement
 
   if (!spot || current.position === 'center') {
     tooltipStyle = { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: tw }
+    tooltipVisible = true  // centred card always visible immediately
   } else {
     const cx         = Math.max(MARGIN, Math.min(spot.left + spot.width / 2 - tw / 2, vw - tw - MARGIN))
-    const spaceAbove = spot.top - MARGIN
-    const spaceBelow = vh - (spot.top + spot.height) - MARGIN
-    const goAbove    = current.position === 'above'
-      ? spaceAbove >= EST_H
-      : spaceBelow < EST_H && spaceAbove >= EST_H
+    const spaceAbove = spot.top - MARGIN * 2
+    const spaceBelow = vh - (spot.top + spot.height) - MARGIN * 2
+    // Prefer the hinted side if it fits; flip if it doesn't
+    const wantAbove  = current.position === 'above'
+    const fitsAbove  = spaceAbove >= th
+    const fitsBelow  = spaceBelow >= th
+    const goAbove    = wantAbove ? (fitsAbove || !fitsBelow) : (!fitsBelow && fitsAbove)
 
     if (goAbove) {
-      tooltipStyle = {
-        position: 'fixed',
-        top:  Math.max(MARGIN, spot.top - EST_H - MARGIN),
-        left: cx, width: tw,
-        maxHeight: Math.max(spaceAbove - MARGIN * 2, 160),
-      }
+      // Anchor bottom of tooltip to just above spotlight
+      const bottom = vh - spot.top + MARGIN
+      tooltipStyle = { position: 'fixed', bottom, left: cx, width: tw }
     } else {
-      tooltipStyle = {
-        position: 'fixed',
-        top:  Math.min(spot.top + spot.height + MARGIN, vh - EST_H - MARGIN),
-        left: cx, width: tw,
-        maxHeight: Math.max(spaceBelow - MARGIN * 2, 160),
-      }
+      // Anchor top of tooltip to just below spotlight
+      const top = spot.top + spot.height + MARGIN
+      tooltipStyle = { position: 'fixed', top, left: cx, width: tw }
     }
   }
 
-  const btnBase = { border: 'none', borderRadius: 7, padding: '8px 20px', fontSize: 13, cursor: 'pointer', fontFamily: T.font }
+  const btnBase = { border: 'none', borderRadius: 7, padding: 'clamp(6px,2vw,8px) clamp(14px,4vw,20px)', fontSize: 'clamp(12px,3.5vw,13px)', cursor: 'pointer', fontFamily: T.font }
 
   return (
     <>
@@ -265,6 +271,7 @@ export default function Tutorial({ activeTab, onSwitchTab }) {
       )}
 
       <div
+        ref={tooltipRef}
         onClick={e => e.stopPropagation()}
         style={{
           ...tooltipStyle,
@@ -272,10 +279,10 @@ export default function Tutorial({ activeTab, onSwitchTab }) {
           background: T.card,
           border: `1px solid ${T.border}`,
           borderRadius: 12,
-          padding: '20px 22px 16px',
+          padding: 'clamp(14px, 4vw, 20px) clamp(14px, 4vw, 22px) clamp(12px, 3vw, 16px)',
           boxShadow: '0 8px 40px rgba(0,0,0,0.65)',
           fontFamily: T.font,
-          overflowY: 'auto',
+          visibility: tooltipVisible ? 'visible' : 'hidden',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -285,10 +292,10 @@ export default function Tutorial({ activeTab, onSwitchTab }) {
           <button onClick={close} style={{ background: 'none', border: 'none', color: T.text3, fontSize: 20, cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}>×</button>
         </div>
 
-        <div style={{ fontSize: 15, fontWeight: 700, color: T.text, marginBottom: 8, lineHeight: 1.3 }}>
+        <div style={{ fontSize: 'clamp(13px, 4vw, 15px)', fontWeight: 700, color: T.text, marginBottom: 8, lineHeight: 1.3 }}>
           {current.title}
         </div>
-        <div style={{ fontSize: 13, color: T.text2, lineHeight: 1.72 }}>
+        <div style={{ fontSize: 'clamp(12px, 3.5vw, 13px)', color: T.text2, lineHeight: 1.65 }}>
           {current.body}
         </div>
 
