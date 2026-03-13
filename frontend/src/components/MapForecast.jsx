@@ -6,6 +6,13 @@ import 'leaflet/dist/leaflet.css'
 const DEG = Math.PI / 180
 function toRad(d) { return d * DEG }
 
+const DAY_SHORT = {
+  Yesterday: 'Yest.', Today: 'Today', Tomorrow: 'Tomr.',
+  Monday: 'Mon.', Tuesday: 'Tue.', Wednesday: 'Wed.',
+  Thursday: 'Thu.', Friday: 'Fri.', Saturday: 'Sat.', Sunday: 'Sun.',
+}
+function shortenDay(d) { return DAY_SHORT[d] ?? d }
+
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const T = {
   bg:        '#1a1a1a',
@@ -205,7 +212,11 @@ const Legendsmall_ = ({ items }) => (
 )
 
 export default function MapForecast({ data, onNavigateToPoint }) {
-  const { displayForecast, certainty, points, days, dateIdx } = data
+  const { displayForecast, certainty, points, days, dateIdx, setDateIdx } = data
+
+  const [plotDays,     setPlotDays]     = useState(() => { try { return Number(localStorage.getItem('plotDays')) || 5 } catch { return 5 } })
+  const [showYesterday, setShowYesterday] = useState(() => { try { return localStorage.getItem('showYesterday') === 'true' } catch { return false } })
+
   const mapRef    = useRef(null)
   const leafletRef = useRef(null)
   const layersRef  = useRef([])
@@ -260,7 +271,11 @@ export default function MapForecast({ data, onNavigateToPoint }) {
   const { barData, ganttRows, weatherRows, certByDay, weatherByDay } = useMemo(() => {
     if (!displayForecast || !points.length) return { barData: [], ganttRows: [], weatherRows: [], certByDay: {}, weatherByDay: {} }
     const bar = [], gantt = [], weather = [], certByDayMap = {}, weatherByDayMap = {}
+    // di=0 is Yesterday, di=1 is Today; plotDays counts forward from Today
+    const maxDi = plotDays  // Today=1 … Today+plotDays-1 = plotDays
     displayForecast.forEach((dayPf, di) => {
+      if (di === 0 && !showYesterday) return
+      if (di > maxDi) return
       let bestQuality = -1
       dayPf.forEach(pf => { const q = pf.good_hours + pf.gusty_hours; if (q > bestQuality) bestQuality = q })
       let best = 0, bestFly = -1
@@ -271,7 +286,8 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       })
       const bpf = dayPf[best], bpt = points[best]
       bar.push({
-        day: days[di] || `Day ${di}`,
+        day: shortenDay(days[di] || `Day ${di}`),
+        di,
         good: bpf?.good_hours || 0, cross: bpf?.cross_hours || 0,
         gusty: bpf?.gusty_hours || 0, cross_gusty: bpf?.cross_gusty_hours || 0,
         label: ((bpf?.good_hours||0)+(bpf?.cross_hours||0)+(bpf?.gusty_hours||0)+(bpf?.cross_gusty_hours||0)) > 0 ? (bpt?.name||'') : '',
@@ -284,7 +300,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       if (bestFly > 0 && bpf?.rain_gantt) bpf.rain_gantt.forEach(g => weather.push({ day: dayName, type: g.type, start: g.start, end: g.end }))
     })
     return { barData: bar, ganttRows: gantt, weatherRows: weather, certByDay: certByDayMap, weatherByDay: weatherByDayMap }
-  }, [displayForecast, points, days, certainty])
+  }, [displayForecast, points, days, certainty, plotDays, showYesterday])
 
   const TOOLTIP_STYLE = {
     contentStyle: { background: T.card, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: 12, fontFamily: T.font },
@@ -298,6 +314,31 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         height: 420, borderRadius: 8, overflow: 'hidden', marginBottom: 24,
         border: `1px solid ${T.borderDim}`, zIndex: 0, position: 'relative',
       }} />
+
+      {/* Plot controls */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10, flexWrap: 'wrap' }}>
+        <label style={{ fontSize: 12, color: T.text2, display: 'flex', alignItems: 'center', gap: 6 }}>
+          Forecast days
+          <select
+            value={plotDays}
+            onChange={e => { const v = Number(e.target.value); setPlotDays(v); try { localStorage.setItem('plotDays', v) } catch {} }}
+            style={{ background: T.raised, color: T.text, border: `1px solid ${T.borderEm}`, borderRadius: 5, padding: '3px 7px', fontSize: 12, cursor: 'pointer', fontFamily: T.font }}
+          >
+            <option value={3}>3</option>
+            <option value={5}>5</option>
+            <option value={7}>7</option>
+          </select>
+        </label>
+        <label style={{ fontSize: 12, color: T.text2, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
+          <input
+            type="checkbox"
+            checked={showYesterday}
+            onChange={e => { setShowYesterday(e.target.checked); try { localStorage.setItem('showYesterday', e.target.checked) } catch {} }}
+            style={{ accentColor: T.accent, width: 13, height: 13, cursor: 'pointer' }}
+          />
+          Show yesterday
+        </label>
+      </div>
 
       {/* Bar chart */}
       <div style={{ position: 'relative' }}>
@@ -316,7 +357,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
           </div>
         )}
         <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={barData} margin={{ top: 40, right: 8, left: 0, bottom: 0 }}>
+          <BarChart data={barData} margin={{ top: 40, right: 8, left: 0, bottom: 0 }} onClick={e => e?.activePayload?.[0]?.payload?.di != null && setDateIdx(e.activePayload[0].payload.di)} style={{ cursor: 'pointer' }}>
             <XAxis dataKey="day" tick={{ fill: T.text2, fontSize: 12, fontFamily: T.font }} />
             <YAxis width={28} tick={{ fill: T.text2, fontSize: 12, fontFamily: T.font }} />
             <Tooltip {...TOOLTIP_STYLE} formatter={(val, name) => val > 0 ? [`${val}h`, name] : [null, null]} />
