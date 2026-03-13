@@ -36,7 +36,7 @@ const C = {
   fog:         '#8888a0',
 }
 
-function windPolygons(point, pf) {
+function windPolygons(point, pf, maxMag) {
   const head      = toRad(point.heading)
   const good      = point.head_range.good
   const cross     = point.head_range.cross
@@ -45,7 +45,7 @@ function windPolygons(point, pf) {
   return relBounds.slice(0, 3).map((_, i) => {
     const ang1 = head + toRad(relBounds[i])
     const ang2 = head + toRad(relBounds[i + 1])
-    const mag  = Math.min(slices[i], 3) * 0.04
+    const mag  = (slices[i] / maxMag) * 3 * 0.04
     if (mag === 0) return null
     return {
       coords: [
@@ -309,10 +309,11 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     layersRef.current = []
     const map   = leafletRef.current
     const dayPf = displayForecast[dateIdx] || []
+    const maxMag = Math.max(1, ...dayPf.map(pf => Math.max(...(pf.wind_pizza || [0]))))
     dayPf.forEach((pf, ptIdx) => {
       const point = points[ptIdx]
       if (!point) return
-      windPolygons(point, pf).forEach(poly => {
+      windPolygons(point, pf, maxMag).forEach(poly => {
         layersRef.current.push(
           L.polygon(poly.coords, { color: poly.color, weight: 2, fillColor: poly.color, fillOpacity: 0.7 }).addTo(map)
         )
