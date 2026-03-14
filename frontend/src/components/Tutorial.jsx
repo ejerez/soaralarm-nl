@@ -18,12 +18,12 @@ const STEPS = [
   {
     tab: 0, selector: null, position: 'center',
     title: <><img src="/paraglider_small.png" width={22} height={22} style={{ verticalAlign: 'middle', marginRight: 8 }} alt="" />Welcome to Soaralarm NL</>,
-    body:  <>Soaralarm NL is a <b style={{ color: T.text }}>free and open-source, feature-rich</b> forecasting tool built for pilots soaring the dunes along the Dutch coast. This tutorial will show how to use it step by step.</>,
+    body:  <>Soaralarm NL is a <b style={{ color: T.text }}>free and open-source, feature-rich forecasting tool</b>  built for pilots soaring the dunes along the Dutch coast. This tutorial will show how to use it step by step.</>,
   },
   {
     tab: 0, selector: '[data-tutorial="map"]', position: 'below',
     title: 'The map',
-    body:  <>Each dot marks a <b style={{ color: T.text }}>soaring location</b> along the Dutch coast. The <b style={{ color: T.text }}>wind slices</b> show estimated flyable hours for the selected day – a larger slice means more hours. Green indicates a <b style={{ color: '#1dbb02' }}>Good Heading</b> and yellow indicates <b style={{ color: '#ddb60a' }}>Crosswind</b>. Tap any point marker to see a summary popup with a <b style={{ color: T.text }}>Detailed Forecast</b> link that will take you to the detailed forcast for that location on the selected day.</>,
+    body:  <>Each dot marks a <b style={{ color: T.text }}>soaring location</b> along the Dutch coast. The <b style={{ color: T.text }}>wind slices</b> show estimated flyable hours for the selected day – a larger slice means more hours. Green indicates a <b style={{ color: '#1dbb02' }}>Good Heading</b> and yellow indicates <b style={{ color: '#ddb60a' }}>Crosswind</b>. Tap any point marker to see a summary popup with a <b style={{ color: T.text }}>Detailed Forecast</b> link that will take you to the detailed forecast for that location on the selected day.</>,
   },
   {
     tab: 0, selector: '[data-tutorial="plotcontrols"]', position: 'below',

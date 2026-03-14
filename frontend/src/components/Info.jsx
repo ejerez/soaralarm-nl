@@ -265,7 +265,7 @@ export default function Info({ data }) {
           For each day, every location is scored by how many of the four models agree there will be flyable
           hours <b style={{ color: '#dedede' }}>based solely on wind speed and heading</b>, that is, ignoring rain
           or fog – since these tend to introduce quite some variability to the calculation of flyability, and 
-          their forcasted values are usually more volatile than the forecasted wind. The location with 
+          their forecasted values are usually more volatile than the forecasted wind. The location with 
           the highest score is selected as the "best" location shown in the
           flyable-hours chart, Gantt chart, and Point Forecast default. When multiple locations share the
           same score, the selected model's good-quality hours – and then total flyable hours  – are used as
