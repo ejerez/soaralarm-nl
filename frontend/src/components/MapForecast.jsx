@@ -129,7 +129,6 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick }) {
   }, [])
 
   // All layout values scale with W
-  const LEFT   = Math.round(Math.max(58, Math.min(90, W * 0.21)))
   const RIGHT  = 8
   const DAY_H  = Math.round(Math.max(46, Math.min(58, W * 0.115)))
   const BAR_Y  = Math.round(DAY_H * 0.27)   // top of coloured bar within row
@@ -138,6 +137,14 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick }) {
   const FS_DAY = Math.round(Math.max(11, Math.min(14, W * 0.024)))   // day name
   const FS_PT  = Math.round(Math.max(9,  Math.min(11, W * 0.019)))   // point name
   const FS_CRT = Math.round(Math.max(8,  Math.min(10, W * 0.016)))   // certainty
+  // LEFT must be wide enough to fit the longest point name; 0.62 approximates
+  // average character width for DM Sans at the given font size
+  const longestPtChars = Math.max(0, ...ganttRows.map(r => (r.point || '').length))
+  const LEFT   = Math.round(Math.max(
+    longestPtChars * FS_PT * 0.62 + 10,   // enough for the longest label + gap
+    FS_DAY * 4,                             // at least ~4 chars of the day name
+    Math.min(W * 0.21, 110),                // never wider than 21 % of container
+  ))
 
   const allTimes = [
     ...ganttRows,
