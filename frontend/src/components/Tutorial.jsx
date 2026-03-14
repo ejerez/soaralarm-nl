@@ -28,12 +28,12 @@ const STEPS = [
   {
     tab: 0, selector: '[data-tutorial="plotcontrols"]', position: 'below',
     title: 'Plot controls',
-    body:  <><b style={{ color: T.text }}>Forecast days</b> limits how many days ahead the bar and Gantt charts show. Enabling <b style={{ color: T.text }}>Show yesterday</b> adds the previous day to both charts.</>,
+    body:  <><b style={{ color: T.text }}>Forecast days</b> limits how many days ahead the flyable hours and windows charts show. Enabling <b style={{ color: T.text }}>Show yesterday</b> adds the previous day to both charts.</>,
   },
   {
     tab: 0, selector: '[data-tutorial="barchart"]', position: 'above',
     title: 'Flyable hours',
-    body:  <>Each stacked bar shows <b style={{ color: T.text }}>estimated flyable hours</b> at the calculated <b style={{ color: T.text }}>best location</b> for that day. <b style={{ color: '#1b8fe2' }}>Rain</b> and <b style={{ color: '#8888a0' }}>Fog</b> warnings appear above the bars when expected. <b style={{ color: T.text }}>Tapping on a bar</b> will <b style={{ color: T.text }}>automatically select</b> that day and location on the <b style={{ color: T.text }}>map</b> and on the <b style={{ color: T.text }}>Point tab</b></>,
+    body:  <>Each stacked bar shows <b style={{ color: T.text }}>estimated flyable hours</b> at the calculated <b style={{ color: T.text }}>best location</b> for that day. <b style={{ color: '#1b8fe2' }}>Rain</b> and <b style={{ color: '#8888a0' }}>Fog</b> warnings appear above the bars when expected. <b style={{ color: T.text }}>Tapping on a bar</b> will <b style={{ color: T.text }}>automatically select</b> that day and location on the <b style={{ color: T.text }}>map</b> and on the <b style={{ color: T.text }}>Point tab</b>.</>,
   },
   {
     tab: 0, selector: '[data-tutorial="confidence"]', position: 'above',
@@ -43,7 +43,7 @@ const STEPS = [
   {
     tab: 0, selector: '[data-tutorial="gantt"]', position: 'above',
     title: 'Flyable windows',
-    body:  <>Shows when flyable conditions are expected during each day, at the <b style={{ color: T.text }}>best location</b>. Each coloured block is a <b style={{ color: T.text }}>flyable window</b> – tap it to see the wind category and exact time range. Note that, like with the bar chart, <b style={{ color: T.text }}>tapping on a time window</b> will <b style={{ color: T.text }}>automatically select</b> that day and location on both the <b style={{ color: T.text }}>map</b> and on the <b style={{ color: T.text }}>Point tab</b></>,
+    body:  <>Shows when flyable conditions are expected during each day, at the <b style={{ color: T.text }}>best location</b>. Each coloured block is a <b style={{ color: T.text }}>flyable window</b> – tap it to see the wind category and exact time range. Note that, like with the bar chart, <b style={{ color: T.text }}>tapping on a time window</b> will <b style={{ color: T.text }}>automatically select</b> that day and location on both the <b style={{ color: T.text }}>map</b> and on the <b style={{ color: T.text }}>Point tab</b>.</>,
   },
   {
     tab: 1, selector: '[data-tutorial="pt-selectors"]', position: 'below',
@@ -83,7 +83,7 @@ const STEPS = [
   {
     tab: 2, selector: '[data-tutorial="settings-window"]', position: 'below',
     title: 'Availability window',
-    body:  <>Restricts the <b style={{ color: T.text }}>flyable hours</b> to those that fall within the times you are <b style={{ color: T.text }}>actually available to fly</b>. If you set 10:00 → 17:00, any flyable forecast hours outside that window are excluded from the bar chart totals and the Gantt chart in the <b style={{ color: T.text }}>Map tab</b>.</>,
+    body:  <>Restricts the <b style={{ color: T.text }}>flyable hours</b> to those that fall within the times you are <b style={{ color: T.text }}>actually available to fly</b>. If you set 10:00 → 17:00, any flyable forecast hours outside that window are excluded from the flyable hours and flyable windows in the <b style={{ color: T.text }}>Map tab</b>.</>,
   },
   {
     tab: 2, selector: null, position: 'center',
@@ -112,30 +112,27 @@ export default function Tutorial({ activeTab, onSwitchTab }) {
     if (tooltipRef.current) setTooltipH(tooltipRef.current.offsetHeight)
   })
 
-  // After tooltipH is first set for a step, the tooltip moves to its final
-  // position on the next render. Wait two rAF frames (React commit + browser paint)
-  // before reading the real rect and correcting the scroll.
+  // Once tooltipH is known for a step, scroll the page so there is enough
+  // room on the preferred side of the spotlight for the tooltip.
+  // The rAF tracking loop then updates elRect as the page scrolls, keeping
+  // the spotlight and tooltip positions in sync automatically.
   const scrollCorrectedRef = useRef(false)
   useEffect(() => {
-    if (tooltipH === 0 || !tooltipRef.current) return
+    if (tooltipH === 0 || !current.selector) return
     if (scrollCorrectedRef.current) return
     scrollCorrectedRef.current = true
-    let raf1, raf2
-    raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => {
-        if (!tooltipRef.current) return
-        const r = tooltipRef.current.getBoundingClientRect()
-        const vh = window.innerHeight
-        const PADDING = 10
-        if (r.top < PADDING) {
-          window.scrollBy({ top: r.top - PADDING, behavior: 'smooth' })
-        } else if (r.bottom > vh - PADDING) {
-          window.scrollBy({ top: r.bottom - vh + PADDING, behavior: 'smooth' })
-        }
-      })
-    })
-    return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2) }
-  }, [tooltipH])
+    const el = document.querySelector(current.selector)
+    if (!el) return
+    const r   = el.getBoundingClientRect()
+    const vh  = window.innerHeight
+    const GAP = MARGIN * 2 + tooltipH
+    // Scroll to ensure there are GAP pixels on the preferred side
+    const wantAbove = current.position === 'above'
+    const delta = wantAbove
+      ? Math.min(0, r.top - GAP)               // scroll up if not enough room above
+      : Math.max(0, r.bottom + GAP - vh)        // scroll down if not enough room below
+    if (delta !== 0) window.scrollBy({ top: delta, behavior: 'smooth' })
+  }, [tooltipH])  // eslint-disable-line
 
   useEffect(() => { stepRef.current = step }, [step])
   useEffect(() => { openRef.current = open }, [open])
@@ -265,13 +262,15 @@ export default function Tutorial({ activeTab, onSwitchTab }) {
     const goAbove    = wantAbove ? (fitsAbove || !fitsBelow) : (!fitsBelow && fitsAbove)
 
     if (goAbove) {
-      // Anchor bottom of tooltip to just above spotlight
+      // Anchor bottom of tooltip to just above spotlight; clamp so top stays on-screen
       const bottom = vh - spot.top + MARGIN
-      tooltipStyle = { position: 'fixed', bottom, left: cx, width: tw }
+      const clampedBottom = Math.min(bottom, vh - th - MARGIN)
+      tooltipStyle = { position: 'fixed', bottom: Math.max(clampedBottom, MARGIN), left: cx, width: tw }
     } else {
-      // Anchor top of tooltip to just below spotlight
+      // Anchor top of tooltip to just below spotlight; clamp so bottom stays on-screen
       const top = spot.top + spot.height + MARGIN
-      tooltipStyle = { position: 'fixed', top, left: cx, width: tw }
+      const clampedTop = Math.min(top, vh - th - MARGIN)
+      tooltipStyle = { position: 'fixed', top: Math.max(clampedTop, MARGIN), left: cx, width: tw }
     }
   }
 
@@ -279,7 +278,7 @@ export default function Tutorial({ activeTab, onSwitchTab }) {
 
   return (
     <>
-      <div onClick={advance} style={{ position: 'fixed', inset: 0, zIndex: 9990, cursor: 'pointer' }} />
+      <div onClick={advance} style={{ position: 'fixed', inset: 0, zIndex: 9990, cursor: 'pointer' }} translate="no" />
 
       {spot ? (
         <div style={{
@@ -299,6 +298,7 @@ export default function Tutorial({ activeTab, onSwitchTab }) {
       <div
         ref={tooltipRef}
         onClick={e => e.stopPropagation()}
+        translate="no"
         style={{
           ...tooltipStyle,
           zIndex: 9992,

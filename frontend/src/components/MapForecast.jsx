@@ -369,9 +369,10 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         gusty: bpf?.gusty_hours || 0, cross_gusty: bpf?.cross_gusty_hours || 0,
         label: ((bpf?.good_hours||0)+(bpf?.cross_hours||0)+(bpf?.gusty_hours||0)+(bpf?.cross_gusty_hours||0)) > 0 ? (bpt?.name||'') : '',
       })
-      const dayName = days[di] || `Day ${di}`
+      const dayName  = days[di] || `Day ${di}`
+      const shortDay = shortenDay(dayName)  // barData uses short names — key weather map the same way
       if (certainty?.[di]) certByDayMap[dayName] = certainty[di]
-      weatherByDayMap[dayName] = { has_fog: bestFly > 0 && !!(bpf?.has_fog), has_rain: bestFly > 0 && !!(bpf?.has_rain) }
+      weatherByDayMap[shortDay] = { has_fog: dayPf.some(pf => pf.has_fog), has_rain: dayPf.some(pf => pf.has_rain) }
       if (bpf?.gantt)      bpf.gantt.forEach(g => gantt.push({ day: dayName, point: bpt?.name||'', type: g.type, start: g.start, end: g.end }))
       if (bestFly > 0 && bpf?.fog_gantt)  bpf.fog_gantt.forEach(g => weather.push({ day: dayName, type: g.type, start: g.start, end: g.end }))
       if (bestFly > 0 && bpf?.rain_gantt) bpf.rain_gantt.forEach(g => weather.push({ day: dayName, type: g.type, start: g.start, end: g.end }))
