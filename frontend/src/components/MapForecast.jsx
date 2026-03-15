@@ -172,7 +172,8 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick }) {
     const sMs = new Date(start).getTime()
     const eMs = new Date(end).getTime()
     if (sMs === eMs) return fmtH(start)
-    return `${fmtH(start)} – ${fmtH(new Date(eMs - 3600_000))}`
+    const startFmt = fmtH(start); const endFmt = fmtH(new Date(eMs - 3600_000))
+    return startFmt === endFmt ? startFmt : `${startFmt} – ${endFmt}`
   }
 
   const TYPE_LABEL = { good: 'Good', cross: 'Crosswind', good_gusty: 'Gusty', cross_gusty: 'Crosswind, Gusty', fog: 'Fog', rain: 'Rain' }

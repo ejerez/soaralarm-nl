@@ -367,6 +367,29 @@ export default function Info({ data }) {
         </p>
       </div>
 
+      <div style={card}>
+        <h2 style={h2}>Contact</h2>
+        <p style={p}>
+          For questions, general ideas, or anything else, you can send an email to{' '}
+          <a href="mailto:info@soaralarm.nl" target="_blank" rel="noopener noreferrer" style={link}>
+            info@soaralarm.nl
+          </a>
+        </p>
+
+        <p style={p}>
+          For feedback, send an email to{' '}
+          <a href="mailto:feedback@soaralarm.nl" target="_blank" rel="noopener noreferrer" style={link}>
+            feedback@soaralarm.nl
+          </a>
+        </p>
+
+        <p style={p}>
+          Please do understand that this is a hobby project, done entirely on my free time. Major decisions about the way the app works have already 
+          been made, and the reasoning behind a lot of them is explained here, on the <b style={{ color: '#dedede' }}>Info tab</b>. Your feedback is 
+          greatly appreciated, but bear in mind I probably won't be able to reply to every email.
+        </p>
+      </div>
+
       {/* ── GitHub link ── */}
       <div style={{ textAlign: 'center', padding: '8px 0 24px', fontSize: 15, color: '#555' }}>
         <a
