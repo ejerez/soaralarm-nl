@@ -289,10 +289,10 @@ export default function Info({ data }) {
             </thead>
             <tbody>
               {[
-                { label: 'Very High', color: '#00e676', agree: '4 / 4', until: 'Third day from today (all 4 models active)' },
-                { label: 'High',      color: '#c6ef00', agree: '3 / 4', until: 'Fourth day from today (AROME still active)' },
-                { label: 'Medium',    color: '#ffa726', agree: '2 / 4', until: 'Always possible' },
-                { label: 'Low',       color: '#ef5350', agree: '1 / 4', until: 'Always possible' },
+                { label: '★★★★', color: '#00e676', agree: '4 / 4', until: 'Third day from today (all 4 models active)' },
+                { label: '★★★',   color: '#c6ef00', agree: '3 / 4', until: 'Fourth day from today (AROME still active)' },
+                { label: '★★',     color: '#ffa726', agree: '2 / 4', until: 'Always possible' },
+                { label: '★',       color: '#ef5350', agree: '1 / 4', until: 'Always possible' },
               ].map(({ label, color, agree, until }, i) => (
                 <tr key={label} style={{ borderBottom: '1px solid #363636', background: i % 2 === 0 ? 'transparent' : '#363636' }}>
                   <td style={td}>
