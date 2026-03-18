@@ -29,11 +29,11 @@ function fmtTime(ms) {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
-function buildWindData(dayFc, meas, station, sunrise, sunset) {
+function buildWindData(dayFc, meas, station, sunrise, sunset, convert) {
   const fcPoints = dayFc.time.map((t, i) => ({
     ts:            new Date(t).getTime(),
-    wind_speed:    parseFloat(dayFc.wind_speed[i]?.toFixed(1)),
-    wind_gusts:    parseFloat(dayFc.wind_gusts[i]?.toFixed(1)),
+    wind_speed:    convert(dayFc.wind_speed[i]),
+    wind_gusts:    convert(dayFc.wind_gusts[i]),
     precipitation: parseFloat(dayFc.precipitation[i]?.toFixed(2)),
   }))
 
@@ -57,8 +57,8 @@ function buildWindData(dayFc, meas, station, sunrise, sunset) {
   byTs.forEach((vals, ts) => {
     measPoints.push({
       ts,
-      meas_wind_min: Math.min(...vals),
-      meas_wind_max: Math.max(...vals),
+      meas_wind_min: convert(Math.min(...vals)),
+      meas_wind_max: convert(Math.max(...vals)),
       meas_wind_count: vals.length,
     })
   })
@@ -115,7 +115,7 @@ function buildTempData(dayFc) {
   }))
 }
 
-function WindTooltip({ active, payload, label }) {
+function WindTooltip({ active, payload, label, unit = 'km/h' }) {
   if (!active || !payload?.length) return null
   const d = payload[0]?.payload ?? {}
 
@@ -131,8 +131,8 @@ function WindTooltip({ active, payload, label }) {
     return box(
       <div style={{ color: T.text2 }}>
         <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: 3 }}>Measured wind</div>
-        <div>max: <span style={{ color: T.text }}>{d.meas_wind_max} km/h</span></div>
-        <div>min: <span style={{ color: T.text }}>{d.meas_wind_min} km/h</span></div>
+        <div>max: <span style={{ color: T.text }}>{d.meas_wind_max} {unit}</span></div>
+        <div>min: <span style={{ color: T.text }}>{d.meas_wind_min} {unit}</span></div>
       </div>
     )
   }
@@ -141,8 +141,8 @@ function WindTooltip({ active, payload, label }) {
   if (d.wind_speed == null) return null
   const items = []
   payload.forEach(p => {
-    if (p.dataKey === 'wind_gusts')    items.push({ name: 'Gusts',         value: p.value, color: p.color })
-    if (p.dataKey === 'wind_speed')    items.push({ name: 'Wind Speed',    value: p.value, color: p.color })
+    if (p.dataKey === 'wind_gusts')    items.push({ name: 'Gusts',         value: p.value, color: p.color, unit })
+    if (p.dataKey === 'wind_speed')    items.push({ name: 'Wind Speed',    value: p.value, color: p.color, unit })
     if (p.dataKey === 'precipitation') items.push({ name: 'Precipitation', value: p.value, color: p.color, unit: 'mm' })
   })
   return box(items.map(it => (
@@ -153,10 +153,13 @@ function WindTooltip({ active, payload, label }) {
   )))
 }
 
+const SPEED_FACTOR = { 'km/h': 1, 'kt': 1 / 1.852, 'm/s': 1 / 3.6 }
+
 const DASH = ['4 2','10 10','8 2 2 2','10 5 2 4','5 10 4 2']
 
 export default function PointForecast({ data }) {
-  const { rawForecast, displayForecast, points, measurements, wings, dateIdx, ptIdx, setPtIdx } = data
+  const { rawForecast, displayForecast, points, measurements, wings, dateIdx, ptIdx, setPtIdx, speedUnit = 'km/h' } = data
+  const toUnit = (v) => v == null ? null : parseFloat((v * SPEED_FACTOR[speedUnit]).toFixed(1))
 
   const point = points[ptIdx]
   const dayFc = rawForecast?.[dateIdx]?.[ptIdx]
@@ -187,7 +190,7 @@ export default function PointForecast({ data }) {
   const domainLow  = heading - 90
   const domainHigh = heading + 90
 
-  const windData = useMemo(() => (!dayFc||!point)?[]:buildWindData(dayFc,measurements,point.station,dayFc.sunrise,dayFc.sunset), [dayFc,measurements,point])
+  const windData = useMemo(() => (!dayFc||!point)?[]:buildWindData(dayFc,measurements,point.station,dayFc.sunrise,dayFc.sunset,toUnit), [dayFc,measurements,point,speedUnit])
   const dirData  = useMemo(() => (!dayFc||!point)?[]:buildDirData(dayFc,measurements,point.station,dayFc.sunrise,dayFc.sunset,heading), [dayFc,measurements,point,heading])
   const tempData = useMemo(() => (!dayFc||!point)?[]:buildTempData(dayFc), [dayFc,point])
 
@@ -220,7 +223,7 @@ export default function PointForecast({ data }) {
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin','dataMax']} ticks={dayFc.time.map(t => new Date(t).getTime())} tickFormatter={fmtTime} tick={TICK} />
             <YAxis yAxisId="wind" tick={TICK} width={30} />
             <YAxis yAxisId="rain" orientation="right" tick={false} width={1} />
-            <Tooltip content={<WindTooltip />} />
+            <Tooltip content={<WindTooltip unit={speedUnit} />} />
             <Legend wrapperStyle={{ fontSize:"clamp(8px, 1.4vw, 12px)", color: T.text2, fontFamily: T.font }} />
             {wind_ranges.map((wing, i) => {
               const dash = DASH[i % DASH.length]
@@ -230,16 +233,16 @@ export default function PointForecast({ data }) {
               const posMin = i%2===0 ? 'insideTopLeft' : 'insideTopRight'
               const posMax = i%2===0 ? 'insideBottomLeft' : 'insideBottomRight'
               return [
-                <ReferenceLine key={`min-${wing.key}`} yAxisId="wind" y={wMin} stroke="#3aaa66" strokeWidth={1.5} strokeDasharray={dash} label={{ value:`↑ ${label} ↑`, fill:'#1fd100', fontSize:8, position:posMin }} />,
-                <ReferenceLine key={`max-${wing.key}`} yAxisId="wind" y={wMax} stroke="#3aaa80" strokeWidth={1.5} strokeDasharray={dash} label={{ value:`↓ ${label} ↓`, fill:'#6be655', fontSize:8, position:posMax }} />,
+                <ReferenceLine key={`min-${wing.key}`} yAxisId="wind" y={toUnit(wMin)} stroke="#3aaa66" strokeWidth={1.5} strokeDasharray={dash} label={{ value:`↑ ${label} ↑`, fill:'#1fd100', fontSize:8, position:posMin }} />,
+                <ReferenceLine key={`max-${wing.key}`} yAxisId="wind" y={toUnit(wMax)} stroke="#3aaa80" strokeWidth={1.5} strokeDasharray={dash} label={{ value:`↓ ${label} ↓`, fill:'#6be655', fontSize:8, position:posMax }} />,
               ]
             })}
-            <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"    name="Gusts (km/h)"       fill="#c07028" stroke="#c07028" fillOpacity={0.25} dot={false} connectNulls />
-            <Area yAxisId="wind" type="monotone" dataKey="wind_speed"    name="Wind Speed (km/h)"  fill="#7aaaee" stroke="#7aaaee" fillOpacity={0.25} dot={false} connectNulls />
-            <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precipitation (mm)" fill="#3a6bbf" stroke="#3a6bbf" fillOpacity={0.9}  dot={false} connectNulls />
+            <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"    name={`Gusts (${speedUnit})`}        fill="#c07028" stroke="#c07028" fillOpacity={0.25} dot={false} connectNulls />
+            <Area yAxisId="wind" type="monotone" dataKey="wind_speed"    name={`Wind Speed (${speedUnit})`}   fill="#7aaaee" stroke="#7aaaee" fillOpacity={0.25} dot={false} connectNulls />
+            <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precipitation (mm)"             fill="#3a6bbf" stroke="#3a6bbf" fillOpacity={0.9}  dot={false} connectNulls />
             {/* Measurement band — stacked fill-between: min base (transparent) + band on top */}
-            <Area yAxisId="wind" type="linear" dataKey="meas_wind_min"  name="Measured wind (km/h)" stackId="meas" stroke="rgba(255,255,255,0.75)" strokeWidth={1.5} fill="transparent" dot={false} connectNulls />
-            <Area yAxisId="wind" type="linear" dataKey="meas_wind_band" name="Measured wind max"     stackId="meas" stroke="rgba(255,255,255,0.75)" strokeWidth={1.5} fill="rgba(255,255,255,0.18)" fillOpacity={1} dot={false} connectNulls legendType="none" />
+            <Area yAxisId="wind" type="linear" dataKey="meas_wind_min"  name={`Measured wind (${speedUnit})`} stackId="meas" stroke="rgba(255,255,255,0.75)" strokeWidth={1.5} fill="transparent" dot={false} connectNulls />
+            <Area yAxisId="wind" type="linear" dataKey="meas_wind_band" name="Measured wind max"               stackId="meas" stroke="rgba(255,255,255,0.75)" strokeWidth={1.5} fill="rgba(255,255,255,0.18)" fillOpacity={1} dot={false} connectNulls legendType="none" />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

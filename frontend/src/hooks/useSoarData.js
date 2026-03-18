@@ -87,6 +87,7 @@ function readSettingsFromStorage() {
     customWind:    localStorage.getItem('customWind') === 'true',
     windMin:       parseFloat(localStorage.getItem('windMin') ?? '15'),
     windMax:       parseFloat(localStorage.getItem('windMax') ?? '60'),
+    speedUnit:     localStorage.getItem('speedUnit')    || 'km/h',
   }
 }
 
@@ -144,6 +145,7 @@ export function useSoarData() {
   const [customWind, setCustomWind]     = useState(initSettings.customWind)
   const [windMin, setWindMin]           = useState(initSettings.windMin)
   const [windMax, setWindMax]           = useState(initSettings.windMax)
+  const [speedUnit, setSpeedUnit]       = useState(initSettings.speedUnit)
   const [dateIdx, setDateIdx]           = useState(1)
   const [ptIdx,   setPtIdx]             = useState(0)
 
@@ -181,6 +183,7 @@ export function useSoarData() {
   useEffect(() => { localStorage.setItem('customWind',    customWind) },   [customWind])
   useEffect(() => { localStorage.setItem('windMin',       windMin) },      [windMin])
   useEffect(() => { localStorage.setItem('windMax',       windMax) },      [windMax])
+  useEffect(() => { localStorage.setItem('speedUnit',     speedUnit) },    [speedUnit])
 
   // ── Fetch display forecast ────────────────────────────────────────────────
   // Stable (no deps) — reads settings from settingsRef.
@@ -384,6 +387,7 @@ export function useSoarData() {
     customWind, setCustomWind,
     windMin, setWindMin,
     windMax, setWindMax,
+    speedUnit, setSpeedUnit,
     dateIdx, setDateIdx,
     ptIdx,   setPtIdx,
     refreshForecast: api.refreshForecast,

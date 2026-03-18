@@ -137,6 +137,7 @@ export default function Settings({ data }) {
   const { model, setModel, timeStart, setTimeStart, timeEnd, setTimeEnd,
           selectedWings, setSelectedWings, weight, setWeight,
           customWind, setCustomWind, windMin, setWindMin, windMax, setWindMax,
+          speedUnit, setSpeedUnit,
           wings, status, refreshForecast, refetchDisplay } = data
 
   const [localModel,     setLocalModel]     = useState(model)
@@ -254,6 +255,16 @@ export default function Settings({ data }) {
             <input type="time" style={input_} value={localTe} onChange={e => setLocalTe(e.target.value)} />
           </div>
           <div style={{ fontSize: 11, color: T.text3, marginTop: 5 }}>Flyable hours are only counted within this window.</div>
+        </div>
+
+        <div style={field}>
+          <label style={label_}>Speed Units</label>
+          <select style={{ ...select_, width: '100%' }} value={speedUnit} onChange={e => setSpeedUnit(e.target.value)}>
+            <option value="km/h">km/h</option>
+            <option value="kt">kt</option>
+            <option value="m/s">m/s</option>
+          </select>
+          <div style={{ fontSize: 11, color: T.text3, marginTop: 5 }}>Affects wind speed display in the Point tab only.</div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', marginTop: 4 }}>
