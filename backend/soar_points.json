@@ -7,38 +7,7 @@
         "name": "Zoutelande",
         "station": "vlaktevanderaan",
         "heading": 235,
-        "head_range": {
-            "good": [
-                -22.5,
-                22.5
-            ],
-            "cross": [
-                -50,
-                50
-            ]
-        },
-        "slope": {
-            "steepness": [
-                "steep"
-            ],
-            "height": [
-                "45"
-            ]
-        },
-        "wind_range": {
-            "paraglider_22": [
-                15,
-                30
-            ],
-            "scraper_16": [
-                18,
-                50
-            ],
-            "hopper_16": [
-                18,
-                40
-            ]
-        }
+        "slope": { "steepness": "steep", "height": 45 }
     },
     {
         "lat": 52.564313,
@@ -48,38 +17,7 @@
         "name": "Castricum aan Zee",
         "station": "ijmuiden.havenhoofd.zuid",
         "heading": 279,
-        "head_range": {
-            "good": [
-                -22.5,
-                22.5
-            ],
-            "cross": [
-                -45,
-                45
-            ]
-        },
-        "slope": {
-            "steepness": [
-                "steep"
-            ],
-            "height": [
-                "17"
-            ]
-        },
-        "wind_range": {
-            "paraglider_22": [
-                17,
-                35
-            ],
-            "scraper_16": [
-                20,
-                60
-            ],
-            "hopper_16": [
-                20,
-                50
-            ]
-        }
+        "slope": { "steepness": "steep", "height": 17 }
     },
     {
         "lat": 52.502193,
@@ -89,38 +27,7 @@
         "name": "Wijk aan Zee",
         "station": "ijmuiden.havenhoofd.zuid",
         "heading": 284,
-        "head_range": {
-            "good": [
-                -22.5,
-                22.5
-            ],
-            "cross": [
-                -45,
-                45
-            ]
-        },
-        "slope": {
-            "steepness": [
-                "moderate"
-            ],
-            "height": [
-                "21"
-            ]
-        },
-        "wind_range": {
-            "paraglider_22": [
-                17,
-                35
-            ],
-            "scraper_16": [
-                20,
-                60
-            ],
-            "hopper_16": [
-                20,
-                50
-            ]
-        }
+        "slope": { "steepness": "moderate", "height": 21 }
     },
     {
         "lat": 52.302953,
@@ -130,38 +37,7 @@
         "name": "Langevelderslag",
         "station": "ijmuiden.havenhoofd.zuid",
         "heading": 295,
-        "head_range": {
-            "good": [
-                -20,
-                20
-            ],
-            "cross": [
-                -40,
-                40
-            ]
-        },
-        "slope": {
-            "steepness": [
-                "moderate"
-            ],
-            "height": [
-                "20"
-            ]
-        },
-        "wind_range": {
-            "paraglider_22": [
-                17,
-                35
-            ],
-            "scraper_16": [
-                20,
-                60
-            ],
-            "hopper_16": [
-                20,
-                50
-            ]
-        }
+        "slope": { "steepness": "moderate", "height": 20 }
     },
     {
         "lat": 52.172783,
@@ -171,38 +47,7 @@
         "name": "Wassenaar",
         "station": "ijmuiden.havenhoofd.zuid",
         "heading": 305,
-        "head_range": {
-            "good": [
-                -20,
-                20
-            ],
-            "cross": [
-                -40,
-                40
-            ]
-        },
-        "slope": {
-            "steepness": [
-                "moderate"
-            ],
-            "height": [
-                "17"
-            ]
-        },
-        "wind_range": {
-            "paraglider_22": [
-                17,
-                35
-            ],
-            "scraper_16": [
-                20,
-                60
-            ],
-            "hopper_16": [
-                20,
-                50
-            ]
-        }
+        "slope": { "steepness": "moderate", "height": 17 }
     },
     {
         "lat": 51.878431,
@@ -212,79 +57,17 @@
         "name": "Rockanje Noord",
         "station": "stellendam.haringvlietsluizen.schuif1",
         "heading": 233,
-        "head_range": {
-            "good": [
-                -15,
-                15
-            ],
-            "cross": [
-                -30,
-                30
-            ]
-        },
-        "slope": {
-            "steepness": [
-                "moderate"
-            ],
-            "height": [
-                "12"
-            ]
-        },
-        "wind_range": {
-            "paraglider_22": [
-                20,
-                35
-            ],
-            "scraper_16": [
-                23,
-                60
-            ],
-            "hopper_16": [
-                23,
-                50
-            ]
-        }
+        "slope": { "steepness": "moderate", "height": 12 }
     },
     {
-        "lat": 51.866796, 
+        "lat": 51.866796,
         "lon": 4.052399,
-        "offshore_lat": 51.866796, 
+        "offshore_lat": 51.866796,
         "offshore_lon": 4.052399,
         "name": "Rockanje Zuid",
         "station": "stellendam.haringvlietsluizen.schuif1",
         "heading": 240,
-        "head_range": {
-            "good": [
-                -15,
-                15
-            ],
-            "cross": [
-                -30,
-                30
-            ]
-        },
-        "slope": {
-            "steepness": [
-                "moderate"
-            ],
-            "height": [
-                "9"
-            ]
-        },
-        "wind_range": {
-            "paraglider_22": [
-                20,
-                35
-            ],
-            "scraper_16": [
-                23,
-                60
-            ],
-            "hopper_16": [
-                23,
-                50
-            ]
-        }
+        "slope": { "steepness": "moderate", "height": 9 }
     },
     {
         "lat": 51.669710,
@@ -294,38 +77,8 @@
         "name": "Westenschouwen",
         "station": "oosterschelde.4",
         "heading": 214,
-        "head_range": {
-            "good": [
-                -10,
-                15
-            ],
-            "cross": [
-                -20,
-                30
-            ]
-        },
-        "slope": {
-            "steepness": [
-                "moderate"
-            ],
-            "height": [
-                "17"
-            ]
-        },
-        "wind_range": {
-            "paraglider_22": [
-                22,
-                35
-            ],
-            "scraper_16": [
-                25,
-                60
-            ],
-            "hopper_16": [
-                25,
-                50
-            ]
-        }
+        "head_range": [-20, null],
+        "slope": { "steepness": "moderate", "height": 17 }
     },
     {
         "lat": 51.820073,
@@ -335,38 +88,7 @@
         "name": "Ouddorp Noord",
         "station": "oosterschelde.4",
         "heading": 348,
-        "head_range": {
-            "good": [
-                -10,
-                15
-            ],
-            "cross": [
-                -20,
-                30
-            ]
-        },
-        "slope": {
-            "steepness": [
-                "flat"
-            ],
-            "height": [
-                "7"
-            ]
-        },
-        "wind_range": {
-            "paraglider_22": [
-                22,
-                35
-            ],
-            "scraper_16": [
-                25,
-                60
-            ],
-            "hopper_16": [
-                25,
-                50
-            ]
-        }
+        "slope": { "steepness": "flat", "height": 7 }
     },
     {
         "lat": 51.813616,
@@ -376,38 +98,7 @@
         "name": "Ouddorp Vuur.",
         "station": "oosterschelde.4",
         "heading": 310,
-        "head_range": {
-            "good": [
-                -10,
-                15
-            ],
-            "cross": [
-                -20,
-                30
-            ]
-        },
-        "slope": {
-            "steepness": [
-                "steep"
-            ],
-            "height": [
-                "12"
-            ]
-        },
-        "wind_range": {
-            "paraglider_22": [
-                22,
-                35
-            ],
-            "scraper_16": [
-                25,
-                60
-            ],
-            "hopper_16": [
-                25,
-                50
-            ]
-        }
+        "slope": { "steepness": "steep", "height": 12 }
     },
     {
         "lat": 51.784865,
@@ -417,38 +108,7 @@
         "name": "Ouddorp Zuid",
         "station": "oosterschelde.4",
         "heading": 266,
-        "head_range": {
-            "good": [
-                -10,
-                15
-            ],
-            "cross": [
-                -20,
-                30
-            ]
-        },
-        "slope": {
-            "steepness": [
-                "steep"
-            ],
-            "height": [
-                "8"
-            ]
-        },
-        "wind_range": {
-            "paraglider_22": [
-                22,
-                35
-            ],
-            "scraper_16": [
-                25,
-                60
-            ],
-            "hopper_16": [
-                25,
-                50
-            ]
-        }
+        "slope": { "steepness": "steep", "height": 8 }
     },
     {
         "lat": 51.74087,
@@ -458,37 +118,6 @@
         "name": "Renesse",
         "station": "brouwersdam.brouwershavensegat.2",
         "heading": 13,
-        "head_range": {
-            "good": [
-                -15,
-                15
-            ],
-            "cross": [
-                -30,
-                30
-            ]
-        },
-        "slope": {
-            "steepness": [
-                "flat"
-            ],
-            "height": [
-                "10"
-            ]
-        },
-        "wind_range": {
-            "paraglider_22": [
-                22,
-                35
-            ],
-            "scraper_16": [
-                25,
-                60
-            ],
-            "hopper_16": [
-                25,
-                50
-            ]
-        }
+        "slope": { "steepness": "flat", "height": 10 }
     }
 ]

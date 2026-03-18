@@ -15,6 +15,53 @@ import requests_cache
 from retry_requests import retry
 
 
+# ── Wind & heading range algorithm ───────────────────────────────────────────
+# Base minimum wind speeds (km/h) by slope steepness, calibrated for a 10 m dune.
+_MIN_SPEED_BY_STEEPNESS = {"flat": 26.0, "moderate": 24.0, "steep": 22.0}
+
+# Base maximum wind speeds (km/h) by wing type, calibrated for a 10 m dune.
+_MAX_SPEED_BY_WING = {"scraper_16": 65.0, "hopper_16": 50.0, "paraglider_16": 40.0}
+
+
+def _height_factor(h: float) -> float:
+    """Linear scaling factor for a dune of height h metres; baseline is 10 m."""
+    return (42.0 - 0.2 * h) / 40.0
+
+
+def point_ranges(point: Dict) -> Dict:
+    """
+    Compute wind_range and head_range for a soar point from its slope data.
+
+    wind_range — {wing_key: [min_kmh, max_kmh]} calibrated for DEFAULT_WEIGHT.
+    head_range — {"good": [lo, hi], "cross": [lo, hi]} relative to heading.
+
+    The optional point["head_range"] = [lower_cross, upper_cross] can override
+    the calculated cross-wind bounds for whichever values are not None.
+    The good-wind range is always half of the cross-wind range.
+    """
+    steepness = point["slope"]["steepness"]
+    height    = float(point["slope"]["height"])
+    factor    = _height_factor(height)
+
+    base_min   = _MIN_SPEED_BY_STEEPNESS[steepness]
+    wind_range = {
+        key: [round(base_min * factor, 1), round(max_spd * factor, 1)]
+        for key, max_spd in _MAX_SPEED_BY_WING.items()
+    }
+
+    calc_half = -3.7922 + 12.8541 * math.log(height)
+    override  = point.get("head_range") or [None, None]
+    cross_lo  = float(override[0]) if override[0] is not None else -calc_half
+    cross_hi  = float(override[1]) if override[1] is not None else  calc_half
+
+    head_range = {
+        "cross": [cross_lo,        cross_hi],
+        "good":  [cross_lo / 2.0,  cross_hi / 2.0],
+    }
+
+    return {"wind_range": wind_range, "head_range": head_range}
+
+
 def _sanitise(obj):
     """Replace NaN/±inf (Python float or numpy scalar) with None so json.dumps never raises."""
     if isinstance(obj, list):
@@ -175,26 +222,29 @@ class ForecastService:
             forecast.append(day_data)
         return forecast
     
-    DEFAULT_WEIGHT = 75.0   # kg — baseline pilot weight the wind ranges are calibrated for
+    DEFAULT_WEIGHT = 70.0   # kg — baseline pilot weight the wind ranges are calibrated for
 
     @staticmethod
     def effective_wind_range(
         point: Dict,
         selected_wings: List[Dict],
         wings_config: Dict,
-        weight: float = 75.0,
+        weight: float = 70.0,
     ) -> List[Dict]:
         """
         For each selected wing, scale wind range bounds by
         sqrt((default_size / size) * (weight / default_weight)).
         Returns list of: [{"key": wing_key, "size": size, "range": [min_wind, max_wind]}].
         """
-        wind_ranges = []
-    
+        wind_ranges  = []
+        base_ranges  = point_ranges(point)["wind_range"]
+
         for wing in selected_wings:
             key            = wing["key"]
+            if key not in base_ranges:
+                continue  # skip unknown wing keys
             size           = float(wing["size"])
-            wr             = point["wind_range"][key]
+            wr             = base_ranges[key]
             default_size   = float(wings_config[key]["default_size"])
             size_ratio     = default_size / size
             weight_ratio   = weight / ForecastService.DEFAULT_WEIGHT
@@ -212,7 +262,7 @@ class ForecastService:
         t_end:   time_t = time_t(23, 59),
         selected_wings: List[Dict] = [{"key": "scraper_16", "size": 16}],
         wings_config:   Dict       = None,
-        weight:         float      = 75.0,
+        weight:         float      = 70.0,
         wind_min: Optional[float]  = None,
         wind_max: Optional[float]  = None,
         ignore_precip_vis: bool    = False,
@@ -235,21 +285,23 @@ class ForecastService:
 
         custom_mode = wind_min is not None and wind_max is not None
 
-        # Pre-compute effective wind range per point (constant across all days).
-        # Skipped in custom mode — the flat wind_min/wind_max is used instead.
-        eff_ranges = (
+        # Pre-compute effective wind range and head range per point (constant across all days).
+        # Wind range is skipped in custom mode — the flat wind_min/wind_max is used instead.
+        eff_ranges  = (
             None if custom_mode
             else [
                 self.effective_wind_range(pt, selected_wings, wings_config, weight)
                 for pt in self.points
             ]
         )
+        head_ranges = [point_ranges(pt)["head_range"] for pt in self.points]
 
         disp = []
         for day_idx, day in enumerate(forecast):
             day_disp = []
             for pt_idx, pf in enumerate(day):
                 point      = self.points[pt_idx]
+                hd         = head_ranges[pt_idx]
                 wind_pizza = [0, 0, 0]  # left-cross, good, right-cross
                 wind_quality = [0, 0, 0, 0]
                 gantt      = []
@@ -323,13 +375,13 @@ class ForecastService:
                             rel -= 360
                         elif rel < -180:
                             rel += 360
-                        if point["head_range"]["cross"][0] < rel < point["head_range"]["good"][0]:
+                        if hd["cross"][0] < rel < hd["good"][0]:
                             cat = "cross"
                             wind_pizza[0] += 1
-                        elif point["head_range"]["good"][0] <= rel <= point["head_range"]["good"][1]:
+                        elif hd["good"][0] <= rel <= hd["good"][1]:
                             cat = "good"
                             wind_pizza[1] += 1
-                        elif point["head_range"]["good"][1] < rel < point["head_range"]["cross"][1]:
+                        elif hd["good"][1] < rel < hd["cross"][1]:
                             cat = "cross"
                             wind_pizza[2] += 1
                         else:

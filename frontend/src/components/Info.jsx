@@ -1,6 +1,6 @@
 import React from 'react'
 
-const DEFAULT_WEIGHT = 75.0
+const DEFAULT_WEIGHT = 70.0
 
 function effectiveRange(baseRange, defaultSize, selectedSize, weight) {
   const sizeRatio   = defaultSize / selectedSize
@@ -71,7 +71,7 @@ export default function Info({ data }) {
 
         <p style={p}>
           The flyable wind ranges and wind headings are calculated based on an experienced pilot of{' '}
-          <b style={{ color: '#dedede' }}>75 kg</b> flying the following wings:
+          <b style={{ color: '#dedede' }}>70 kg</b> flying the following wings:
         </p>
 
         <ul style={{ ...p, paddingLeft: 20 }}>
@@ -79,10 +79,10 @@ export default function Info({ data }) {
             <li key={k}>
               <b style={{ color: '#dedede' }}>{wings[k].display_name}</b>
               {' → '}
-              {k === 'scraper_16'   && 'Dune Rider Scraper 16 m²'}
-              {k === 'hopper_16'    && 'Dune Rider Hopper 16 m²'}
-              {k === 'paraglider_22' && 'EN-C wing 22 m²'}
-              {!['scraper_16','hopper_16','paraglider_22'].includes(k) &&
+              {k === 'scraper_16'    && 'Dune Rider Scraper 16 m²'}
+              {k === 'hopper_16'     && 'Dune Rider Hopper 16 m²'}
+              {k === 'paraglider_16' && 'EN-C wing 16 m²'}
+              {!['scraper_16','hopper_16','paraglider_16'].includes(k) &&
                 `${wings[k].display_name} ${wings[k].default_size} m²`}
             </li>
           ))}
@@ -189,12 +189,12 @@ export default function Info({ data }) {
                   <td style={td}><b style={{ color: '#dedede' }}>{pt.name}</b></td>
                   <td style={{ ...td, color: '#a0ccfc' }}>{wrapDeg(pt.heading)}°</td>
                   <td style={td}>
-                    {wrapDeg(pt.heading + pt.head_range.good[0])}° –{' '}
-                    {wrapDeg(pt.heading + pt.head_range.good[1])}°
+                    {wrapDeg(Math.round(pt.heading + pt.head_range.good[0]))}° –{' '}
+                    {wrapDeg(Math.round(pt.heading + pt.head_range.good[1]))}°
                   </td>
                   <td style={td}>
-                    {wrapDeg(pt.heading + pt.head_range.cross[0])}° –{' '}
-                    {wrapDeg(pt.heading + pt.head_range.cross[1])}°
+                    {wrapDeg(Math.round(pt.heading + pt.head_range.cross[0]))}° –{' '}
+                    {wrapDeg(Math.round(pt.heading + pt.head_range.cross[1]))}°
                   </td>
                   {customWind
                     ? <td style={td}>

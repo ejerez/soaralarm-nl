@@ -7,7 +7,7 @@ const MEAS_CACHE_TTL = 15 * 60 * 1000      // 15 min — matches server measurem
 
 // ── Display forecast cache ────────────────────────────────────────────────
 function displayCacheKey(model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax) {
-  return 'soar_display_v1:' + JSON.stringify({ model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax })
+  return 'soar_display_v2:' + JSON.stringify({ model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax })
 }
 function loadDisplayCache(key) {
   try {
@@ -23,7 +23,7 @@ function saveDisplayCache(key, display, certainty) {
     localStorage.setItem(key, JSON.stringify({ display, certainty, savedAt: Date.now() }))
   } catch {
     try {
-      Object.keys(localStorage).filter(k => k.startsWith('soar_display_v1:')).forEach(k => localStorage.removeItem(k))
+      Object.keys(localStorage).filter(k => k.startsWith('soar_display_v2:')).forEach(k => localStorage.removeItem(k))
       localStorage.setItem(key, JSON.stringify({ display, certainty, savedAt: Date.now() }))
     } catch {}
   }
@@ -83,7 +83,7 @@ function readSettingsFromStorage() {
     timeStart:     localStorage.getItem('timeStart')    || '00:00',
     timeEnd:       localStorage.getItem('timeEnd')      || '23:59',
     selectedWings: loadSelectedWings(),
-    weight:        parseFloat(localStorage.getItem('weight')  ?? '75'),
+    weight:        parseFloat(localStorage.getItem('weight')  ?? '70'),
     customWind:    localStorage.getItem('customWind') === 'true',
     windMin:       parseFloat(localStorage.getItem('windMin') ?? '15'),
     windMax:       parseFloat(localStorage.getItem('windMax') ?? '60'),
@@ -267,8 +267,14 @@ export function useSoarData() {
 
           const stored = loadSelectedWings()
           const firstKey = Object.keys(wgs)[0]
-          if (stored.length === 0 && firstKey) {
-            setSelectedWings([{ key: firstKey, size: wgs[firstKey].default_size }])
+          const validStored = stored.filter(w => wgs[w.key])
+          if (validStored.length === 0 && firstKey) {
+            const corrected = [{ key: firstKey, size: wgs[firstKey].default_size }]
+            setSelectedWings(corrected)
+            settingsRef.current = { ...settingsRef.current, selectedWings: corrected }
+          } else if (validStored.length < stored.length) {
+            setSelectedWings(validStored)
+            settingsRef.current = { ...settingsRef.current, selectedWings: validStored }
           }
 
           if (st.forecast_stale && !st.updating_forecast) api.refreshForecast()

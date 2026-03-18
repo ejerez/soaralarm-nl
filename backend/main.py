@@ -9,7 +9,7 @@ from typing import List, Optional
 from fastapi import FastAPI, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from forecast_service import ForecastService
+from forecast_service import ForecastService, point_ranges
 from measurement_service import MeasurementService
 
 app = FastAPI(title="Soaralarm NL API")
@@ -25,6 +25,7 @@ app.add_middleware(
 # ── Global in-memory state ──────────────────────────────────────────────────
 state = {
     "soar_points": [],
+    "points_enriched": [],   # soar_points + computed wind_range & head_range, served via API
     "wings": {},
     "raw_forecast": {},
     "forecast": {},
@@ -51,6 +52,10 @@ MEASURE_TTL  = 900    # 15 minutes
 async def startup():
     with open(POINTS_FILE) as f:
         state["soar_points"] = load(f)
+    # Enrich each point with algorithmically computed wind_range and head_range.
+    # The raw soar_points (without these fields) are used internally by ForecastService;
+    # the enriched version is what the frontend receives via /api/points.
+    state["points_enriched"] = [{**pt, **point_ranges(pt)} for pt in state["soar_points"]]
 
     if WINGS_FILE.exists():
         with open(WINGS_FILE) as f:
@@ -171,7 +176,7 @@ def get_status():
 
 @app.get("/api/points")
 def get_points():
-    return state["soar_points"]
+    return state["points_enriched"]
 
 
 @app.get("/api/wings")
@@ -201,7 +206,7 @@ def get_display_forecast(
     time_start: str           = Query("00:00"),
     time_end:   str           = Query("23:59"),
     wings:      str           = Query(None, description='JSON array of {key, size} objects'),
-    weight:     float         = Query(75.0, description='Total pilot weight in flight (kg)'),
+    weight:     float         = Query(70.0, description='Total pilot weight in flight (kg)'),
     wind_min:   Optional[float] = Query(None, description='Custom minimum wind speed (km/h)'),
     wind_max:   Optional[float] = Query(None, description='Custom maximum gust speed (km/h)'),
 ):
