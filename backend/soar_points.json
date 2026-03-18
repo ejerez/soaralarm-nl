@@ -17,6 +17,14 @@
                 50
             ]
         },
+        "slope": {
+            "steepness": [
+                "steep"
+            ],
+            "height": [
+                "45"
+            ]
+        },
         "wind_range": {
             "paraglider_22": [
                 15,
@@ -29,6 +37,47 @@
             "hopper_16": [
                 18,
                 40
+            ]
+        }
+    },
+    {
+        "lat": 52.564313,
+        "lon": 4.608334,
+        "offshore_lat": 52.564746,
+        "offshore_lon": 4.538524,
+        "name": "Castricum aan Zee",
+        "station": "ijmuiden.havenhoofd.zuid",
+        "heading": 279,
+        "head_range": {
+            "good": [
+                -22.5,
+                22.5
+            ],
+            "cross": [
+                -45,
+                45
+            ]
+        },
+        "slope": {
+            "steepness": [
+                "steep"
+            ],
+            "height": [
+                "17"
+            ]
+        },
+        "wind_range": {
+            "paraglider_22": [
+                17,
+                35
+            ],
+            "scraper_16": [
+                20,
+                60
+            ],
+            "hopper_16": [
+                20,
+                50
             ]
         }
     },
@@ -50,37 +99,12 @@
                 45
             ]
         },
-        "wind_range": {
-            "paraglider_22": [
-                17,
-                35
+        "slope": {
+            "steepness": [
+                "moderate"
             ],
-            "scraper_16": [
-                20,
-                60
-            ],
-            "hopper_16": [
-                20,
-                50
-            ]
-        }
-    },
-    {
-        "lat": 52.564313,
-        "lon": 4.608334,
-        "offshore_lat": 52.564746,
-        "offshore_lon": 4.538524,
-        "name": "Castricum aan Zee",
-        "station": "ijmuiden.havenhoofd.zuid",
-        "heading": 279,
-        "head_range": {
-            "good": [
-                -22.5,
-                22.5
-            ],
-            "cross": [
-                -45,
-                45
+            "height": [
+                "21"
             ]
         },
         "wind_range": {
@@ -116,6 +140,14 @@
                 40
             ]
         },
+        "slope": {
+            "steepness": [
+                "moderate"
+            ],
+            "height": [
+                "20"
+            ]
+        },
         "wind_range": {
             "paraglider_22": [
                 17,
@@ -132,13 +164,54 @@
         }
     },
     {
-        "lat": 51.86684,
-        "lon": 4.052526,
+        "lat": 52.172783,
+        "lon": 4.358881,
+        "offshore_lat": 52.319222,
+        "offshore_lon": 4.421669,
+        "name": "Wassenaar",
+        "station": "ijmuiden.havenhoofd.zuid",
+        "heading": 305,
+        "head_range": {
+            "good": [
+                -20,
+                20
+            ],
+            "cross": [
+                -40,
+                40
+            ]
+        },
+        "slope": {
+            "steepness": [
+                "moderate"
+            ],
+            "height": [
+                "17"
+            ]
+        },
+        "wind_range": {
+            "paraglider_22": [
+                17,
+                35
+            ],
+            "scraper_16": [
+                20,
+                60
+            ],
+            "hopper_16": [
+                20,
+                50
+            ]
+        }
+    },
+    {
+        "lat": 51.878431,
+        "lon": 4.039474,
         "offshore_lat": 51.885594,
         "offshore_lon": 3.946932,
-        "name": "Rockanje",
+        "name": "Rockanje Noord",
         "station": "stellendam.haringvlietsluizen.schuif1",
-        "heading": 237,
+        "heading": 233,
         "head_range": {
             "good": [
                 -15,
@@ -147,6 +220,14 @@
             "cross": [
                 -30,
                 30
+            ]
+        },
+        "slope": {
+            "steepness": [
+                "moderate"
+            ],
+            "height": [
+                "12"
             ]
         },
         "wind_range": {
@@ -160,6 +241,211 @@
             ],
             "hopper_16": [
                 23,
+                50
+            ]
+        }
+    },
+    {
+        "lat": 51.866796, 
+        "lon": 4.052399,
+        "offshore_lat": 51.866796, 
+        "offshore_lon": 4.052399,
+        "name": "Rockanje Zuid",
+        "station": "stellendam.haringvlietsluizen.schuif1",
+        "heading": 240,
+        "head_range": {
+            "good": [
+                -15,
+                15
+            ],
+            "cross": [
+                -30,
+                30
+            ]
+        },
+        "slope": {
+            "steepness": [
+                "moderate"
+            ],
+            "height": [
+                "9"
+            ]
+        },
+        "wind_range": {
+            "paraglider_22": [
+                20,
+                35
+            ],
+            "scraper_16": [
+                23,
+                60
+            ],
+            "hopper_16": [
+                23,
+                50
+            ]
+        }
+    },
+    {
+        "lat": 51.669710,
+        "lon": 3.704394,
+        "offshore_lat": 51.648549,
+        "offshore_lon": 3.628215,
+        "name": "Westenschouwen",
+        "station": "oosterschelde.4",
+        "heading": 214,
+        "head_range": {
+            "good": [
+                -10,
+                15
+            ],
+            "cross": [
+                -20,
+                30
+            ]
+        },
+        "slope": {
+            "steepness": [
+                "moderate"
+            ],
+            "height": [
+                "17"
+            ]
+        },
+        "wind_range": {
+            "paraglider_22": [
+                22,
+                35
+            ],
+            "scraper_16": [
+                25,
+                60
+            ],
+            "hopper_16": [
+                25,
+                50
+            ]
+        }
+    },
+    {
+        "lat": 51.820073,
+        "lon": 3.873061,
+        "offshore_lat": 51.648549,
+        "offshore_lon": 3.628215,
+        "name": "Ouddorp Noord",
+        "station": "oosterschelde.4",
+        "heading": 348,
+        "head_range": {
+            "good": [
+                -10,
+                15
+            ],
+            "cross": [
+                -20,
+                30
+            ]
+        },
+        "slope": {
+            "steepness": [
+                "flat"
+            ],
+            "height": [
+                "7"
+            ]
+        },
+        "wind_range": {
+            "paraglider_22": [
+                22,
+                35
+            ],
+            "scraper_16": [
+                25,
+                60
+            ],
+            "hopper_16": [
+                25,
+                50
+            ]
+        }
+    },
+    {
+        "lat": 51.813616,
+        "lon": 3.859960,
+        "offshore_lat": 51.648549,
+        "offshore_lon": 3.628215,
+        "name": "Ouddorp Vuur.",
+        "station": "oosterschelde.4",
+        "heading": 310,
+        "head_range": {
+            "good": [
+                -10,
+                15
+            ],
+            "cross": [
+                -20,
+                30
+            ]
+        },
+        "slope": {
+            "steepness": [
+                "steep"
+            ],
+            "height": [
+                "12"
+            ]
+        },
+        "wind_range": {
+            "paraglider_22": [
+                22,
+                35
+            ],
+            "scraper_16": [
+                25,
+                60
+            ],
+            "hopper_16": [
+                25,
+                50
+            ]
+        }
+    },
+    {
+        "lat": 51.784865,
+        "lon": 3.865283,
+        "offshore_lat": 51.648549,
+        "offshore_lon": 3.628215,
+        "name": "Ouddorp Zuid",
+        "station": "oosterschelde.4",
+        "heading": 266,
+        "head_range": {
+            "good": [
+                -10,
+                15
+            ],
+            "cross": [
+                -20,
+                30
+            ]
+        },
+        "slope": {
+            "steepness": [
+                "steep"
+            ],
+            "height": [
+                "8"
+            ]
+        },
+        "wind_range": {
+            "paraglider_22": [
+                22,
+                35
+            ],
+            "scraper_16": [
+                25,
+                60
+            ],
+            "hopper_16": [
+                25,
                 50
             ]
         }
@@ -182,37 +468,12 @@
                 30
             ]
         },
-        "wind_range": {
-            "paraglider_22": [
-                22,
-                35
+        "slope": {
+            "steepness": [
+                "flat"
             ],
-            "scraper_16": [
-                25,
-                60
-            ],
-            "hopper_16": [
-                25,
-                50
-            ]
-        }
-    },
-    {
-        "lat": 51.669569,
-        "lon": 3.704770,
-        "offshore_lat": 51.648549,
-        "offshore_lon": 3.628215,
-        "name": "Westenschouwen",
-        "station": "oosterschelde.4",
-        "heading": 215,
-        "head_range": {
-            "good": [
-                -10,
-                15
-            ],
-            "cross": [
-                -20,
-                30
+            "height": [
+                "10"
             ]
         },
         "wind_range": {
