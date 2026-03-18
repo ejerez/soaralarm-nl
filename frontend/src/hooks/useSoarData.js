@@ -253,6 +253,15 @@ export function useSoarData() {
           setStatus(st)
           setWings(wgs)
 
+          // Invalidate display cache if the point count has changed (e.g. new locations added)
+          const cachedPointCount = displayRef.current?.[0]?.length ?? 0
+          if (cachedPointCount > 0 && cachedPointCount !== pts.length) {
+            setDisplay(null)
+            displayRef.current = null
+            const s = settingsRef.current
+            try { localStorage.removeItem(displayCacheKey(s.model, s.timeStart, s.timeEnd, s.selectedWings, s.weight, s.customWind, s.windMin, s.windMax)) } catch {}
+          }
+
           const stored = loadSelectedWings()
           const firstKey = Object.keys(wgs)[0]
           if (stored.length === 0 && firstKey) {

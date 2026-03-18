@@ -194,7 +194,7 @@ export default function PointForecast({ data }) {
   if (!point || !dayFc) return <div style={{ color: T.text2, padding: '40px 0', textAlign: 'center', fontSize: 13 }}>No data available for this selection.</div>
 
   const dispPf     = displayForecast?.[dateIdx]?.[ptIdx]
-  const wind_ranges = dispPf?.wind_ranges ?? {}
+  const wind_ranges = dispPf?.wind_ranges ?? []
 
   return (
     <div>
