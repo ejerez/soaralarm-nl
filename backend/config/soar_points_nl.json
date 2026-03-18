@@ -68,7 +68,7 @@
         "lat": 51.820073,
         "lon": 3.873061,
         "name": "Ouddorp Noord",
-        "station": "oosterschelde.4",
+        "station": "brouwersdam.brouwershavensegat.2",
         "heading": 348,
         "slope": { "steepness": "flat", "height": 7 }
     },
@@ -76,7 +76,7 @@
         "lat": 51.813616,
         "lon": 3.859960,
         "name": "Ouddorp Vuur.",
-        "station": "oosterschelde.4",
+        "station": "brouwersdam.brouwershavensegat.2",
         "heading": 310,
         "slope": { "steepness": "steep", "height": 12 }
     },
@@ -84,7 +84,7 @@
         "lat": 51.784865,
         "lon": 3.865283,
         "name": "Ouddorp Zuid",
-        "station": "oosterschelde.4",
+        "station": "brouwersdam.brouwershavensegat.2",
         "heading": 266,
         "slope": { "steepness": "steep", "height": 8 }
     },
