@@ -26,8 +26,13 @@ app.add_middleware(
 state = {
     "soar_points": [],
     "points_enriched": [],   # soar_points + computed wind_range & head_range, served via API
+    "countries": {},
+    "modes": {},
     "models": {},
     "wings": {},
+    "ranges": {},
+    "country": "",           # active country code (e.g. "nl")
+    "mode": "",              # active mode code (e.g. "para")
     "raw_forecast": {},
     "forecast": {},
     "measurements": {},
@@ -40,11 +45,8 @@ state = {
 # Cleared whenever a fresh forecast is fetched.
 _display_cache: dict = {}
 
-FORECAST_PKL = Path("forecast.pkl")
-MEASURE_PKL  = Path("measurements.pkl")
-POINTS_FILE  = Path("soar_points.json")
-WINGS_FILE   = Path("wings.json")
-MODELS_FILE  = Path("models_nl.json")
+CONFIG_DIR   = Path("config")
+PKL_DIR      = Path("pkl")
 FORECAST_TTL = 7200   # 2 hours
 MEASURE_TTL  = 900    # 15 minutes
 
@@ -52,24 +54,40 @@ MEASURE_TTL  = 900    # 15 minutes
 # ── Startup ─────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
-    with open(POINTS_FILE) as f:
+    # ── Load countries and modes ──────────────────────────────────────────────
+    with open(CONFIG_DIR / "countries.json") as f:
+        state["countries"] = load(f)
+    with open(CONFIG_DIR / "modes.json") as f:
+        state["modes"] = load(f)
+
+    # For now, use the first (and only) country and mode
+    country = list(state["countries"].keys())[0]
+    mode    = list(state["modes"].keys())[0]
+    state["country"] = country
+    state["mode"]    = mode
+
+    # ── Load country/mode-specific config ─────────────────────────────────────
+    with open(CONFIG_DIR / f"soar_points_{country}.json") as f:
         state["soar_points"] = load(f)
+    with open(CONFIG_DIR / f"models_{country}.json") as f:
+        state["models"] = load(f)
+    with open(CONFIG_DIR / f"wings_{mode}.json") as f:
+        state["wings"] = load(f)
+    with open(CONFIG_DIR / f"ranges_{mode}.json") as f:
+        state["ranges"] = load(f)
+
     # Enrich each point with algorithmically computed wind_range and head_range.
     # The raw soar_points (without these fields) are used internally by ForecastService;
     # the enriched version is what the frontend receives via /api/points.
-    state["points_enriched"] = [{**pt, **point_ranges(pt)} for pt in state["soar_points"]]
+    state["points_enriched"] = [
+        {**pt, **point_ranges(pt, state["ranges"])} for pt in state["soar_points"]
+    ]
 
-    if MODELS_FILE.exists():
-        with open(MODELS_FILE) as f:
-            state["models"] = load(f)
-
-    if WINGS_FILE.exists():
-        with open(WINGS_FILE) as f:
-            state["wings"] = load(f)
-
-    if FORECAST_PKL.exists():
+    # ── Restore cached state ──────────────────────────────────────────────────
+    forecast_pkl = PKL_DIR / "forecast.pkl"
+    if forecast_pkl.exists():
         try:
-            with open(FORECAST_PKL, "rb") as f:
+            with open(forecast_pkl, "rb") as f:
                 state["forecast"] = pickle.load(f)
             # Invalidate pickle if it doesn't contain all currently configured models
             model_keys = list(state["models"].keys())
@@ -78,9 +96,10 @@ async def startup():
         except Exception:
             state["forecast"] = {}
 
-    if MEASURE_PKL.exists():
+    measure_pkl = PKL_DIR / "measurements.pkl"
+    if measure_pkl.exists():
         try:
-            with open(MEASURE_PKL, "rb") as f:
+            with open(measure_pkl, "rb") as f:
                 state["measurements"] = pickle.load(f)
         except Exception:
             state["measurements"] = {}
@@ -147,7 +166,7 @@ async def _refresh_forecast():
             state["forecast"][name] = svc.process(raws[name])
         state["forecast"]["time"] = datetime.now()
         _display_cache.clear()
-        with open(FORECAST_PKL, "wb") as f:
+        with open(PKL_DIR / "forecast.pkl", "wb") as f:
             pickle.dump(state["forecast"], f, protocol=pickle.HIGHEST_PROTOCOL)
     except Exception as exc:
         print(f"[forecast] ERROR: {exc}")
@@ -162,7 +181,7 @@ async def _refresh_measurements():
         data = await svc.fetch()
         state["measurements"] = data
         state["measurements"]["time"] = datetime.now()
-        with open(MEASURE_PKL, "wb") as f:
+        with open(PKL_DIR / "measurements.pkl", "wb") as f:
             pickle.dump(state["measurements"], f, protocol=pickle.HIGHEST_PROTOCOL)
     except Exception as exc:
         print(f"[measurements] ERROR: {exc}")
@@ -260,8 +279,8 @@ def get_display_forecast(
             return None
         try:
             svc = ForecastService(state["soar_points"])
-            result = svc.display(raw_mk, t_start, t_end, selected_wings, state["wings"], weight, wind_min, wind_max,
-                                 ignore_precip_vis=ignore_precip_vis)
+            result = svc.display(raw_mk, t_start, t_end, selected_wings, state["wings"], state["ranges"],
+                                 weight, wind_min, wind_max, ignore_precip_vis=ignore_precip_vis)
         except Exception as exc:
             print(f"[display] ERROR for {mk}: {exc}")
             return None
@@ -340,6 +359,27 @@ def get_measurements():
 @app.get("/api/models")
 def get_models():
     return state["models"]
+
+
+@app.get("/api/countries")
+def get_countries():
+    return state["countries"]
+
+
+@app.get("/api/modes")
+def get_modes():
+    return state["modes"]
+
+
+@app.get("/api/config")
+def get_config():
+    """Active country, mode, and their display names."""
+    return {
+        "country": state["country"],
+        "country_name": state["countries"].get(state["country"], state["country"]),
+        "mode": state["mode"],
+        "mode_name": state["modes"].get(state["mode"], state["mode"]),
+    }
 
 
 @app.get("/api/days")

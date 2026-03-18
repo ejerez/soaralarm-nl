@@ -34,6 +34,7 @@ export const api = {
   days:            ()                               => get('/days'),
   wings:           ()                               => get('/wings'),
   models:          ()                               => get('/models'),
+  config:          ()                               => get('/config'),
   displayForecast: (model, ts, te, selectedWings, weight, windMin, windMax) => {
     const params = new URLSearchParams({
       model,

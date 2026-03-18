@@ -1,0 +1,27 @@
+{
+    "min_speed_by_steepness": {
+        "flat": 26.0,
+        "moderate": 24.0,
+        "steep": 22.0
+    },
+    "max_speed_by_wing": {
+        "scraper_16": 65.0,
+        "hopper_16": 50.0,
+        "paraglider_16": 40.0
+    },
+    "default_weight": 70.0,
+    "speed_height_scaling": {
+        "type": "linear",
+        "formula": "(A - B * height) / C",
+        "A": 42.0,
+        "B": 0.2,
+        "C": 40.0
+    },
+    "heading_range": {
+        "type": "logarithmic",
+        "formula": "A + B * ln(height)",
+        "A": -3.7922,
+        "B": 12.8541,
+        "good_fraction": 0.5
+    }
+}

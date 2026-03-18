@@ -130,6 +130,7 @@ export function useSoarData() {
   const [days, setDays]               = useState([])
   const [wings, setWings]             = useState({})
   const [models, setModels]           = useState({})
+  const [appConfig, setAppConfig]     = useState(null)
   const [displayForecast, setDisplay] = useState(initCache?.display   ?? null)
   const [certainty, setCertainty]     = useState(initCache?.certainty ?? null)
   const [rawForecast, setRaw]         = useState(initRawCache ?? null)   // warm from cache
@@ -249,14 +250,15 @@ export function useSoarData() {
       const DELAYS = [1000, 2000, 3000, 5000, 8000]
       for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         try {
-          const [pts, d, st, wgs, mods] = await Promise.all([
-            api.points(), api.days(), api.status(), api.wings(), api.models()
+          const [pts, d, st, wgs, mods, cfg] = await Promise.all([
+            api.points(), api.days(), api.status(), api.wings(), api.models(), api.config()
           ])
           setPoints(pts)
           setDays(d.days)
           setStatus(st)
           setWings(wgs)
           setModels(mods)
+          setAppConfig(cfg)
 
           // Validate stored model key against loaded models; fall back to first key
           const modelKeys = Object.keys(mods)
@@ -394,7 +396,7 @@ export function useSoarData() {
   }, [fetchDisplay])
 
   return {
-    status, points, days, wings, models, displayForecast, certainty, rawForecast, measurements,
+    status, points, days, wings, models, appConfig, displayForecast, certainty, rawForecast, measurements,
     loading, error,
     model, setModel,
     timeStart, setTimeStart,

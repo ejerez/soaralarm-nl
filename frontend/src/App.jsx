@@ -162,7 +162,7 @@ const s = {
 export default function App() {
   const [activeTab, setActiveTab] = useState(0)
   const data = useSoarData()
-  const { status, days, loading, error, dateIdx, setDateIdx, certainty, model } = data
+  const { status, days, loading, error, dateIdx, setDateIdx, certainty, model, appConfig } = data
 
   if (loading) return (
     <div style={s.app}>
@@ -225,7 +225,7 @@ export default function App() {
           </select>
 
           <span style={{ fontSize: 11, color: T.text3, borderLeft: `1px solid ${T.borderDim}`, paddingLeft: 10 }}>
-            {data.models?.[model]?.display_name ?? model}
+            {appConfig?.mode_name ?? ''} · {appConfig?.country_name ?? ''} · {data.models?.[model]?.display_name ?? model}
           </span>
 
           {/* Confidence + weather pills */}
