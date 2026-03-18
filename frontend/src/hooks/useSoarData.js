@@ -79,7 +79,7 @@ function loadSelectedWings() {
 // Read all settings from localStorage once — single consistent snapshot
 function readSettingsFromStorage() {
   return {
-    model:         localStorage.getItem('model')        || 'soar_knmi',
+    model:         localStorage.getItem('model')        || 'knmi_seamless',
     timeStart:     localStorage.getItem('timeStart')    || '00:00',
     timeEnd:       localStorage.getItem('timeEnd')      || '23:59',
     selectedWings: loadSelectedWings(),
@@ -129,6 +129,7 @@ export function useSoarData() {
   const [points, setPoints]           = useState([])
   const [days, setDays]               = useState([])
   const [wings, setWings]             = useState({})
+  const [models, setModels]           = useState({})
   const [displayForecast, setDisplay] = useState(initCache?.display   ?? null)
   const [certainty, setCertainty]     = useState(initCache?.certainty ?? null)
   const [rawForecast, setRaw]         = useState(initRawCache ?? null)   // warm from cache
@@ -248,13 +249,23 @@ export function useSoarData() {
       const DELAYS = [1000, 2000, 3000, 5000, 8000]
       for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         try {
-          const [pts, d, st, wgs] = await Promise.all([
-            api.points(), api.days(), api.status(), api.wings()
+          const [pts, d, st, wgs, mods] = await Promise.all([
+            api.points(), api.days(), api.status(), api.wings(), api.models()
           ])
           setPoints(pts)
           setDays(d.days)
           setStatus(st)
           setWings(wgs)
+          setModels(mods)
+
+          // Validate stored model key against loaded models; fall back to first key
+          const modelKeys = Object.keys(mods)
+          const storedModel = settingsRef.current.model
+          if (storedModel && !mods[storedModel] && modelKeys.length > 0) {
+            const firstModelKey = modelKeys[0]
+            setModel(firstModelKey)
+            settingsRef.current = { ...settingsRef.current, model: firstModelKey }
+          }
 
           // Invalidate display cache if the point count has changed (e.g. new locations added)
           const cachedPointCount = displayRef.current?.[0]?.length ?? 0
@@ -383,7 +394,7 @@ export function useSoarData() {
   }, [fetchDisplay])
 
   return {
-    status, points, days, wings, displayForecast, certainty, rawForecast, measurements,
+    status, points, days, wings, models, displayForecast, certainty, rawForecast, measurements,
     loading, error,
     model, setModel,
     timeStart, setTimeStart,

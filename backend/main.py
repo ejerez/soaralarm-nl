@@ -26,6 +26,7 @@ app.add_middleware(
 state = {
     "soar_points": [],
     "points_enriched": [],   # soar_points + computed wind_range & head_range, served via API
+    "models": {},
     "wings": {},
     "raw_forecast": {},
     "forecast": {},
@@ -43,6 +44,7 @@ FORECAST_PKL = Path("forecast.pkl")
 MEASURE_PKL  = Path("measurements.pkl")
 POINTS_FILE  = Path("soar_points.json")
 WINGS_FILE   = Path("wings.json")
+MODELS_FILE  = Path("models_nl.json")
 FORECAST_TTL = 7200   # 2 hours
 MEASURE_TTL  = 900    # 15 minutes
 
@@ -57,6 +59,10 @@ async def startup():
     # the enriched version is what the frontend receives via /api/points.
     state["points_enriched"] = [{**pt, **point_ranges(pt)} for pt in state["soar_points"]]
 
+    if MODELS_FILE.exists():
+        with open(MODELS_FILE) as f:
+            state["models"] = load(f)
+
     if WINGS_FILE.exists():
         with open(WINGS_FILE) as f:
             state["wings"] = load(f)
@@ -65,7 +71,9 @@ async def startup():
         try:
             with open(FORECAST_PKL, "rb") as f:
                 state["forecast"] = pickle.load(f)
-            if not all(k in state["forecast"] for k in ("soar_knmi", "soar_ecmwf", "soar_icon", "soar_arome")):
+            # Invalidate pickle if it doesn't contain all currently configured models
+            model_keys = list(state["models"].keys())
+            if not model_keys or not all(k in state["forecast"] for k in model_keys):
                 state["forecast"] = {}
         except Exception:
             state["forecast"] = {}
@@ -91,7 +99,8 @@ def _in_daylight_window() -> bool:
     """Return True if now is within 90 minutes of today's sunrise/sunset."""
     try:
         from datetime import timezone
-        forecast = state["forecast"].get("soar_knmi") or state["forecast"].get("soar_ecmwf")
+        model_keys = list(state["models"].keys())
+        forecast = next((state["forecast"].get(k) for k in model_keys if state["forecast"].get(k)), None)
         if not forecast or len(forecast) < 2:
             return True
         today_fc = forecast[1][0] if forecast[1] else None   # dateIdx=1 = today, first point
@@ -114,22 +123,29 @@ def _in_daylight_window() -> bool:
 async def _refresh_forecast():
     state["updating_forecast"] = True
     try:
-        svc = ForecastService(state["soar_points"])
-        raw_knmi, raw_ecmwf, raw_icon, raw_arome = await asyncio.gather(
-            svc.fetch_raw(model="knmi_seamless"),
-            svc.fetch_raw(model="ecmwf_ifs"),
-            svc.fetch_raw(model="icon_seamless"),
-            svc.fetch_raw(model="meteofrance_seamless"),
-        )
-        # Météo-France AROME does not provide visibility forecasts — patch in
-        # the KNMI visibility arrays (same onshore coordinates) before processing.
-        for pt_idx in range(len(raw_arome)):
-            raw_arome[pt_idx]["hourly"]["visibility"] = raw_knmi[pt_idx]["hourly"]["visibility"]
-        state["forecast"]["soar_knmi"]  = svc.process(raw_knmi)
-        state["forecast"]["soar_ecmwf"] = svc.process(raw_ecmwf)
-        state["forecast"]["soar_icon"]  = svc.process(raw_icon)
-        state["forecast"]["soar_arome"] = svc.process(raw_arome)
-        state["forecast"]["time"]       = datetime.now()
+        svc        = ForecastService(state["soar_points"])
+        models     = state["models"]
+        model_keys = list(models.keys())
+        default    = model_keys[0]  # first entry is the default / patch source
+
+        # Fetch all models in parallel
+        raw_list = await asyncio.gather(*[
+            svc.fetch_raw(name, models[name]["resolution"])
+            for name in model_keys
+        ])
+        raws = dict(zip(model_keys, raw_list))
+
+        # Apply patches: copy missing fields from the default model's raw data
+        default_raw = raws[default]
+        for name in model_keys:
+            for field in models[name].get("patch", []):
+                for pt_idx in range(len(raws[name])):
+                    raws[name][pt_idx]["hourly"][field] = default_raw[pt_idx]["hourly"][field]
+
+        # Process and store; use the model API name as the forecast key
+        for name in model_keys:
+            state["forecast"][name] = svc.process(raws[name])
+        state["forecast"]["time"] = datetime.now()
         _display_cache.clear()
         with open(FORECAST_PKL, "wb") as f:
             pickle.dump(state["forecast"], f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -169,7 +185,7 @@ def get_status():
         "measurement_in_daylight":  in_dl,
         "updating_forecast":        state["updating_forecast"],
         "updating_measurements":    state["updating_measurements"],
-        "forecast_available":       bool(state["forecast"].get("soar_knmi")),
+        "forecast_available":       bool(state["models"] and state["forecast"].get(list(state["models"].keys())[0])),
         "measurements_available":   bool(state["measurements"] and "time" in state["measurements"]),
     }
 
@@ -202,7 +218,7 @@ async def refresh_measurements(bg: BackgroundTasks):
 
 @app.get("/api/forecast/display")
 def get_display_forecast(
-    model:      str           = Query("soar_knmi", enum=["soar_knmi", "soar_ecmwf", "soar_icon", "soar_arome"]),
+    model:      str           = Query("knmi_seamless"),
     time_start: str           = Query("00:00"),
     time_end:   str           = Query("23:59"),
     wings:      str           = Query(None, description='JSON array of {key, size} objects'),
@@ -259,17 +275,16 @@ def get_display_forecast(
     # ── Certainty: count model agreement at each day's best location ─────────
     # Uses ignore_precip_vis=True so rain/fog don't reduce confidence scores —
     # confidence reflects wind agreement only; display hours still apply those thresholds.
-    ALL_MODELS = ["soar_knmi", "soar_ecmwf", "soar_icon", "soar_arome"]
+    ALL_MODELS = list(state["models"].keys())
     model_disps = {mk: _cached_display(mk, ignore_precip_vis=True) for mk in ALL_MODELS if state["forecast"].get(mk)}
 
     certainty = []
     for day_idx, day_disp in enumerate(disp):
-        # KNMI seamless transitions to ECMWF IFS at ~2.5 days ahead (from today = index 1).
-        # Include KNMI only for yesterday (0), today (1), tomorrow (2).
-        use_models = [m for m in ALL_MODELS if not (
-            (m == "soar_knmi"  and day_idx > 3) or
-            (m == "soar_arome" and day_idx > 4)
-        )]
+        # Exclude models whose forecast_days cutoff has been exceeded.
+        # day_idx=0 is yesterday, day_idx=1 is today; a model with forecast_days=N
+        # contributes to scoring only for day_idx <= forecast_days.
+        use_models = [m for m in ALL_MODELS
+                      if day_idx <= state["models"].get(m, {}).get("forecast_days", 999)]
         total = sum(1 for mk in use_models if mk in model_disps and model_disps[mk] is not None)
 
         # Count model agreement per point — pick the point most models agree is flyable.
@@ -305,7 +320,7 @@ def get_display_forecast(
 
 @app.get("/api/forecast/raw")
 def get_raw_forecast(
-    model: str = Query("soar_knmi", enum=["soar_knmi", "soar_ecmwf", "soar_icon", "soar_arome"]),
+    model: str = Query("knmi_seamless"),
 ):
     """Returns full hourly forecast data per day per point for the point-detail view."""
     if state["updating_forecast"]:
@@ -320,6 +335,11 @@ def get_raw_forecast(
 def get_measurements():
     svc = MeasurementService(state["soar_points"])
     return svc.serialize(state["measurements"])
+
+
+@app.get("/api/models")
+def get_models():
+    return state["models"]
 
 
 @app.get("/api/days")

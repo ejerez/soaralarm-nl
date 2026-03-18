@@ -50,13 +50,6 @@ const TABS = [
   { label: 'Info',        icon: 'info'     },
 ]
 
-const MODEL_NAMES = {
-  soar_knmi:  'KNMI HARMONIE',
-  soar_ecmwf: 'ECMWF IFS',
-  soar_icon:  'DWD ICON D2',
-  soar_arome: 'AROME HD',
-}
-
 const s = {
   app: {
     minHeight: '100vh',
@@ -232,7 +225,7 @@ export default function App() {
           </select>
 
           <span style={{ fontSize: 11, color: T.text3, borderLeft: `1px solid ${T.borderDim}`, paddingLeft: 10 }}>
-            {MODEL_NAMES[model] ?? model}
+            {data.models?.[model]?.display_name ?? model}
           </span>
 
           {/* Confidence + weather pills */}

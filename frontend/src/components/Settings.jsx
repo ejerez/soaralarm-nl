@@ -138,7 +138,7 @@ export default function Settings({ data }) {
           selectedWings, setSelectedWings, weight, setWeight,
           customWind, setCustomWind, windMin, setWindMin, windMax, setWindMax,
           speedUnit, setSpeedUnit,
-          wings, status, refreshForecast, refetchDisplay } = data
+          wings, models, status, refreshForecast, refetchDisplay } = data
 
   const [localModel,     setLocalModel]     = useState(model)
   const [localTs,        setLocalTs]        = useState(timeStart)
@@ -177,10 +177,9 @@ export default function Settings({ data }) {
         <div data-tutorial="settings-model" style={field}>
           <label style={label_}>Forecast Model</label>
           <select style={{ ...select_, width: '100%' }} value={localModel} onChange={e => setLocalModel(e.target.value)}>
-            <option value="soar_knmi">KNMI HARMONIE</option>
-            <option value="soar_ecmwf">ECMWF IFS (may pick onshore points)</option>
-            <option value="soar_icon">DWD ICON D2</option>
-            <option value="soar_arome">Météo-France AROME HD</option>
+            {Object.entries(models).map(([key, m]) => (
+              <option key={key} value={key}>{m.display_name}</option>
+            ))}
           </select>
         </div>
 

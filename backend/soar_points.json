@@ -2,8 +2,6 @@
     {
         "lat": 51.492894,
         "lon": 3.499841,
-        "offshore_lat": 51.486225,
-        "offshore_lon": 3.415339,
         "name": "Zoutelande",
         "station": "vlaktevanderaan",
         "heading": 235,
@@ -12,8 +10,6 @@
     {
         "lat": 52.564313,
         "lon": 4.608334,
-        "offshore_lat": 52.564746,
-        "offshore_lon": 4.538524,
         "name": "Castricum aan Zee",
         "station": "ijmuiden.havenhoofd.zuid",
         "heading": 279,
@@ -22,8 +18,6 @@
     {
         "lat": 52.502193,
         "lon": 4.589126,
-        "offshore_lat": 52.503636,
-        "offshore_lon": 4.528322,
         "name": "Wijk aan Zee",
         "station": "ijmuiden.havenhoofd.zuid",
         "heading": 284,
@@ -32,8 +26,6 @@
     {
         "lat": 52.302953,
         "lon": 4.475574,
-        "offshore_lat": 52.319222,
-        "offshore_lon": 4.421669,
         "name": "Langevelderslag",
         "station": "ijmuiden.havenhoofd.zuid",
         "heading": 295,
@@ -42,8 +34,6 @@
     {
         "lat": 52.172783,
         "lon": 4.358881,
-        "offshore_lat": 52.319222,
-        "offshore_lon": 4.421669,
         "name": "Wassenaar",
         "station": "ijmuiden.havenhoofd.zuid",
         "heading": 305,
@@ -52,8 +42,6 @@
     {
         "lat": 51.878431,
         "lon": 4.039474,
-        "offshore_lat": 51.885594,
-        "offshore_lon": 3.946932,
         "name": "Rockanje Noord",
         "station": "stellendam.haringvlietsluizen.schuif1",
         "heading": 233,
@@ -62,8 +50,6 @@
     {
         "lat": 51.866796,
         "lon": 4.052399,
-        "offshore_lat": 51.866796,
-        "offshore_lon": 4.052399,
         "name": "Rockanje Zuid",
         "station": "stellendam.haringvlietsluizen.schuif1",
         "heading": 240,
@@ -72,8 +58,6 @@
     {
         "lat": 51.669710,
         "lon": 3.704394,
-        "offshore_lat": 51.648549,
-        "offshore_lon": 3.628215,
         "name": "Westenschouwen",
         "station": "oosterschelde.4",
         "heading": 214,
@@ -83,8 +67,6 @@
     {
         "lat": 51.820073,
         "lon": 3.873061,
-        "offshore_lat": 51.648549,
-        "offshore_lon": 3.628215,
         "name": "Ouddorp Noord",
         "station": "oosterschelde.4",
         "heading": 348,
@@ -93,8 +75,6 @@
     {
         "lat": 51.813616,
         "lon": 3.859960,
-        "offshore_lat": 51.648549,
-        "offshore_lon": 3.628215,
         "name": "Ouddorp Vuur.",
         "station": "oosterschelde.4",
         "heading": 310,
@@ -103,8 +83,6 @@
     {
         "lat": 51.784865,
         "lon": 3.865283,
-        "offshore_lat": 51.648549,
-        "offshore_lon": 3.628215,
         "name": "Ouddorp Zuid",
         "station": "oosterschelde.4",
         "heading": 266,
@@ -113,8 +91,6 @@
     {
         "lat": 51.74087,
         "lon": 3.810101,
-        "offshore_lat": 51.778656,
-        "offshore_lon": 3.777647,
         "name": "Renesse",
         "station": "brouwersdam.brouwershavensegat.2",
         "heading": 13,

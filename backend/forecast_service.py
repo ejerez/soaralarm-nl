@@ -12,6 +12,7 @@ import numpy as np
 import openmeteo_requests
 import pandas as pd
 import requests_cache
+from haversine import inverse_haversine
 from retry_requests import retry
 
 
@@ -86,12 +87,17 @@ class ForecastService:
         self._client = openmeteo_requests.Client(session=retry_session)
 
     # ── Fetch ────────────────────────────────────────────────────────────────
-    async def fetch_raw(self, model: str = "knmi_seamless") -> List[Dict]:
+    async def fetch_raw(self, model: str = "knmi_seamless", model_resolution: float = 2.0) -> List[Dict]:
         """Fetch Open-Meteo data for all soar points. Returns raw list."""
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self._fetch_blocking, model)
+        return await loop.run_in_executor(None, self._fetch_blocking, model, model_resolution)
 
-    def _fetch_blocking(self, model: str) -> List[Dict]:
+    def _fetch_blocking(self, model: str, model_resolution: float) -> List[Dict]:
+        # Offshore wind is sampled 0.7 grid cells upwind of each location.
+        offshore_coords = [
+            inverse_haversine((p["lat"], p["lon"]), model_resolution * 2.0, math.radians(p["heading"]))
+            for p in self.points
+        ]
         params = {
             "latitude":  [p["lat"] for p in self.points],
             "longitude": [p["lon"] for p in self.points],
@@ -103,8 +109,8 @@ class ForecastService:
             "forecast_days": 7,
         }
         offshore_params = {
-            "latitude":  [p["offshore_lat"] for p in self.points],
-            "longitude": [p["offshore_lon"] for p in self.points],
+            "latitude":  [c[0] for c in offshore_coords],
+            "longitude": [c[1] for c in offshore_coords],
             "hourly":    ["wind_speed_10m", "wind_direction_10m", "wind_gusts_10m"],
             "models":    model,
             "timezone":  "Europe/Berlin",

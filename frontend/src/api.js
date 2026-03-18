@@ -33,6 +33,7 @@ export const api = {
   points:          ()                               => get('/points'),
   days:            ()                               => get('/days'),
   wings:           ()                               => get('/wings'),
+  models:          ()                               => get('/models'),
   displayForecast: (model, ts, te, selectedWings, weight, windMin, windMax) => {
     const params = new URLSearchParams({
       model,

@@ -15,6 +15,6 @@
     {
         "display_name": "Paraglider",
         "default_size": 16,
-        "tooltip": "Standard paragliders (medium to high AR)"
+        "tooltip": "Standard paragliders"
     }
 }

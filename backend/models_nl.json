@@ -1,0 +1,30 @@
+{
+    "knmi_seamless":
+    {
+        "display_name": "KNMI HARMONIE",
+        "resolution": 2,
+        "patch": [],
+        "forecast_days": 3
+    },
+    "ecmwf_ifs":
+    {
+        "display_name": "ECMWF IFS",
+        "resolution": 9,
+        "patch": [],
+        "forecast_days": 7
+    },
+    "icon_seamless":
+    {
+        "display_name": "ICON D2",
+        "resolution": 2,
+        "patch": [],
+        "forecast_days": 7
+    },
+    "meteofrance_seamless":
+    {
+        "display_name": "AROME HD",
+        "resolution": 1.5,
+        "patch": ["visibility"],
+        "forecast_days": 4
+    }
+}

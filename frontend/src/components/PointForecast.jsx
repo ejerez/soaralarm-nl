@@ -312,10 +312,10 @@ export default function PointForecast({ data }) {
           Station: <b style={{ color: T.text }}>{measurements[point.station].name}</b>
           {' '}({measurements[point.station].lat?.toFixed(3)}°N, {measurements[point.station].lon?.toFixed(3)}°E)
           <br />
-          Offshore forecast at {point.offshore_lat?.toFixed(5)}°N, {point.offshore_lon?.toFixed(5)}°E
-          {dayFc?.offshore_actual_lat != null && (
-            <> · API returned <b style={{ color: T.text }}>{dayFc.offshore_actual_lat.toFixed(5)}°N, {dayFc.offshore_actual_lon.toFixed(5)}°E</b></>
-          )}
+          {dayFc?.offshore_actual_lat != null
+            ? <>Offshore forecast at <b style={{ color: T.text }}>{dayFc.offshore_actual_lat.toFixed(5)}°N, {dayFc.offshore_actual_lon.toFixed(5)}°E</b></>
+            : 'Offshore forecast coordinates unavailable'
+          }
         </div>
       )}
     </div>
