@@ -35,6 +35,7 @@ state = {
     "mode": "",              # active mode code (e.g. "para")
     "raw_forecast": {},
     "forecast": {},
+    "stations": {},
     "measurements": {},
     "updating_forecast": False,
     "updating_measurements": False,
@@ -75,6 +76,8 @@ async def startup():
         state["wings"] = load(f)
     with open(CONFIG_DIR / f"ranges_{mode}.json") as f:
         state["ranges"] = load(f)
+    with open(CONFIG_DIR / f"stations_{country}.json") as f:
+        state["stations"] = load(f)
 
     # Enrich each point with algorithmically computed wind_range and head_range.
     # The raw soar_points (without these fields) are used internally by ForecastService;
@@ -84,7 +87,7 @@ async def startup():
     ]
 
     # ── Restore cached state ──────────────────────────────────────────────────
-    forecast_pkl = PKL_DIR / "forecast.pkl"
+    forecast_pkl = PKL_DIR / f"forecast_{country}.pkl"
     if forecast_pkl.exists():
         try:
             with open(forecast_pkl, "rb") as f:
@@ -96,7 +99,7 @@ async def startup():
         except Exception:
             state["forecast"] = {}
 
-    measure_pkl = PKL_DIR / "measurements.pkl"
+    measure_pkl = PKL_DIR / f"measurements_{country}.pkl"
     if measure_pkl.exists():
         try:
             with open(measure_pkl, "rb") as f:
@@ -142,7 +145,9 @@ def _in_daylight_window() -> bool:
 async def _refresh_forecast():
     state["updating_forecast"] = True
     try:
-        svc        = ForecastService(state["soar_points"])
+        country_cfg = state["countries"].get(state["country"], {})
+        timezone    = country_cfg.get("timezone", "Europe/Berlin")
+        svc         = ForecastService(state["soar_points"], timezone=timezone)
         models     = state["models"]
         model_keys = list(models.keys())
         default    = model_keys[0]  # first entry is the default / patch source
@@ -166,7 +171,7 @@ async def _refresh_forecast():
             state["forecast"][name] = svc.process(raws[name])
         state["forecast"]["time"] = datetime.now()
         _display_cache.clear()
-        with open(PKL_DIR / "forecast.pkl", "wb") as f:
+        with open(PKL_DIR / f"forecast_{state['country']}.pkl", "wb") as f:
             pickle.dump(state["forecast"], f, protocol=pickle.HIGHEST_PROTOCOL)
     except Exception as exc:
         print(f"[forecast] ERROR: {exc}")
@@ -177,11 +182,11 @@ async def _refresh_forecast():
 async def _refresh_measurements():
     state["updating_measurements"] = True
     try:
-        svc = MeasurementService(state["soar_points"])
+        svc = MeasurementService(state["stations"])
         data = await svc.fetch()
+        data["time"] = datetime.now()
         state["measurements"] = data
-        state["measurements"]["time"] = datetime.now()
-        with open(PKL_DIR / "measurements.pkl", "wb") as f:
+        with open(PKL_DIR / f"measurements_{state['country']}.pkl", "wb") as f:
             pickle.dump(state["measurements"], f, protocol=pickle.HIGHEST_PROTOCOL)
     except Exception as exc:
         print(f"[measurements] ERROR: {exc}")
@@ -237,7 +242,7 @@ async def refresh_measurements(bg: BackgroundTasks):
 
 @app.get("/api/forecast/display")
 def get_display_forecast(
-    model:      str           = Query("knmi_seamless"),
+    model:      str           = Query(None),
     time_start: str           = Query("00:00"),
     time_end:   str           = Query("23:59"),
     wings:      str           = Query(None, description='JSON array of {key, size} objects'),
@@ -250,6 +255,11 @@ def get_display_forecast(
     # return a clean pending response rather than risking a mid-write crash.
     if state["updating_forecast"]:
         return {"error": "forecast updating, please retry shortly"}
+
+    # Default to first configured model if none specified
+    if not model:
+        model_keys = list(state["models"].keys())
+        model = model_keys[0] if model_keys else None
 
     raw = state["forecast"].get(model)
     if not raw:
@@ -278,7 +288,7 @@ def get_display_forecast(
         if not raw_mk:
             return None
         try:
-            svc = ForecastService(state["soar_points"])
+            svc = ForecastService(state["soar_points"], timezone=state["countries"].get(state["country"], {}).get("timezone", "Europe/Berlin"))
             result = svc.display(raw_mk, t_start, t_end, selected_wings, state["wings"], state["ranges"],
                                  weight, wind_min, wind_max, ignore_precip_vis=ignore_precip_vis)
         except Exception as exc:
@@ -339,11 +349,14 @@ def get_display_forecast(
 
 @app.get("/api/forecast/raw")
 def get_raw_forecast(
-    model: str = Query("knmi_seamless"),
+    model: str = Query(None),
 ):
     """Returns full hourly forecast data per day per point for the point-detail view."""
     if state["updating_forecast"]:
         return {"error": "forecast updating, please retry shortly"}
+    if not model:
+        model_keys = list(state["models"].keys())
+        model = model_keys[0] if model_keys else None
     raw = state["forecast"].get(model)
     if not raw:
         return {"error": "forecast not available"}
@@ -352,8 +365,7 @@ def get_raw_forecast(
 
 @app.get("/api/measurements")
 def get_measurements():
-    svc = MeasurementService(state["soar_points"])
-    return svc.serialize(state["measurements"])
+    return MeasurementService.serialize(state["measurements"])
 
 
 @app.get("/api/models")
@@ -376,7 +388,7 @@ def get_config():
     """Active country, mode, and their display names."""
     return {
         "country": state["country"],
-        "country_name": state["countries"].get(state["country"], state["country"]),
+        "country_name": state["countries"].get(state["country"], {}).get("name", state["country"]),
         "mode": state["mode"],
         "mode_name": state["modes"].get(state["mode"], state["mode"]),
     }

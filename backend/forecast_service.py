@@ -80,8 +80,9 @@ def _sanitise(obj):
 class ForecastService:
     BASE_URL = "https://api.open-meteo.com/v1/forecast"
 
-    def __init__(self, soar_points: List[Dict]):
+    def __init__(self, soar_points: List[Dict], timezone: str = "Europe/Berlin"):
         self.points = soar_points
+        self.timezone = timezone
         cache_session = requests_cache.CachedSession(".cache", expire_after=3600)
         retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
         self._client = openmeteo_requests.Client(session=retry_session)
@@ -104,7 +105,7 @@ class ForecastService:
             "daily":     ["sunrise", "sunset"],
             "hourly":    ["temperature_2m", "visibility", "precipitation"],
             "models":    model,
-            "timezone":  "Europe/Berlin",
+            "timezone":  self.timezone,
             "past_days": 1,
             "forecast_days": 7,
         }
@@ -113,7 +114,7 @@ class ForecastService:
             "longitude": [c[1] for c in offshore_coords],
             "hourly":    ["wind_speed_10m", "wind_direction_10m", "wind_gusts_10m"],
             "models":    model,
-            "timezone":  "Europe/Berlin",
+            "timezone":  self.timezone,
             "past_days": 1,
             "forecast_days": 7,
         }

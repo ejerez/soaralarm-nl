@@ -22,8 +22,7 @@ ENV/
 *.db
 
 # Pickled forecast/measurement cache
-forecast.pkl
-measurements.pkl
+*.pkl
 
 # Pytest / coverage
 .pytest_cache/

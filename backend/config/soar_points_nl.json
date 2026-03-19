@@ -3,7 +3,7 @@
         "lat": 51.492894,
         "lon": 3.499841,
         "name": "Zoutelande",
-        "station": "vlaktevanderaan",
+        "station": [ "rws", "vlaktevanderaan" ],
         "heading": 235,
         "slope": { "steepness": "steep", "height": 45 }
     },
@@ -11,7 +11,8 @@
         "lat": 52.564313,
         "lon": 4.608334,
         "name": "Castricum aan Zee",
-        "station": "ijmuiden.havenhoofd.zuid",
+        "station": [ "rws", "ijmuiden.havenhoofd.zuid" ],
+        "alt_station": [ "nkv", "217"],
         "heading": 279,
         "slope": { "steepness": "steep", "height": 17 }
     },
@@ -19,7 +20,7 @@
         "lat": 52.502193,
         "lon": 4.589126,
         "name": "Wijk aan Zee",
-        "station": "ijmuiden.havenhoofd.zuid",
+        "station": [ "rws", "ijmuiden.havenhoofd.zuid" ],
         "heading": 284,
         "slope": { "steepness": "moderate", "height": 21 }
     },
@@ -27,7 +28,8 @@
         "lat": 52.302953,
         "lon": 4.475574,
         "name": "Langevelderslag",
-        "station": "ijmuiden.havenhoofd.zuid",
+        "station": [ "rws", "ijmuiden.havenhoofd.zuid" ],
+        "alt_station": [ "nkv", "213" ],
         "heading": 295,
         "slope": { "steepness": "moderate", "height": 20 }
     },
@@ -35,7 +37,8 @@
         "lat": 52.172783,
         "lon": 4.358881,
         "name": "Wassenaar",
-        "station": "ijmuiden.havenhoofd.zuid",
+        "station": [ "rws", "ijmuiden.havenhoofd.zuid" ],
+        "alt_station": [ "nkv", "213" ],
         "heading": 305,
         "slope": { "steepness": "moderate", "height": 17 }
     },
@@ -43,7 +46,8 @@
         "lat": 51.878431,
         "lon": 4.039474,
         "name": "Rockanje Noord",
-        "station": "stellendam.haringvlietsluizen.schuif1",
+        "station": [ "rws", "stellendam.haringvlietsluizen.schuif1" ],
+        "alt_station": [ "nkv", "214" ],
         "heading": 233,
         "slope": { "steepness": "moderate", "height": 12 }
     },
@@ -51,7 +55,8 @@
         "lat": 51.866796,
         "lon": 4.052399,
         "name": "Rockanje Zuid",
-        "station": "stellendam.haringvlietsluizen.schuif1",
+        "station": [ "rws", "stellendam.haringvlietsluizen.schuif1" ],
+        "alt_station": [ "nkv", "214" ],
         "heading": 240,
         "slope": { "steepness": "moderate", "height": 9 }
     },
@@ -59,7 +64,7 @@
         "lat": 51.669710,
         "lon": 3.704394,
         "name": "Westenschouwen",
-        "station": "oosterschelde.4",
+        "station": [ "rws", "oosterschelde.4" ],
         "heading": 214,
         "head_range": [-20, null],
         "slope": { "steepness": "moderate", "height": 17 }
@@ -68,7 +73,7 @@
         "lat": 51.820073,
         "lon": 3.873061,
         "name": "Ouddorp Noord",
-        "station": "brouwersdam.brouwershavensegat.2",
+        "station": [ "rws", "brouwersdam.brouwershavensegat.2" ],
         "heading": 348,
         "slope": { "steepness": "flat", "height": 7 }
     },
@@ -76,7 +81,7 @@
         "lat": 51.813616,
         "lon": 3.859960,
         "name": "Ouddorp Vuur.",
-        "station": "brouwersdam.brouwershavensegat.2",
+        "station": [ "rws", "brouwersdam.brouwershavensegat.2" ],
         "heading": 310,
         "slope": { "steepness": "steep", "height": 12 }
     },
@@ -84,7 +89,7 @@
         "lat": 51.784865,
         "lon": 3.865283,
         "name": "Ouddorp Zuid",
-        "station": "brouwersdam.brouwershavensegat.2",
+        "station": [ "rws", "brouwersdam.brouwershavensegat.2" ],
         "heading": 266,
         "slope": { "steepness": "steep", "height": 8 }
     },
@@ -92,7 +97,7 @@
         "lat": 51.74087,
         "lon": 3.810101,
         "name": "Renesse",
-        "station": "brouwersdam.brouwershavensegat.2",
+        "station": [ "rws", "brouwersdam.brouwershavensegat.2" ],
         "heading": 13,
         "slope": { "steepness": "flat", "height": 10 }
     }

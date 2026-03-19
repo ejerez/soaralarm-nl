@@ -5,9 +5,15 @@ const POLL_MS        = 10_000              // poll status every 10 s
 const CACHE_TTL      = 2 * 60 * 60 * 1000  // 2 h — matches server forecast TTL
 const MEAS_CACHE_TTL = 15 * 60 * 1000      // 15 min — matches server measurement refresh interval
 
+// ── Country/mode scope for cache keys ────────────────────────────────────
+// Stored in localStorage so cache lookups work on first render (before /api/config returns).
+// Updated when config is fetched; if the country/mode changes, old keys naturally miss.
+function cacheScope() { return localStorage.getItem('soar_scope') || 'nl:para' }
+function updateCacheScope(country, mode) { localStorage.setItem('soar_scope', `${country}:${mode}`) }
+
 // ── Display forecast cache ────────────────────────────────────────────────
 function displayCacheKey(model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax) {
-  return 'soar_display_v2:' + JSON.stringify({ model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax })
+  return `soar_display_v3:${cacheScope()}:` + JSON.stringify({ model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax })
 }
 function loadDisplayCache(key) {
   try {
@@ -23,17 +29,17 @@ function saveDisplayCache(key, display, certainty) {
     localStorage.setItem(key, JSON.stringify({ display, certainty, savedAt: Date.now() }))
   } catch {
     try {
-      Object.keys(localStorage).filter(k => k.startsWith('soar_display_v2:')).forEach(k => localStorage.removeItem(k))
+      Object.keys(localStorage).filter(k => k.startsWith('soar_display_v3:')).forEach(k => localStorage.removeItem(k))
       localStorage.setItem(key, JSON.stringify({ display, certainty, savedAt: Date.now() }))
     } catch {}
   }
 }
 
 // ── Measurements cache ────────────────────────────────────────────────────
-const MEAS_CACHE_KEY = 'soar_measurements_v1'
+function measCacheKey() { return `soar_measurements_v3:${cacheScope()}` }
 function loadMeasCache() {
   try {
-    const raw = localStorage.getItem(MEAS_CACHE_KEY)
+    const raw = localStorage.getItem(measCacheKey())
     if (!raw) return null
     const { data, savedAt } = JSON.parse(raw)
     if (Date.now() - savedAt > MEAS_CACHE_TTL) return null
@@ -42,12 +48,12 @@ function loadMeasCache() {
 }
 function saveMeasCache(data) {
   try {
-    localStorage.setItem(MEAS_CACHE_KEY, JSON.stringify({ data, savedAt: Date.now() }))
+    localStorage.setItem(measCacheKey(), JSON.stringify({ data, savedAt: Date.now() }))
   } catch {}
 }
 
 // ── Raw forecast cache ────────────────────────────────────────────────────
-function rawCacheKey(model) { return 'soar_raw_v1:' + model }
+function rawCacheKey(model) { return `soar_raw_v2:${cacheScope()}:${model}` }
 function loadRawCache(model) {
   try {
     const raw = localStorage.getItem(rawCacheKey(model))
@@ -79,7 +85,7 @@ function loadSelectedWings() {
 // Read all settings from localStorage once — single consistent snapshot
 function readSettingsFromStorage() {
   return {
-    model:         localStorage.getItem('model')        || 'knmi_seamless',
+    model:         localStorage.getItem('model')        || '',  // validated against server models on init
     timeStart:     localStorage.getItem('timeStart')    || '00:00',
     timeEnd:       localStorage.getItem('timeEnd')      || '23:59',
     selectedWings: loadSelectedWings(),
@@ -135,6 +141,10 @@ export function useSoarData() {
   const [certainty, setCertainty]     = useState(initCache?.certainty ?? null)
   const [rawForecast, setRaw]         = useState(initRawCache ?? null)   // warm from cache
   const [measurements, setMeasure]    = useState(initMeasCache ?? null)  // warm from cache
+  // Per-location alt_station preference: { [ptIdx]: true/false }
+  const [altStationPrefs, setAltStationPrefs] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`altStationPrefs:${cacheScope()}`) || '{}') } catch { return {} }
+  })
   const [loading, setLoading]         = useState(!initCache)  // skip spinner on cache hit
   const [error, setError]             = useState(null)
 
@@ -186,6 +196,7 @@ export function useSoarData() {
   useEffect(() => { localStorage.setItem('windMin',       windMin) },      [windMin])
   useEffect(() => { localStorage.setItem('windMax',       windMax) },      [windMax])
   useEffect(() => { localStorage.setItem('speedUnit',     speedUnit) },    [speedUnit])
+  useEffect(() => { localStorage.setItem(`altStationPrefs:${cacheScope()}`, JSON.stringify(altStationPrefs)) }, [altStationPrefs])
 
   // ── Fetch display forecast ────────────────────────────────────────────────
   // Stable (no deps) — reads settings from settingsRef.
@@ -259,11 +270,12 @@ export function useSoarData() {
           setWings(wgs)
           setModels(mods)
           setAppConfig(cfg)
+          if (cfg?.country && cfg?.mode) updateCacheScope(cfg.country, cfg.mode)
 
           // Validate stored model key against loaded models; fall back to first key
           const modelKeys = Object.keys(mods)
           const storedModel = settingsRef.current.model
-          if (storedModel && !mods[storedModel] && modelKeys.length > 0) {
+          if ((!storedModel || !mods[storedModel]) && modelKeys.length > 0) {
             const firstModelKey = modelKeys[0]
             setModel(firstModelKey)
             settingsRef.current = { ...settingsRef.current, model: firstModelKey }
@@ -348,8 +360,7 @@ export function useSoarData() {
           // Measurement update just finished → fetch fresh measurements
           try {
             const meas = await api.measurements()
-            setMeasure(meas)
-            saveMeasCache(meas)
+            if (meas) { setMeasure(meas); saveMeasCache(meas) }
             // Also grab raw forecast if it hasn't loaded yet (e.g. was mid-update on init)
             if (!rawForecastRef.current) {
               const raw = await api.rawForecast(settingsRef.current.model)
@@ -397,6 +408,7 @@ export function useSoarData() {
 
   return {
     status, points, days, wings, models, appConfig, displayForecast, certainty, rawForecast, measurements,
+    altStationPrefs, setAltStationPrefs,
     loading, error,
     model, setModel,
     timeStart, setTimeStart,

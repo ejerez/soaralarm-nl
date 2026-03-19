@@ -302,14 +302,40 @@ export default function MapForecast({ data, onNavigateToPoint }) {
   const leafletRef = useRef(null)
   const layersRef  = useRef([])
 
+  // Compute bounds from points so the map auto-fits any country
+  const pointsBounds = useMemo(() => {
+    if (!points.length) return null
+    const lats = points.map(p => p.lat)
+    const lons = points.map(p => p.lon)
+    // Pad bounds so wind slices aren't clipped at edges
+    const PAD = 0.15
+    return L.latLngBounds(
+      [Math.min(...lats) - PAD, Math.min(...lons) - PAD],
+      [Math.max(...lats) + PAD, Math.max(...lons) + PAD],
+    )
+  }, [points])
+
   useEffect(() => {
     if (!mapRef.current || leafletRef.current) return
-    leafletRef.current = L.map(mapRef.current).setView([52.04, 4.20], 8)
+    const map = L.map(mapRef.current)
+    if (pointsBounds) {
+      map.fitBounds(pointsBounds, { animate: false })
+    } else {
+      map.setView([52.04, 4.20], 8)
+    }
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
-    }).addTo(leafletRef.current)
+    }).addTo(map)
+    leafletRef.current = map
     return () => { leafletRef.current?.remove(); leafletRef.current = null }
   }, [])
+
+  // Re-fit when points change (e.g. country switch)
+  useEffect(() => {
+    if (leafletRef.current && pointsBounds) {
+      leafletRef.current.fitBounds(pointsBounds, { animate: true })
+    }
+  }, [pointsBounds])
 
   useEffect(() => {
     if (!leafletRef.current || !displayForecast || !points.length) return

@@ -1,80 +1,72 @@
 """
-MeasurementService – replaces get_measured_data.py with no Streamlit dependency.
+MeasurementService – orchestrates fetching from multiple measurement APIs.
+
+Reads stations_{country}.json to know which APIs and station codes to query,
+then delegates to the appropriate meas_fetch_*.py module for each API.
+All fetch modules return the same standardised format per station:
+    {name, lat, lon,
+     wind: {timestamps, wind_min, wind_max} | None,
+     heading: {timestamps, values} | None}
 """
 
 import asyncio
-from datetime import datetime, timedelta, date
-import datetime as dt
-from typing import Dict, List, Any
+import importlib
+from typing import Any, Dict
 
-import ddlpy
-import pandas as pd
+# Auto-discovered fetch modules: keyed by API name (must match keys in stations_*.json).
+# Each module must be named meas_fetch_{api}.py and expose a fetch(station_codes) function.
+_fetch_cache: Dict[str, Any] = {}
 
 
-STATION_IDS = [
-    "ijmuiden.havenhoofd.zuid",
-    "stellendam.haringvlietsluizen.schuif1",
-    "vlaktevanderaan",
-    "brouwersdam.brouwershavensegat.2",
-    "oosterschelde.4",
-]
+def _get_fetch_fn(api_name: str):
+    """Lazily import meas_fetch_{api} and return its fetch function."""
+    if api_name not in _fetch_cache:
+        try:
+            mod = importlib.import_module(f"meas_fetch_{api_name}")
+            _fetch_cache[api_name] = mod.fetch
+        except (ImportError, AttributeError) as exc:
+            print(f"[measurements] WARNING: could not load meas_fetch_{api_name}: {exc}")
+            _fetch_cache[api_name] = None
+    return _fetch_cache[api_name]
 
 
 class MeasurementService:
-    def __init__(self, soar_points: List[Dict]):
-        self.points = soar_points
+    def __init__(self, stations_config: Dict):
+        """
+        stations_config: contents of stations_{country}.json, e.g.
+            {"rws": ["station1", ...], "nkv": ["213", ...]}
+        """
+        self.stations_config = stations_config
 
     async def fetch(self) -> Dict:
+        """Fetch measurements from all configured APIs in parallel."""
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self._fetch_blocking)
 
-    def _fetch_blocking(self) -> Dict:
-        locations = ddlpy.locations()
+        # Build list of (api_name, future) pairs
+        tasks = {}
+        for api_name, station_codes in self.stations_config.items():
+            fetch_fn = _get_fetch_fn(api_name)
+            if not fetch_fn:
+                continue
+            tasks[api_name] = loop.run_in_executor(None, fetch_fn, station_codes)
 
-        bool_stations = locations.index.isin(STATION_IDS)
-        bool_wind     = locations["Grootheid.Code"].isin(["WINDSHD", "WINDRTG"])
-        selected      = locations.loc[bool_stations & bool_wind]
+        result = {}
+        for api_name, future in tasks.items():
+            try:
+                result[api_name] = await future
+            except Exception as exc:
+                print(f"[measurements] ERROR fetching {api_name}: {exc}")
+                result[api_name] = {}
 
-        now    = datetime.now()
-        start  = dt.datetime.combine((now - timedelta(days=1)).date(), dt.time.min)
-        dates  = (start, now)
+        return result
 
-        data = {}
-        for index, row in selected.iterrows():
-            meas = ddlpy.measurements(row, start_date=dates[0], end_date=dates[1])
-            if not meas.empty:
-                if index not in data:
-                    data[index] = {
-                        "name": row["Naam"],
-                        "lon":  row["Lon"],
-                        "lat":  row["Lat"],
-                    }
-                data[index][row["Grootheid.Code"]] = meas[["Meetwaarde.Waarde_Numeriek"]]
-
-        return data
-
-    def serialize(self, raw: Dict) -> Dict:
-        """Convert the raw ddlpy DataFrames into JSON-serialisable dicts."""
+    @staticmethod
+    def serialize(raw: Dict) -> Dict:
+        """
+        Convert the raw measurement data to JSON-serialisable format.
+        The fetch modules already return serialisable dicts, so this mainly
+        strips the internal 'time' key and passes through.
+        """
         if not raw:
             return {}
-
-        out = {}
-        for station_id, val in raw.items():
-            if station_id == "time":
-                continue
-            entry: Dict[str, Any] = {
-                "name": val.get("name"),
-                "lat":  val.get("lat"),
-                "lon":  val.get("lon"),
-            }
-            for key in ["WINDSHD", "WINDRTG"]:
-                if key in val:
-                    df: pd.DataFrame = val[key]
-                    ts = [t.isoformat() for t in df.index.to_pydatetime()]
-                    vs = [
-                        v * 3.6 if key == "WINDSHD" else v  # WINDSHD: m/s → km/h; WINDRTG: degrees, no conversion
-                        for v in df["Meetwaarde.Waarde_Numeriek"].tolist()
-                    ]
-                    entry[key] = {"timestamps": ts, "values": vs}
-            out[station_id] = entry
-        return out
+        return {k: v for k, v in raw.items() if k != "time"}

@@ -29,7 +29,8 @@ function fmtTime(ms) {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
-function buildWindData(dayFc, meas, station, sunrise, sunset, convert) {
+function buildWindData(dayFc, meas, stationRef, sunrise, sunset, convert) {
+  // stationRef is [api, code] e.g. ["rws", "ijmuiden.havenhoofd.zuid"]
   const fcPoints = dayFc.time.map((t, i) => ({
     ts:            new Date(t).getTime(),
     wind_speed:    convert(dayFc.wind_speed[i]),
@@ -37,54 +38,45 @@ function buildWindData(dayFc, meas, station, sunrise, sunset, convert) {
     precipitation: parseFloat(dayFc.precipitation[i]?.toFixed(2)),
   }))
 
-  const ws = meas?.[station]?.WINDSHD
-  if (!ws?.timestamps?.length || !ws?.values?.length) return fcPoints
+  if (!stationRef) return fcPoints
+  const [api, code] = stationRef
+  const wind = meas?.[api]?.[code]?.wind
+  if (!wind?.timestamps?.length) return fcPoints
 
-  // Group readings by exact timestamp (multiple sensors share the same ts)
-  const byTs = new Map()
-  ws.timestamps.forEach((ts, i) => {
-    const v = ws.values[i]; if (v==null||!isFinite(v)) return
+  const measPoints = []
+  wind.timestamps.forEach((ts, i) => {
+    const lo = wind.wind_min[i]
+    const hi = wind.wind_max[i]
+    if (lo == null && hi == null) return
     const t = new Date(ts); if (isNaN(t.getTime())) return
     if (sunrise && t < new Date(sunrise)) return
     if (sunset  && t > new Date(sunset))  return
-    const key = t.getTime()
-    if (!byTs.has(key)) byTs.set(key, [])
-    byTs.get(key).push(parseFloat(v.toFixed(1)))
-  })
-
-  // For each measurement interval, build a point with min/max
-  const measPoints = []
-  byTs.forEach((vals, ts) => {
     measPoints.push({
-      ts,
-      meas_wind_min: convert(Math.min(...vals)),
-      meas_wind_max: convert(Math.max(...vals)),
-      meas_wind_count: vals.length,
+      ts: t.getTime(),
+      meas_wind_min: convert(lo ?? hi),
+      meas_wind_max: convert(hi ?? lo),
     })
   })
+
+  // Add band field (max - min) for stacked fill-between rendering
+  measPoints.forEach(m => { m.meas_wind_band = parseFloat((m.meas_wind_max - m.meas_wind_min).toFixed(1)) })
 
   // Merge: attach measurement min/max onto any forecast point within 5 min
   const FIVE_MIN = 5 * 60 * 1000
   fcPoints.forEach(fp => {
     const near = measPoints.find(m => Math.abs(m.ts - fp.ts) <= FIVE_MIN)
     if (near) {
-      fp.meas_wind_min   = near.meas_wind_min
-      fp.meas_wind_max   = near.meas_wind_max
-      fp.meas_wind_count = near.meas_wind_count
+      fp.meas_wind_min  = near.meas_wind_min
+      fp.meas_wind_max  = near.meas_wind_max
+      fp.meas_wind_band = near.meas_wind_band
     }
-  })
-
-  // Add band field (max - min) for stacked fill-between rendering
-  measPoints.forEach(m => { m.meas_wind_band = parseFloat((m.meas_wind_max - m.meas_wind_min).toFixed(1)) })
-  fcPoints.forEach(fp => {
-    if (fp.meas_wind_min != null) fp.meas_wind_band = parseFloat((fp.meas_wind_max - fp.meas_wind_min).toFixed(1))
   })
 
   // Combine and sort; measurement-only points (between forecast hours) keep null forecast fields
   return [...fcPoints, ...measPoints].sort((a, b) => a.ts - b.ts)
 }
 
-function buildDirData(dayFc, meas, station, sunrise, sunset, heading) {
+function buildDirData(dayFc, meas, stationRef, sunrise, sunset, heading) {
   function norm(deg) {
     let d = deg - heading
     if (d >  180) d -= 360
@@ -94,7 +86,10 @@ function buildDirData(dayFc, meas, station, sunrise, sunset, heading) {
   const rawDirs = dayFc.time.map((_, i) => dayFc.wind_direction[i])
   const unwrapped = rawDirs.map(v => norm(v))
   const points = dayFc.time.map((t, i) => ({ ts: new Date(t).getTime(), wind_dir: parseFloat(unwrapped[i].toFixed(1)) }))
-  const ds = meas?.[station]?.WINDRTG
+
+  if (!stationRef) return points.sort((a,b) => a.ts - b.ts)
+  const [api, code] = stationRef
+  const ds = meas?.[api]?.[code]?.heading
   if (ds?.timestamps?.length && ds?.values?.length) {
     ds.timestamps.forEach((ts, i) => {
       const v = ds.values[i]; if (v==null||!isFinite(v)) return
@@ -130,7 +125,7 @@ function WindTooltip({ active, payload, label, unit = 'km/h' }) {
   if (d.meas_wind_min != null) {
     return box(
       <div style={{ color: T.text2 }}>
-        <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: 3 }}>Measured wind</div>
+        <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: 3 }}>Measured</div>
         <div>max: <span style={{ color: T.text }}>{d.meas_wind_max} {unit}</span></div>
         <div>min: <span style={{ color: T.text }}>{d.meas_wind_min} {unit}</span></div>
       </div>
@@ -158,7 +153,7 @@ const SPEED_FACTOR = { 'km/h': 1, 'kt': 1 / 1.852, 'm/s': 1 / 3.6 }
 const DASH = ['4 2','10 10','8 2 2 2','10 5 2 4','5 10 4 2']
 
 export default function PointForecast({ data }) {
-  const { rawForecast, displayForecast, points, measurements, wings, dateIdx, ptIdx, setPtIdx, speedUnit = 'km/h' } = data
+  const { rawForecast, displayForecast, points, measurements, wings, dateIdx, ptIdx, setPtIdx, speedUnit = 'km/h', altStationPrefs, setAltStationPrefs } = data
   const toUnit = (v) => v == null ? null : parseFloat((v * SPEED_FACTOR[speedUnit]).toFixed(1))
 
   const point = points[ptIdx]
@@ -190,8 +185,17 @@ export default function PointForecast({ data }) {
   const domainLow  = heading - 90
   const domainHigh = heading + 90
 
-  const windData = useMemo(() => (!dayFc||!point)?[]:buildWindData(dayFc,measurements,point.station,dayFc.sunrise,dayFc.sunset,toUnit), [dayFc,measurements,point,speedUnit])
-  const dirData  = useMemo(() => (!dayFc||!point)?[]:buildDirData(dayFc,measurements,point.station,dayFc.sunrise,dayFc.sunset,heading), [dayFc,measurements,point,heading])
+  // Determine which station to use for wind data based on alt_station preference
+  const useAlt = altStationPrefs?.[ptIdx] && point?.alt_station
+  const windStationRef = useAlt ? point.alt_station : point?.station
+  // Heading always comes from the primary station
+  const headingStationRef = point?.station
+
+  const windData = useMemo(() => {
+    if (!dayFc || !point) return []
+    return buildWindData(dayFc, measurements, windStationRef, dayFc.sunrise, dayFc.sunset, toUnit)
+  }, [dayFc, measurements, windStationRef, point, speedUnit])
+  const dirData  = useMemo(() => (!dayFc||!point)?[]:buildDirData(dayFc,measurements,headingStationRef,dayFc.sunrise,dayFc.sunset,heading), [dayFc,measurements,headingStationRef,point,heading])
   const tempData = useMemo(() => (!dayFc||!point)?[]:buildTempData(dayFc), [dayFc,point])
 
   if (!point || !dayFc) return <div style={{ color: T.text2, padding: '40px 0', textAlign: 'center', fontSize: 13 }}>No data available for this selection.</div>
@@ -213,6 +217,24 @@ export default function PointForecast({ data }) {
           Google Maps
         </a>
       </div>
+
+      {/* Alt station toggle */}
+      {point.alt_station && (() => {
+        const [altApi, altCode] = point.alt_station
+        const altStation = measurements?.[altApi]?.[altCode]
+        const altLabel = altStation ? `${altStation.name}` : `${altApi.toUpperCase()} ${altCode}`
+        return (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: T.text2, marginBottom: 8, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={!!altStationPrefs?.[ptIdx]}
+              onChange={e => setAltStationPrefs(prev => ({ ...prev, [ptIdx]: e.target.checked }))}
+              style={{ accentColor: '#7aaaee' }}
+            />
+            Use {altLabel} measurements
+          </label>
+        )
+      })()}
 
       {/* Wind Speed */}
       <div data-tutorial="pt-wind" style={card_}>
@@ -241,8 +263,8 @@ export default function PointForecast({ data }) {
             <Area yAxisId="wind" type="monotone" dataKey="wind_speed"    name={`Wind Speed (${speedUnit})`}   fill="#7aaaee" stroke="#7aaaee" fillOpacity={0.25} dot={false} connectNulls />
             <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precipitation (mm)"             fill="#3a6bbf" stroke="#3a6bbf" fillOpacity={0.9}  dot={false} connectNulls />
             {/* Measurement band — stacked fill-between: min base (transparent) + band on top */}
-            <Area yAxisId="wind" type="linear" dataKey="meas_wind_min"  name={`Measured wind (${speedUnit})`} stackId="meas" stroke="rgba(255,255,255,0.75)" strokeWidth={1.5} fill="transparent" dot={false} connectNulls />
-            <Area yAxisId="wind" type="linear" dataKey="meas_wind_band" name="Measured wind max"               stackId="meas" stroke="rgba(255,255,255,0.75)" strokeWidth={1.5} fill="rgba(255,255,255,0.18)" fillOpacity={1} dot={false} connectNulls legendType="none" />
+            <Area yAxisId="wind" type="linear" dataKey="meas_wind_min"  name={`Measured (${speedUnit})`}   stackId="meas" stroke="rgba(255,255,255,0.75)" strokeWidth={1.5} fill="transparent" dot={false} connectNulls />
+            <Area yAxisId="wind" type="linear" dataKey="meas_wind_band" name="Measured max"                 stackId="meas" stroke="rgba(255,255,255,0.75)" strokeWidth={1.5} fill="rgba(255,255,255,0.18)" fillOpacity={1} dot={false} connectNulls legendType="none" />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -307,17 +329,38 @@ export default function PointForecast({ data }) {
       )}
 
       {/* Station info */}
-      {measurements?.[point.station] && (
-        <div style={{ fontSize: 12, color: T.text2, marginTop: 12, lineHeight: 1.8 }}>
-          Station: <b style={{ color: T.text }}>{measurements[point.station].name}</b>
-          {' '}({measurements[point.station].lat?.toFixed(3)}°N, {measurements[point.station].lon?.toFixed(3)}°E)
-          <br />
-          {dayFc?.offshore_actual_lat != null
-            ? <>Offshore forecast at <b style={{ color: T.text }}>{dayFc.offshore_actual_lat.toFixed(5)}°N, {dayFc.offshore_actual_lon.toFixed(5)}°E</b></>
-            : 'Offshore forecast coordinates unavailable'
-          }
-        </div>
-      )}
+      <div style={{ fontSize: 12, color: T.text2, marginTop: 12, lineHeight: 1.8 }}>
+        {(() => {
+          if (!windStationRef) return null
+          const [api, code] = windStationRef
+          const st = measurements?.[api]?.[code]
+          if (!st) return null
+          return (
+            <>
+              Wind station: <b style={{ color: T.text }}>{st.name}</b> ({api.toUpperCase()})
+              {st.lat != null && <> — {st.lat.toFixed(3)}°N, {st.lon.toFixed(3)}°E</>}
+              <br />
+            </>
+          )
+        })()}
+        {(() => {
+          // Show heading station separately if it differs from wind station
+          if (!headingStationRef || (windStationRef && headingStationRef[0] === windStationRef[0] && headingStationRef[1] === windStationRef[1])) return null
+          const [api, code] = headingStationRef
+          const st = measurements?.[api]?.[code]
+          if (!st?.heading) return null
+          return (
+            <>
+              Heading station: <b style={{ color: T.text }}>{st.name}</b> ({api.toUpperCase()})
+              <br />
+            </>
+          )
+        })()}
+        {dayFc?.offshore_actual_lat != null
+          ? <>Offshore forecast at <b style={{ color: T.text }}>{dayFc.offshore_actual_lat.toFixed(5)}°N, {dayFc.offshore_actual_lon.toFixed(5)}°E</b></>
+          : 'Offshore forecast coordinates unavailable'
+        }
+      </div>
     </div>
   )
 }

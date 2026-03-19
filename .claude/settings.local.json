@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls c:/GIT/soaralarm/backend/*.json c:/GIT/soaralarm/backend/*.pkl)"
+      "Bash(ls c:/GIT/soaralarm/backend/*.json c:/GIT/soaralarm/backend/*.pkl)",
+      "WebSearch"
     ]
   }
 }

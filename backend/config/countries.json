@@ -1,3 +1,6 @@
 {
-    "nl": "Netherlands"
+    "nl": {
+        "name": "Netherlands",
+        "timezone": "Europe/Amsterdam"
+    }
 }
