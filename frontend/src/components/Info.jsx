@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 
 const DEFAULT_WEIGHT = 70.0
 
@@ -36,8 +36,11 @@ const code = {
   margin: '4px 0',
 }
 
+// Dynamic per-country data sources components
+const DATA_SOURCES_MODULES = import.meta.glob('./DataSources_*.jsx')
+
 export default function Info({ data }) {
-  const { points, wings, selectedWings, weight, customWind, windMin, windMax } = data
+  const { points, wings, ranges, country, selectedWings, weight, customWind, windMin, windMax } = data
   const w = parseFloat(weight) || DEFAULT_WEIGHT
 
   // Wings to show: fall back to all wing keys if nothing selected
@@ -45,6 +48,19 @@ export default function Info({ data }) {
   const activeWings = selectedWings.length > 0 ? selectedWings : wingKeys.map(k => ({
     key: k, size: wings[k].default_size,
   }))
+
+  // Dynamically load DataSources_<country>.jsx
+  const [DataSources, setDataSources] = useState(null)
+  useEffect(() => {
+    if (!country) return
+    const key = `./DataSources_${country}.jsx`
+    const loader = DATA_SOURCES_MODULES[key]
+    if (loader) {
+      loader().then(m => setDataSources(() => m.default)).catch(() => setDataSources(null))
+    } else {
+      setDataSources(null)
+    }
+  }, [country])
 
   return (
     <div style={{ maxWidth: 720 }}>
@@ -54,13 +70,13 @@ export default function Info({ data }) {
           style={{ display: 'block', width: 'clamp(250px, 14vw, 350px)', opacity: 0.9, marginBottom: 16 }}
           alt=""
         />
-        <h2 style={h2}>About Soaralarm NL</h2>
+        <h2 style={h2}>About Soaralarm</h2>
         <p style={{ ...p, margin: 0 }}>
-          Soaralarm NL is a <b style={{ color: '#dedede' }}>free and open-source</b> project,
-          built as a free service for the community of pilots who soar the dunes along the
-          Dutch coast. It combines offshore wind forecasts using four major European weather models
-          with live RWS measurements to give you an overview of the best spots to fly in the
-          upcoming 7 days, plus detailed forecasts and measurements to judge the conditions 
+          Soaralarm is a <b style={{ color: '#dedede' }}>free and open-source</b> project,
+          built as a free service, originally for the community of pilots who soar the dunes along the
+          Dutch coast. It combines offshore wind forecasts using multiple European weather models
+          with live measurements from coastal stations to give you an overview of the best spots to fly in the
+          upcoming 7 days, plus detailed hourly forecasts and measurements to judge the conditions
           when you go fly.
         </p>
       </div>
@@ -70,27 +86,43 @@ export default function Info({ data }) {
         <h2 style={h2}>Flyability calculation</h2>
 
         <p style={p}>
-          The flyable wind ranges and wind headings are calculated based on an experienced pilot of{' '}
-          <b style={{ color: '#dedede' }}>70 kg</b> flying the following wings:
+          Wind ranges and headings for each location are computed by a{' '}
+          <span style={code}>point_ranges()</span> function that takes the site's{' '}
+          <b style={{ color: '#dedede' }}>dune steepness</b> and{' '}
+          <b style={{ color: '#dedede' }}>dune height</b> as inputs. The base calibration assumes
+          an experienced pilot of <b style={{ color: '#dedede' }}>70 kg</b> flying the
+          following wings:
         </p>
 
         <ul style={{ ...p, paddingLeft: 20 }}>
           {wingKeys.map(k => (
             <li key={k}>
               <b style={{ color: '#dedede' }}>{wings[k].display_name}</b>
-              {' → '}
-              {k === 'scraper_16'    && 'Dune Rider Scraper 16 m²'}
-              {k === 'hopper_16'     && 'Dune Rider Hopper 16 m²'}
-              {k === 'paraglider_16' && 'EN-C wing 16 m²'}
-              {!['scraper_16','hopper_16','paraglider_16'].includes(k) &&
-                `${wings[k].display_name} ${wings[k].default_size} m²`}
+              {' – default size '}
+              {wings[k].default_size} m²
             </li>
           ))}
         </ul>
 
-        <h3 style={h3}>Wind range scaling</h3>
+        <h3 style={h3}>Wind speed ranges</h3>
         <p style={p}>
-          Wind ranges for different sizes and pilot weights are derived from the base ranges by solving
+          The <b style={{ color: '#dedede' }}>minimum flyable speed</b> at each location is determined
+          by the dune steepness category (flat, moderate, steep) and wind gradient compensation is applied
+          as a function of dune height:
+        </p>
+        <div style={{ ...code, display: 'block', padding: '8px 14px', margin: '8px 0 12px' }}>
+          factor = {ranges?.speed_height_scaling?.formula || '(A − B · height) / C'}
+        </div>
+        <p style={p}>
+          Taller dunes produce a greater wind gradient, thus
+          the wind speed is greater at the top of the dune, and the spot is flyable at lower forecasted
+          windspeeds. The <b style={{ color: '#dedede' }}>maximum flyable speed</b> is set
+          per wing type and scaled by the same wind gradient factor.
+        </p>
+
+        <h3 style={h3}>Wind range scaling for different sizes and weights</h3>
+        <p style={p}>
+          Wind ranges for different wing sizes and pilot weights are derived from the base ranges by solving
           for constant lift:
         </p>
         <div style={{ ...code, display: 'block', padding: '8px 14px', margin: '8px 0 12px' }}>
@@ -100,6 +132,23 @@ export default function Info({ data }) {
           where <i>v</i> is airspeed, <i>W</i> is total pilot weight in flight, and <i>A</i> is wing area.
           This assumes the glide ratio and lift coefficient are the same across all sizes and weights for a
           given wing type, which is a simplification but close enough in most cases.
+        </p>
+
+        <h3 style={h3}>Heading ranges</h3>
+        <p style={p}>
+          The flyable heading range at each location is calculated as a function of
+          dune height:
+        </p>
+        <div style={{ ...code, display: 'block', padding: '8px 14px', margin: '8px 0 12px' }}>
+          half_range = {ranges?.heading_range?.formula || 'A + B · ln(height)'}
+        </div>
+        <p style={p}>
+          This means taller dunes accept a wider range of
+          wind directions. The <b style={{ color: '#dedede' }}>good heading</b> zone is always a fixed
+          fraction ({ranges?.heading_range?.good_fraction != null
+            ? `${Math.round(ranges.heading_range.good_fraction * 100)}%`
+            : '50%'}) of the full crosswind range. At some spots, these calculated
+          bounds are overriden due to other factors (e.g. turbulence from wind turbines).
         </p>
 
         <h3 style={h3}>Wind quality</h3>
@@ -128,18 +177,12 @@ export default function Info({ data }) {
         <h2 style={h2}>Low end of wind ranges</h2>
         <p style={p}>
           While different wings have different glide ratios, most wings have a similar c<sub>L max</sub>, and in any case the main limitations on the low end
-          of the range are the takeoff options, dune geometry and pilot skill – not the efficiency of the wing. 
+          of the range are the takeoff options, dune geometry and pilot skill – not the efficiency of the wing.
         </p>
         <p style={p}>
-          This is trivial to show: the windspeeds theoretically required to achieve an upwards component of wind equal to the minimum sink 
-          of a wing like a Scraper 16 are much lower than the 
-          actual low range of the wing, in the order of around 10-15 km/h for the moderate quality dunes in the NW facing sites, but the wing must 
-          trade altitude to accelerate beyond stall speed before it can use the lift to stay up. 
-        </p> 
-        <p style={p}>
-          Given these considerations, and in order to simplify a quite complex topic, the minimum flyable 
-          speed for each wing has been assumed to be solely a function of wing area and location (that is,
-          all types of wings with the same area will show the same minimum speed at a given location).
+          As such, the minimum flyable
+          speed for each wing is determined by the dune steepness and height at each location, and the wing area and total in-flight weight.
+          All wing types with the same area will show the same minimum speed at a given location.
         </p>
       </div>
 
@@ -222,113 +265,13 @@ export default function Info({ data }) {
         </div>
       </div>
 
-      {/* ── Data sources ── */}
-      <div style={card}>
-        <h2 style={h2}>Data sources</h2>
-
-        <h3 style={{ ...h3, marginTop: 0 }}>Wind &amp; weather forecast</h3>
-        <p style={p}>
-          Forecasts are fetched from the{' '}
-          <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" style={link}>
-            Open-Meteo API
-          </a>
-          , a free and open-source weather API. The active model is selected in Settings.
-        </p>
-        <ul style={{ ...p, paddingLeft: 20 }}>
-          <li>
-            <b style={{ color: '#dedede' }}>KNMI HARMONIE</b> – 2 km resolution. Uses KNMI HARMONIE AROME
-            for the first 2.5 days, then blends into ECMWF IFS for the remainder of the forecast.
-          </li>
-          <li>
-            <b style={{ color: '#dedede' }}>ECMWF IFS</b> – 9 km resolution global model from the European
-            Centre for Medium-Range Weather Forecasts. Most reliable for days 4–7.
-          </li>
-          <li>
-            <b style={{ color: '#dedede' }}>DWD ICON D2</b> – 2 km resolution model from Deutscher
-            Wetterdienst. Uses ICON D2 for the first 2 days, and ICON EU afterwards. From 78h into the future,
-            forecasted values are only 3-hourly and therefore interpolated for each hour in-between.
-          </li>
-          <li>
-            <b style={{ color: '#dedede' }}>Météo-France AROME HD</b> – 1.5 km resolution. Visibility is 
-            not provided by this model and is patched in from KNMI HARMONIE. Forecast only for up to 4 days
-            into the future.
-          </li>
-        </ul>
-        <p style={p}>
-          Wind speed, direction, and gusts are sampled at hand-picked, offshore, upwind coordinates for each
-          location, while temperature, visibility, and precipitation are sampled at the flying site, onshore.
-          Forecasts are refreshed every 2 hours.
-        </p>
-
-        <h3 style={h3}>Multi-model confidence scores</h3>
-        <p style={p}>
-          For each day, every location is scored by how many of the four models agree there will be flyable
-          hours <b style={{ color: '#dedede' }}>based solely on wind speed and heading</b>, that is, ignoring rain
-          or fog – since these tend to introduce quite some variability to the calculation of flyability, and 
-          their forecasted values are usually more volatile than the forecasted wind. The location with 
-          the highest score is selected as the "best" location shown in the
-          flyable-hours chart, Gantt chart, and Point Forecast default. When multiple locations share the
-          same score, the selected model's good-quality hours – and then total flyable hours  – are used as
-          a tie-breaker. The badge is shown whenever at least one model forecasts flyable weather.
-        </p>
-        <p style={p}>
-          Beyond day 3, KNMI is excluded because it blends into ECMWF IFS after 2.5 days – including it
-          would double-count the same source. From day 5 onward, AROME doesn't produce any forecasts, leaving
-          only ECMWF and ICON.
-        </p>
-
-        {/* Confidence score table */}
-        <div style={{ overflowX: 'auto', marginBottom: 8 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #676767' }}>
-                <th style={th}>Badge</th>
-                <th style={th}>Models agree</th>
-                <th style={th}>Available until</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { label: '★★★★', color: '#00e676', agree: '4 / 4', until: 'Third day from today (all 4 models active)' },
-                { label: '★★★',   color: '#c6ef00', agree: '3 / 4', until: 'Fourth day from today (AROME still active)' },
-                { label: '★★',     color: '#ffa726', agree: '2 / 4', until: 'Always possible' },
-                { label: '★',       color: '#ef5350', agree: '1 / 4', until: 'Always possible' },
-              ].map(({ label, color, agree, until }, i) => (
-                <tr key={label} style={{ borderBottom: '1px solid #363636', background: i % 2 === 0 ? 'transparent' : '#363636' }}>
-                  <td style={td}>
-                    <span style={{
-                      display: 'inline-block',
-                      background: color + '22',
-                      color,
-                      fontWeight: 700,
-                      fontSize: 11,
-                      padding: '2px 7px',
-                      borderRadius: 4,
-                    }}>{label}</span>
-                  </td>
-                  <td style={{ ...td, fontFamily: 'monospace', color: '#aaa' }}>{agree}</td>
-                  <td style={td}>{until}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* ── Data sources (per-country) ── */}
+      {DataSources && (
+        <div style={card}>
+          <h2 style={h2}>Data sources</h2>
+          <DataSources />
         </div>
-
-        <h3 style={h3}>Live wind measurements</h3>
-        <p style={p}>
-          Real-time wind measurements are pulled from the{' '}
-          <a href="https://rijkswaterstaatdata.nl/waterdata/" target="_blank" rel="noopener noreferrer" style={link}>
-            Rijkswaterstaat Waterinfo API
-          </a>{' '}
-          via the open-source{' '}
-          <a href="https://github.com/Deltares/ddlpy" target="_blank" rel="noopener noreferrer" style={link}>
-            ddlpy
-          </a>{' '}
-          library. The measurements used are the wind spreads and wind heading reported every 10 minutes by
-          RWS coastal monitoring stations. Data is refreshed every 15 minutes, only during the daylight
-          window (from 90 minutes before sunrise to 90 minutes after sunset).
-        </p>
-      </div>
+      )}
       
       <div style={card}>
         <h2 style={h2}>Credits</h2>
@@ -350,19 +293,17 @@ export default function Info({ data }) {
           <a href="https://www.anthropic.com/claude" target="_blank" rel="noopener noreferrer" style={link}>
             Claude
           </a>{' '}
-          by Anthropic, which helped enormously in the design of the web service architecture and frontend development, given my 
-          limited experience in this kind of development and how little time I have available to work on this project.{' '}
-          <b style={{ color: '#dedede' }}>Claude</b> helped in planning the backend architecture{' '}
+          by Anthropic, which helped in planning the backend architecture{' '}
           with <b style={{ color: '#dedede' }}>FastAPI</b>, developing most of the frontend with{' '}
-          <b style={{ color: '#dedede' }}>React.js</b> and helping add features and solve issues at a much faster rate than I could by hand.
+          <b style={{ color: '#dedede' }}>React.js</b> and helping add features and solve issues at 
+          a much faster rate than I could by hand.
         </p>
       </div>
 
       <div style={card}>
         <h2 style={h2}>Privacy</h2>
         <p style={p}>
-          Since I do not have the experience to be able to identify any security issues in the web app architecture, the decision was simply made 
-          to not collect any data from the user. All your settings and preferences are only stored locally in your browser, and Soaralarm NL does 
+          All your settings and preferences are only stored locally in your browser, and Soaralarm NL does 
           not collect or store any information of any kind about its users.
         </p>
       </div>

@@ -19,12 +19,28 @@ from retry_requests import retry
 # ── Wind & heading range algorithm ───────────────────────────────────────────
 # Parameters are loaded from a mode-specific ranges JSON (e.g. ranges_para.json)
 # and passed into point_ranges() at startup.
+# Formulas are stored as human-readable strings in the JSON and parsed at
+# evaluation time so the user can swap e.g. linear → quadratic by just editing
+# the formula string.
+
+_FORMULA_FUNCS = {
+    "ln":    math.log,
+    "log":   math.log,
+    "sqrt":  math.sqrt,
+    "exp":   math.exp,
+    "abs":   abs,
+}
 
 
-def _height_factor(h: float, cfg: Dict) -> float:
-    """Linear scaling factor for a dune of height h metres, driven by config."""
-    sc = cfg["speed_height_scaling"]
-    return (sc["A"] - sc["B"] * h) / sc["C"]
+def _eval_formula(formula: str, variables: Dict[str, float]) -> float:
+    """Safely evaluate a formula string with the given variables.
+
+    Supports: +, -, *, /, **, parentheses, numeric literals,
+    and functions: ln(), log(), sqrt(), exp(), abs().
+    """
+    namespace = {**_FORMULA_FUNCS, **variables}
+    # compile() + eval() with a restricted namespace — no builtins
+    return float(eval(compile(formula, "<formula>", "eval"), {"__builtins__": {}}, namespace))
 
 
 def point_ranges(point: Dict, ranges_cfg: Dict) -> Dict:
@@ -40,7 +56,11 @@ def point_ranges(point: Dict, ranges_cfg: Dict) -> Dict:
     """
     steepness = point["slope"]["steepness"]
     height    = float(point["slope"]["height"])
-    factor    = _height_factor(height, ranges_cfg)
+
+    factor = _eval_formula(
+        ranges_cfg["speed_height_scaling"]["formula"],
+        {"height": height},
+    )
 
     base_min   = ranges_cfg["min_speed_by_steepness"][steepness]
     wind_range = {
@@ -49,7 +69,7 @@ def point_ranges(point: Dict, ranges_cfg: Dict) -> Dict:
     }
 
     hcfg      = ranges_cfg["heading_range"]
-    calc_half = hcfg["A"] + hcfg["B"] * math.log(height)
+    calc_half = _eval_formula(hcfg["formula"], {"height": height})
     good_frac = hcfg["good_fraction"]
     override  = point.get("head_range") or [None, None]
     cross_lo  = float(override[0]) if override[0] is not None else -calc_half

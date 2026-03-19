@@ -18,12 +18,18 @@ const STEPS = [
   {
     tab: 0, selector: null, position: 'center',
     title: <><img src="/paraglider_small.png" width={22} height={22} style={{ verticalAlign: 'middle', marginRight: 8 }} alt="" />Welcome to Soaralarm NL</>,
-    body:  <>Soaralarm NL is a <b style={{ color: T.text }}>free and open-source, feature-rich forecasting tool</b>  built for pilots soaring the dunes along the Dutch coast. This tutorial will show how to use it step by step.</>,
+    body:  <>Soaralarm NL is a <b style={{ color: T.text }}>free and open-source, feature-rich forecasting tool</b> built for pilots soaring the dunes along the Dutch coast. This tutorial will show how to use it step by step.</>,
+  },
+  // ── Map tab intro ──
+  {
+    tab: 0, selector: null, position: 'center',
+    title: 'Map tab',
+    body:  <>The <b style={{ color: T.text }}>Map tab</b> gives you a bird's-eye view of the upcoming forecast. It shows an overview map with all soaring locations, a chart of estimated flyable hours per day, multi-model confidence scores, and a timeline of flyable windows. Use it to quickly identify <b style={{ color: T.text }}>when and where</b> conditions look best.</>,
   },
   {
     tab: 0, selector: '[data-tutorial="map"]', position: 'below',
     title: 'The map',
-    body:  <>Each dot marks a <b style={{ color: T.text }}>soaring location</b> along the Dutch coast. The <b style={{ color: T.text }}>wind slices</b> show estimated flyable hours for the selected day – a larger slice means more hours. Green indicates a <b style={{ color: '#1dbb02' }}>Good Heading</b> and yellow indicates <b style={{ color: '#ddb60a' }}>Crosswind</b>. Tap any point marker to see a summary popup with a <b style={{ color: T.text }}>Detailed Forecast</b> link that will take you to the detailed forecast for that location on the selected day.</>,
+    body:  <>Each dot marks a <b style={{ color: T.text }}>soaring location</b>. The <b style={{ color: T.text }}>wind slices</b> show estimated flyable hours for the selected day – a larger slice means more hours. Green indicates a <b style={{ color: '#1dbb02' }}>Good Heading</b> and yellow indicates <b style={{ color: '#ddb60a' }}>Crosswind</b>. Tap any marker to see a summary popup with a <b style={{ color: T.text }}>Spot information</b> link. Tapping a marker also selects that location, so you can switch to the <b style={{ color: T.text }}>Point tab</b> for the detailed forecast.</>,
   },
   {
     tab: 0, selector: '[data-tutorial="plotcontrols"]', position: 'below',
@@ -45,35 +51,57 @@ const STEPS = [
     title: 'Flyable windows',
     body:  <>Shows when flyable conditions are expected during each day, at the <b style={{ color: T.text }}>best location</b>. Each coloured block is a <b style={{ color: T.text }}>flyable window</b> – tap it to see the wind category and exact time range. Note that, like with the bar chart, <b style={{ color: T.text }}>tapping on a time window</b> will <b style={{ color: T.text }}>automatically select</b> that day and location on both the <b style={{ color: T.text }}>map</b> and on the <b style={{ color: T.text }}>Point tab</b>.</>,
   },
+  // ── Point tab intro ──
+  {
+    tab: 1, selector: null, position: 'center',
+    title: 'Point tab',
+    body:  <>The <b style={{ color: T.text }}>Point tab</b> shows detailed hourly forecasts and live measurements for a single location. Use it to inspect wind speed, gusts, heading, temperature, visibility, and precipitation before heading out. Each location also has <b style={{ color: T.text }}>site information symbols</b> and a <b style={{ color: T.text }}>Spot information</b> link with practical tips about the site.</>,
+  },
   {
     tab: 1, selector: '[data-tutorial="pt-selectors"]', position: 'below',
-    title: 'Location and date selection',
-    body:  <>Choose any of the Dutch <b style={{ color: T.text }}>soaring locations</b> and <b style={{ color: T.text }}>date</b>. Note that the calculated <b style={{ color: T.text }}>best location</b> for the selected day is set by default. A <b style={{ color: T.text }}>Google Maps</b> link takes you to the coordinates on the map so you can check how to get there.</>,
+    title: 'Location, links and site info',
+    body:  <>Choose any <b style={{ color: T.text }}>soaring location</b> from the dropdown. The calculated <b style={{ color: T.text }}>best location</b> for the selected day is set by default. <b style={{ color: T.text }}>Google Maps</b> takes you to the coordinates, and <b style={{ color: T.text }}>Spot information</b> links to a detailed description of the site. Below, the <b style={{ color: T.text }}>site information symbols</b> highlight key characteristics of the location – tap any symbol to read more about it. At locations with multiple weather stations, <b style={{ color: T.text }}>radio buttons</b> let you choose which station's measurements to overlay.</>,
   },
   {
     tab: 1, selector: '[data-tutorial="pt-wind"]', position: 'below',
     title: 'Windspeed forecast',
-    body:  <>Hourly <b style={{ color: T.text }}>wind and gust speed</b> for the selected location and day. The white band shows the live Rijkswaterstaat measurements from the corresponding weather station.</>,
+    body:  <>Hourly <b style={{ color: T.text }}>wind and gust speed</b> for the selected location and day. The white band shows live measurements from the corresponding weather station. Green reference lines mark the <b style={{ color: T.text }}>flyable wind range</b> for each of your configured wings at this location.</>,
   },
   {
     tab: 1, selector: '[data-tutorial="pt-direction"]', position: 'below',
     title: 'Wind heading forecast',
-    body:  <>Hourly <b style={{ color: T.text }}>wind heading</b> forecast. The colored bands show your flyable heading range: <b style={{ color: '#25b863' }}>Good heading</b> or <b style={{ color: '#d27a2d' }}>Crosswind</b>. The dashed line shows the live Rijkswaterstaat measurements.</>,
+    body:  <>Hourly <b style={{ color: T.text }}>wind heading</b> forecast. The colored bands show your flyable heading range: <b style={{ color: '#25b863' }}>Good heading</b> or <b style={{ color: '#d27a2d' }}>Crosswind</b>. The dashed line shows the live measurements.</>,
   },
   {
     tab: 1, selector: '[data-tutorial="pt-ranges"]', position: 'above',
     title: 'Windspeed ranges',
-    body:  <>A summary of the <b style={{ color: T.text }}>calculated windspeed ranges</b> for each of <b style={{ color: T.text }}>your configured wings</b> at this location, derived from a known base range and your total flight weight. If you have enabled <b style={{ color: T.text }}>Custom Wind Range</b> in <b style={{ color: T.text }}>Settings</b>, that overrides these calculations.</>,
+    body:  <>A summary of the <b style={{ color: T.text }}>calculated windspeed ranges</b> for each of <b style={{ color: T.text }}>your configured wings</b> at this location. These are derived from the site's dune geometry and your wing size and weight. If you have enabled <b style={{ color: T.text }}>Custom Wind Range</b> in <b style={{ color: T.text }}>Settings</b>, that overrides these calculations.</>,
+  },
+  // ── Settings tab intro ──
+  {
+    tab: 2, selector: null, position: 'center',
+    title: 'Settings tab',
+    body:  <>The <b style={{ color: T.text }}>Settings tab</b> lets you configure the app to your specific setup. Choose your country and flying mode, select a forecast model, set your wings and weight for accurate wind range calculations, and define your availability window. All settings are saved locally in your browser.</>,
+  },
+  {
+    tab: 2, selector: '[data-tutorial="settings-country-mode"]', position: 'below',
+    title: 'Country and Mode',
+    body:  <>Select the <b style={{ color: T.text }}>Country</b> to choose which set of soaring locations to display, and the <b style={{ color: T.text }}>Mode</b> to switch between wing types (e.g. paragliding). Each country has its own forecast models, locations, and measurement stations, and each mode has its own wing catalogue and wind range calibration.</>,
+  },
+  {
+    tab: 2, selector: '[data-tutorial="settings-speed-unit"]', position: 'below',
+    title: 'Speed units',
+    body:  <>Choose your preferred <b style={{ color: T.text }}>wind speed unit</b>: km/h, knots, or m/s. This applies to all wind speed displays across the app, including the Point tab charts and wind range summaries.</>,
   },
   {
     tab: 2, selector: '[data-tutorial="settings-model"]', position: 'below',
     title: 'Forecast model',
-    body:  <>Choose which of the four weather models is used by the hourly <b style={{ color: T.text }}>Point tab</b> charts. The Map Forecast always combines all four models for confidence scoring. <b style={{ color: T.text }}>KNMI HARMONIE</b> is generally the <b style={{ color: T.text }}>most accurate</b> for Dutch coastal locations.</>,
+    body:  <>Choose which weather model is used by the hourly <b style={{ color: T.text }}>Point tab</b> charts. The Map tab always combines all available models for confidence scoring. <b style={{ color: T.text }}>KNMI HARMONIE</b> is generally the <b style={{ color: T.text }}>most accurate</b> for Dutch coastal locations.</>,
   },
   {
     tab: 2, selector: '[data-tutorial="settings-wings"]', position: 'below',
     title: 'Wing configuration',
-    body:  <>Add <b style={{ color: T.text }}>up to 5 wings</b>. For each, select the <b style={{ color: T.text }}>wing type</b> and enter the <b style={{ color: T.text }}>size in m²</b>. The app uses known base ranges for each wing type and location, together with your wing sizes and weight to calculate your wind speed ranges. You can enable <b style={{ color: T.text }}>Custom Wind Range</b> at the top to bypass this and enter your own min/max windspeeds directly.</>,
+    body:  <>Add <b style={{ color: T.text }}>up to 5 wings</b>. For each, select the <b style={{ color: T.text }}>wing type</b> and enter the <b style={{ color: T.text }}>size in m²</b>. The app uses the site's dune geometry and your wing size and weight to calculate flyable wind speed ranges. You can enable <b style={{ color: T.text }}>Custom Wind Range</b> to bypass this and enter your own min/max windspeeds directly.</>,
   },
   {
     tab: 2, selector: '[data-tutorial="settings-weight"]', position: 'below',
@@ -84,6 +112,12 @@ const STEPS = [
     tab: 2, selector: '[data-tutorial="settings-window"]', position: 'below',
     title: 'Availability window',
     body:  <>Restricts the <b style={{ color: T.text }}>flyable hours</b> to those that fall within the times you are <b style={{ color: T.text }}>actually available to fly</b>. If you set 10:00 → 17:00, any flyable forecast hours outside that window are excluded from the flyable hours and flyable windows in the <b style={{ color: T.text }}>Map tab</b>.</>,
+  },
+  // ── Info tab intro ──
+  {
+    tab: 3, selector: null, position: 'center',
+    title: "Info tab",
+    body:  <>The <b style={{ color: T.text }}>Info tab</b> explains how the app works under the hood – how flyable hours are calculated, the wind range scaling formula, heading ranges, data sources, and per-location wind range and heading tables for your current wing setup.</>,
   },
   {
     tab: 2, selector: null, position: 'center',

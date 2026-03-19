@@ -11,17 +11,10 @@
     },
     "default_weight": 70.0,
     "speed_height_scaling": {
-        "type": "linear",
-        "formula": "(A - B * height) / C",
-        "A": 42.0,
-        "B": 0.2,
-        "C": 40.0
+        "formula": "(42.0 - 0.2 * height) / 40.0"
     },
     "heading_range": {
-        "type": "logarithmic",
-        "formula": "A + B * ln(height)",
-        "A": -3.7922,
-        "B": 12.8541,
+        "formula": "-3.7922 + 12.8541 * ln(height)",
         "good_fraction": 0.5
     }
 }

@@ -138,7 +138,7 @@ export default function Settings({ data }) {
           selectedWings, setSelectedWings, weight, setWeight,
           customWind, setCustomWind, windMin, setWindMin, windMax, setWindMax,
           speedUnit, setSpeedUnit,
-          wings, models, appConfig, status, refreshForecast, refetchDisplay, switchConfig } = data
+          wings, models, countries, modes, country, mode, status, refreshForecast, refetchDisplay, switchConfig } = data
 
   const [localModel,     setLocalModel]     = useState(model)
   const [localTs,        setLocalTs]        = useState(timeStart)
@@ -175,14 +175,14 @@ export default function Settings({ data }) {
       <div style={{ marginBottom: 20, fontSize: 16, fontWeight: 600, color: T.text }}>Settings</div>
       <div style={card}>
         {/* Country & Mode side by side */}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 22 }}>
+        <div data-tutorial="settings-country-mode" style={{ display: 'flex', gap: 12, marginBottom: 22 }}>
           <div style={{ flex: 1 }}>
             <label style={label_}>Country</label>
             <select style={{ ...select_, width: '100%' }}
-              value={appConfig?.country || ''}
-              onChange={e => switchConfig(e.target.value, appConfig?.mode)}
+              value={country || ''}
+              onChange={e => switchConfig(e.target.value, mode)}
             >
-              {appConfig?.countries && Object.entries(appConfig.countries).map(([code, c]) => (
+              {countries && Object.entries(countries).map(([code, c]) => (
                 <option key={code} value={code}>{c.name || c}</option>
               ))}
             </select>
@@ -190,28 +190,27 @@ export default function Settings({ data }) {
           <div style={{ flex: 1 }}>
             <label style={label_}>Mode</label>
             <select style={{ ...select_, width: '100%' }}
-              value={appConfig?.mode || ''}
-              onChange={e => switchConfig(appConfig?.country, e.target.value)}
+              value={mode || ''}
+              onChange={e => switchConfig(country, e.target.value)}
             >
-              {appConfig?.modes && Object.entries(appConfig.modes).map(([code, name]) => (
+              {modes && Object.entries(modes).map(([code, name]) => (
                 <option key={code} value={code}>{typeof name === 'string' ? name : name.name || code}</option>
               ))}
             </select>
           </div>
         </div>
 
-        <div style={field}>
+        <div data-tutorial="settings-speed-unit" style={field}>
           <label style={label_}>Speed Units</label>
           <select style={{ ...select_, width: '100%' }} value={speedUnit} onChange={e => setSpeedUnit(e.target.value)}>
             <option value="km/h">km/h</option>
             <option value="kt">kt</option>
             <option value="m/s">m/s</option>
           </select>
-          <div style={{ fontSize: 11, color: T.text3, marginTop: 5 }}>Affects wind speed display in the Point tab only.</div>
         </div>
 
         <div data-tutorial="settings-model" style={field}>
-          <label style={label_}>Forecast Model {appConfig?.country_name || ''}</label>
+          <label style={label_}>Forecast Model {countries?.[country]?.name || ''}</label>
           <select style={{ ...select_, width: '100%' }} value={localModel} onChange={e => setLocalModel(e.target.value)}>
             {Object.entries(models).map(([key, m]) => (
               <option key={key} value={key}>{m.display_name}</option>

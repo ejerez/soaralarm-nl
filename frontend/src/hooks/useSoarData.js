@@ -1,15 +1,27 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { api } from '../api.js'
+import { api, setApiScope } from '../api.js'
 
 const POLL_MS        = 10_000              // poll status every 10 s
 const CACHE_TTL      = 2 * 60 * 60 * 1000  // 2 h — matches server forecast TTL
 const MEAS_CACHE_TTL = 15 * 60 * 1000      // 15 min — matches server measurement refresh interval
 
 // ── Country/mode scope for cache keys ────────────────────────────────────
-// Stored in localStorage so cache lookups work on first render (before /api/config returns).
-// Updated when config is fetched; if the country/mode changes, old keys naturally miss.
 function cacheScope() { return localStorage.getItem('soar_scope') || 'nl:para' }
 function updateCacheScope(country, mode) { localStorage.setItem('soar_scope', `${country}:${mode}`) }
+
+// ── Detect country from subdomain (e.g. nl.soaralarm.eu → "nl") ─────────
+function detectCountryFromSubdomain() {
+  try {
+    const host = window.location.hostname
+    const parts = host.split('.')
+    // Match patterns like nl.soaralarm.eu or nl.soaralarm.localhost
+    if (parts.length >= 3) {
+      const sub = parts[0].toLowerCase()
+      if (sub.length === 2) return sub  // 2-letter country code
+    }
+  } catch {}
+  return null
+}
 
 // ── Display forecast cache ────────────────────────────────────────────────
 function displayCacheKey(model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax) {
@@ -68,7 +80,7 @@ function saveRawCache(model, forecast) {
     localStorage.setItem(rawCacheKey(model), JSON.stringify({ forecast, savedAt: Date.now() }))
   } catch {
     try {
-      Object.keys(localStorage).filter(k => k.startsWith('soar_raw_v1:')).forEach(k => localStorage.removeItem(k))
+      Object.keys(localStorage).filter(k => k.startsWith('soar_raw_v2:')).forEach(k => localStorage.removeItem(k))
       localStorage.setItem(rawCacheKey(model), JSON.stringify({ forecast, savedAt: Date.now() }))
     } catch {}
   }
@@ -85,7 +97,7 @@ function loadSelectedWings() {
 // Read all settings from localStorage once — single consistent snapshot
 function readSettingsFromStorage() {
   return {
-    model:         localStorage.getItem('model')        || '',  // validated against server models on init
+    model:         localStorage.getItem('model')        || '',
     timeStart:     localStorage.getItem('timeStart')    || '00:00',
     timeEnd:       localStorage.getItem('timeEnd')      || '23:59',
     selectedWings: loadSelectedWings(),
@@ -97,13 +109,25 @@ function readSettingsFromStorage() {
   }
 }
 
+// ── Resolve initial country and mode ─────────────────────────────────────
+function resolveInitialScope() {
+  // Country: subdomain > localStorage > fallback "nl"
+  const subCountry = detectCountryFromSubdomain()
+  const storedScope = cacheScope().split(':')
+  const country = subCountry || storedScope[0] || 'nl'
+  const mode = storedScope[1] || 'para'
+  return { country, mode }
+}
+
 export function useSoarData() {
   // ── Read initial settings + cache exactly once (inside useRef) ───────────
-  // Computed at the top of the hook body these would re-run on every render;
-  // storing in a ref means they run once on mount and never again.
   const initRef = useRef(null)
   if (!initRef.current) {
     const settings = readSettingsFromStorage()
+    const scope = resolveInitialScope()
+    // Set API scope before any requests
+    updateCacheScope(scope.country, scope.mode)
+    setApiScope(scope.country, scope.mode)
     const cacheKey = displayCacheKey(
       settings.model, settings.timeStart, settings.timeEnd,
       settings.selectedWings, settings.weight,
@@ -111,28 +135,32 @@ export function useSoarData() {
     )
     initRef.current = {
       settings,
+      scope,
       cache: loadDisplayCache(cacheKey),
       measCache: loadMeasCache(),
       rawCache: loadRawCache(settings.model),
     }
   }
-  const { settings: initSettings, cache: initCache, measCache: initMeasCache, rawCache: initRawCache } = initRef.current
+  const { settings: initSettings, scope: initScope, cache: initCache, measCache: initMeasCache, rawCache: initRawCache } = initRef.current
 
   const [status, setStatus]           = useState(null)
   const [points, setPoints]           = useState([])
   const [days, setDays]               = useState([])
   const [wings, setWings]             = useState({})
   const [models, setModels]           = useState({})
-  const [appConfig, setAppConfig]     = useState(null)
+  const [ranges, setRanges]           = useState({})
+  const [countries, setCountries]     = useState({})
+  const [modes, setModes]             = useState({})
+  const [country, setCountry]         = useState(initScope.country)
+  const [mode, setMode]               = useState(initScope.mode)
   const [displayForecast, setDisplay] = useState(initCache?.display   ?? null)
   const [certainty, setCertainty]     = useState(initCache?.certainty ?? null)
-  const [rawForecast, setRaw]         = useState(initRawCache ?? null)   // warm from cache
-  const [measurements, setMeasure]    = useState(initMeasCache ?? null)  // warm from cache
-  // Per-location alt_station preference: { [ptIdx]: true/false }
+  const [rawForecast, setRaw]         = useState(initRawCache ?? null)
+  const [measurements, setMeasure]    = useState(initMeasCache ?? null)
   const [altStationPrefs, setAltStationPrefs] = useState(() => {
     try { return JSON.parse(localStorage.getItem(`altStationPrefs:${cacheScope()}`) || '{}') } catch { return {} }
   })
-  const [loading, setLoading]         = useState(!initCache)  // skip spinner on cache hit
+  const [loading, setLoading]         = useState(!initCache)
   const [error, setError]             = useState(null)
 
   // User settings (persisted in localStorage)
@@ -149,20 +177,13 @@ export function useSoarData() {
   const [ptIdx,   setPtIdx]             = useState(0)
 
   // ── Refs ──────────────────────────────────────────────────────────────────
-  // Mirror of current settings so fetchDisplay() stays stable (no deps)
   const settingsRef = useRef(initSettings)
-
-  // pendingFetch: if fetchDisplay() is called while in-flight, set this flag
-  // so the finally block re-runs with the latest settings automatically.
   const isFetchingDisplay = useRef(false)
   const pendingFetch      = useRef(false)
-
-  // Stable ref for displayForecast — lets the poll check it without depending on it
   const displayRef         = useRef(initCache?.display ?? null)
   const prevMeasAgeRef     = useRef(null)
   const prevForecastAgeRef = useRef(null)
   const rawForecastRef     = useRef(initRawCache ?? null)
-  // Track updating flags so poll can detect the exact moment an update finishes
   const prevFcUpdatingRef  = useRef(false)
   const prevMsUpdatingRef  = useRef(false)
 
@@ -186,7 +207,6 @@ export function useSoarData() {
   useEffect(() => { localStorage.setItem(`altStationPrefs:${cacheScope()}`, JSON.stringify(altStationPrefs)) }, [altStationPrefs])
 
   // ── Fetch display forecast ────────────────────────────────────────────────
-  // Stable (no deps) — reads settings from settingsRef.
   const fetchDisplay = useCallback(async () => {
     if (isFetchingDisplay.current) {
       pendingFetch.current = true
@@ -209,8 +229,6 @@ export function useSoarData() {
       }
       if (disp.certainty) setCertainty(disp.certainty)
 
-      // Raw forecast + measurements in background — MapForecast already rendered
-      // Use allSettled so a measurements failure at night doesn't block rawForecast
       const [rawResult, measResult] = await Promise.allSettled([
         api.rawForecast(model),
         api.measurements(),
@@ -237,17 +255,21 @@ export function useSoarData() {
   // ── Country/mode switching ──────────────────────────────────────────────
   const switchConfig = useCallback(async (newCountry, newMode) => {
     try {
-      await api.setConfig({ country: newCountry, mode: newMode })
+      // Update scope — all subsequent API calls use these params
+      setApiScope(newCountry, newMode)
       updateCacheScope(newCountry, newMode)
-      const [pts, d, st, wgs, mods, cfg] = await Promise.all([
-        api.points(), api.days(), api.status(), api.wings(), api.models(), api.config()
+      setCountry(newCountry)
+      setMode(newMode)
+
+      const [pts, d, st, wgs, mods, rng] = await Promise.all([
+        api.points(), api.days(), api.status(), api.wings(), api.models(), api.ranges()
       ])
       setPoints(pts)
       setDays(d.days)
       setStatus(st)
       setWings(wgs)
       setModels(mods)
-      setAppConfig(cfg)
+      setRanges(rng)
 
       const modelKeys = Object.keys(mods)
       if (!mods[settingsRef.current.model] && modelKeys.length > 0) {
@@ -297,16 +319,18 @@ export function useSoarData() {
       const DELAYS = [1000, 2000, 3000, 5000, 8000]
       for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         try {
-          const [pts, d, st, wgs, mods, cfg] = await Promise.all([
-            api.points(), api.days(), api.status(), api.wings(), api.models(), api.config()
+          const [pts, d, st, wgs, mods, rng, ctrs, mds] = await Promise.all([
+            api.points(), api.days(), api.status(), api.wings(), api.models(), api.ranges(),
+            api.countries(), api.modes()
           ])
           setPoints(pts)
           setDays(d.days)
           setStatus(st)
           setWings(wgs)
           setModels(mods)
-          setAppConfig(cfg)
-          if (cfg?.country && cfg?.mode) updateCacheScope(cfg.country, cfg.mode)
+          setRanges(rng)
+          setCountries(ctrs)
+          setModes(mds)
 
           // Validate stored model key against loaded models; fall back to first key
           const modelKeys = Object.keys(mods)
@@ -317,7 +341,7 @@ export function useSoarData() {
             settingsRef.current = { ...settingsRef.current, model: firstModelKey }
           }
 
-          // Invalidate display cache if the point count has changed (e.g. new locations added)
+          // Invalidate display cache if the point count has changed
           const cachedPointCount = displayRef.current?.[0]?.length ?? 0
           if (cachedPointCount > 0 && cachedPointCount !== pts.length) {
             setDisplay(null)
@@ -341,13 +365,9 @@ export function useSoarData() {
           if (st.forecast_stale && !st.updating_forecast) api.refreshForecast()
           if (st.measurement_stale && !st.updating_measurements && (st.measurement_in_daylight ?? true)) api.refreshMeasure()
 
-          // Seed the updating refs so poll transition detection works from tick 1
           prevFcUpdatingRef.current = st.updating_forecast
           prevMsUpdatingRef.current = st.updating_measurements
 
-          // Only fetch display if server is not mid-update — if it is, the poll's
-          // updating-transition detection (true→false) will call fetchDisplay the
-          // moment the update finishes, which is more reliable than a wasted call now.
           if (st.forecast_available && !st.updating_forecast) {
             fetchDisplay()
           }
@@ -379,25 +399,20 @@ export function useSoarData() {
           api.refreshMeasure()
         }
 
-        // ── Primary detection: updating flag transitions ──────────────────
-        // These fire the instant an update completes, regardless of age values.
         const wasFcUpdating = prevFcUpdatingRef.current
         const wasMsUpdating = prevMsUpdatingRef.current
         prevFcUpdatingRef.current = st.updating_forecast
         prevMsUpdatingRef.current = st.updating_measurements
 
         if (wasFcUpdating && !st.updating_forecast && st.forecast_available) {
-          // Forecast update just finished → fetch fresh display + raw + measurements
           fetchDisplay()
           return
         }
 
         if (wasMsUpdating && !st.updating_measurements && st.measurements_available) {
-          // Measurement update just finished → fetch fresh measurements
           try {
             const meas = await api.measurements()
             if (meas) { setMeasure(meas); saveMeasCache(meas) }
-            // Also grab raw forecast if it hasn't loaded yet (e.g. was mid-update on init)
             if (!rawForecastRef.current) {
               const raw = await api.rawForecast(settingsRef.current.model)
               if (raw.forecast) {
@@ -410,7 +425,6 @@ export function useSoarData() {
           return
         }
 
-        // ── Fallback: age-based detection (handles missed transitions) ────
         const prevMeasAge = prevMeasAgeRef.current
         const currMeasAge = st.measurement_age_seconds
         if (prevMeasAge != null && currMeasAge != null && currMeasAge < prevMeasAge - 30) {
@@ -430,7 +444,6 @@ export function useSoarData() {
           return
         }
 
-        // ── Last resort: no display data at all yet ───────────────────────
         if (st.forecast_available && !displayRef.current && !isFetchingDisplay.current) {
           fetchDisplay()
         }
@@ -443,7 +456,9 @@ export function useSoarData() {
   }, [fetchDisplay])
 
   return {
-    status, points, days, wings, models, appConfig, displayForecast, certainty, rawForecast, measurements,
+    status, points, days, wings, models, ranges,
+    countries, modes, country, mode,
+    displayForecast, certainty, rawForecast, measurements,
     altStationPrefs, setAltStationPrefs,
     loading, error,
     model, setModel,
