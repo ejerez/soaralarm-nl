@@ -6,7 +6,7 @@ from json import load
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import FastAPI, BackgroundTasks, Query
+from fastapi import FastAPI, BackgroundTasks, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 
 from forecast_service import ForecastService, point_ranges
@@ -52,22 +52,11 @@ FORECAST_TTL = 7200   # 2 hours
 MEASURE_TTL  = 900    # 15 minutes
 
 
-# ── Startup ─────────────────────────────────────────────────────────────────
-@app.on_event("startup")
-async def startup():
-    # ── Load countries and modes ──────────────────────────────────────────────
-    with open(CONFIG_DIR / "countries.json") as f:
-        state["countries"] = load(f)
-    with open(CONFIG_DIR / "modes.json") as f:
-        state["modes"] = load(f)
-
-    # For now, use the first (and only) country and mode
-    country = list(state["countries"].keys())[0]
-    mode    = list(state["modes"].keys())[0]
+def _load_country_mode(country: str, mode: str):
+    """Load all config files for the given country/mode and restore caches."""
     state["country"] = country
     state["mode"]    = mode
 
-    # ── Load country/mode-specific config ─────────────────────────────────────
     with open(CONFIG_DIR / f"soar_points_{country}.json") as f:
         state["soar_points"] = load(f)
     with open(CONFIG_DIR / f"models_{country}.json") as f:
@@ -79,25 +68,25 @@ async def startup():
     with open(CONFIG_DIR / f"stations_{country}.json") as f:
         state["stations"] = load(f)
 
-    # Enrich each point with algorithmically computed wind_range and head_range.
-    # The raw soar_points (without these fields) are used internally by ForecastService;
-    # the enriched version is what the frontend receives via /api/points.
     state["points_enriched"] = [
         {**pt, **point_ranges(pt, state["ranges"])} for pt in state["soar_points"]
     ]
 
-    # ── Restore cached state ──────────────────────────────────────────────────
+    # Restore cached forecast/measurements for this country
+    _display_cache.clear()
+
     forecast_pkl = PKL_DIR / f"forecast_{country}.pkl"
     if forecast_pkl.exists():
         try:
             with open(forecast_pkl, "rb") as f:
                 state["forecast"] = pickle.load(f)
-            # Invalidate pickle if it doesn't contain all currently configured models
             model_keys = list(state["models"].keys())
             if not model_keys or not all(k in state["forecast"] for k in model_keys):
                 state["forecast"] = {}
         except Exception:
             state["forecast"] = {}
+    else:
+        state["forecast"] = {}
 
     measure_pkl = PKL_DIR / f"measurements_{country}.pkl"
     if measure_pkl.exists():
@@ -106,6 +95,21 @@ async def startup():
                 state["measurements"] = pickle.load(f)
         except Exception:
             state["measurements"] = {}
+    else:
+        state["measurements"] = {}
+
+
+# ── Startup ─────────────────────────────────────────────────────────────────
+@app.on_event("startup")
+async def startup():
+    with open(CONFIG_DIR / "countries.json") as f:
+        state["countries"] = load(f)
+    with open(CONFIG_DIR / "modes.json") as f:
+        state["modes"] = load(f)
+
+    country = list(state["countries"].keys())[0]
+    mode    = list(state["modes"].keys())[0]
+    _load_country_mode(country, mode)
 
 
 # ── Helper: stale checks ────────────────────────────────────────────────────
@@ -385,13 +389,46 @@ def get_modes():
 
 @app.get("/api/config")
 def get_config():
-    """Active country, mode, and their display names."""
+    """Active country, mode, their display names, and all available options."""
     return {
         "country": state["country"],
         "country_name": state["countries"].get(state["country"], {}).get("name", state["country"]),
         "mode": state["mode"],
         "mode_name": state["modes"].get(state["mode"], state["mode"]),
+        "countries": state["countries"],
+        "modes": state["modes"],
     }
+
+
+@app.post("/api/config")
+async def set_config(bg: BackgroundTasks, body: dict = Body(...)):
+    """Switch the active country and/or mode, reloading all config files."""
+    new_country = body.get("country", state["country"])
+    new_mode    = body.get("mode",    state["mode"])
+
+    if new_country not in state["countries"]:
+        return {"error": f"unknown country: {new_country}"}
+    if new_mode not in state["modes"]:
+        return {"error": f"unknown mode: {new_mode}"}
+
+    country_changed = new_country != state["country"]
+    mode_changed    = new_mode    != state["mode"]
+
+    if not country_changed and not mode_changed:
+        return {"status": "unchanged"}
+
+    _load_country_mode(new_country, new_mode)
+
+    # Trigger background refreshes if data is missing/stale for the new country
+    if country_changed:
+        if not state["forecast"] or _forecast_age() is None or _forecast_age() >= FORECAST_TTL:
+            if not state["updating_forecast"]:
+                bg.add_task(_refresh_forecast)
+        if not state["measurements"] or _measure_age() is None or _measure_age() >= MEASURE_TTL:
+            if not state["updating_measurements"]:
+                bg.add_task(_refresh_measurements)
+
+    return {"status": "ok"}
 
 
 @app.get("/api/days")

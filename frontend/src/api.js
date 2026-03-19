@@ -22,8 +22,13 @@ async function get(path, attempt = 0) {
   return res.json()
 }
 
-async function post(path) {
-  const res = await fetch(BASE + path, { method: 'POST' })
+async function post(path, body) {
+  const opts = { method: 'POST' }
+  if (body !== undefined) {
+    opts.headers = { 'Content-Type': 'application/json' }
+    opts.body = JSON.stringify(body)
+  }
+  const res = await fetch(BASE + path, opts)
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${path}`)
   return res.json()
 }
@@ -55,6 +60,7 @@ export const api = {
   },
   rawForecast:     (model)                          => get(`/forecast/raw?model=${model}`),
   measurements:    ()                               => get('/measurements'),
+  setConfig:       (body)                            => post('/config', body),
   refreshForecast: ()                               => post('/forecast/refresh'),
   refreshMeasure:  ()                               => post('/measurements/refresh'),
 }

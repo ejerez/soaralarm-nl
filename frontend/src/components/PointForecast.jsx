@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useRef } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import {
   ComposedChart, Area, Line, XAxis, YAxis, Scatter,
   CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine,
@@ -152,6 +152,50 @@ const SPEED_FACTOR = { 'km/h': 1, 'kt': 1 / 1.852, 'm/s': 1 / 3.6 }
 
 const DASH = ['4 2','10 10','8 2 2 2','10 5 2 4','5 10 4 2']
 
+function InfoSymbols({ info }) {
+  const [openIdx, setOpenIdx] = useState(null)
+  const rowRef = useRef(null)
+
+  useEffect(() => {
+    if (openIdx == null) return
+    const h = (e) => { if (rowRef.current && !rowRef.current.contains(e.target)) setOpenIdx(null) }
+    document.addEventListener('mousedown', h)
+    document.addEventListener('touchstart', h)
+    return () => { document.removeEventListener('mousedown', h); document.removeEventListener('touchstart', h) }
+  }, [openIdx])
+
+  if (!info?.length) return null
+
+  // Fix JSX-style style attrs in the HTML strings: style={{ color: '...' }} → style="color: ..."
+  const fixHtml = (html) => html.replace(/style=\{\{\s*colors?:\s*'([^']+)'\s*\}\}/g, 'style="color:$1"')
+
+  return (
+    <div ref={rowRef} style={{ position: 'relative', marginBottom: 10 }}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {info.map(([img, _], i) => (
+          <img
+            key={i}
+            src={`/symbols/${img}`}
+            alt=""
+            style={{ width: 'clamp(40px, 10vw, 56px)', height: 'clamp(40px, 10vw, 56px)', cursor: 'pointer', borderRadius: 6, border: openIdx === i ? `2px solid ${T.border}` : '2px solid transparent' }}
+            onClick={() => setOpenIdx(openIdx === i ? null : i)}
+          />
+        ))}
+      </div>
+      {openIdx != null && info[openIdx] && (
+        <div style={{
+          marginTop: 6, padding: '10px 14px',
+          background: T.card, border: `1px solid ${T.border}`, borderRadius: 8,
+          fontSize: 12, color: T.text2, lineHeight: 1.6,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+        }}>
+          <div dangerouslySetInnerHTML={{ __html: fixHtml(info[openIdx][1]) }} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function PointForecast({ data }) {
   const { rawForecast, displayForecast, points, measurements, wings, dateIdx, ptIdx, setPtIdx, speedUnit = 'km/h', altStationPrefs, setAltStationPrefs } = data
   const toUnit = (v) => v == null ? null : parseFloat((v * SPEED_FACTOR[speedUnit]).toFixed(1))
@@ -205,7 +249,7 @@ export default function PointForecast({ data }) {
 
   return (
     <div>
-      <div data-tutorial="pt-selectors" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div data-tutorial="pt-selectors" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
         <select style={select_} value={ptIdx} onChange={e => setPtIdx(Number(e.target.value))}>
           {points.map((p,i) => <option key={p.name} value={i}>{p.name}</option>)}
         </select>
@@ -216,23 +260,45 @@ export default function PointForecast({ data }) {
           <img src="https://img.icons8.com/ios-filled/28/5e5e7a/marker.png" width={12} height={12} alt="" />
           Google Maps
         </a>
+        {point.link && (
+          <a href={point.link}
+            target="_blank" rel="noopener noreferrer"
+            style={{ fontSize: 12, color: T.text2, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 14 }}
+          >
+            <img src="https://img.icons8.com/ios-filled/28/5e5e7a/info.png" width={12} height={12} alt="" />
+            Spot information
+          </a>
+        )}
       </div>
 
-      {/* Alt station toggle */}
+      {/* Site info symbols */}
+      <InfoSymbols info={point.info} />
+
+      {/* Station selector (radio-style) for locations with alt_station */}
       {point.alt_station && (() => {
+        const [priApi, priCode] = point.station
         const [altApi, altCode] = point.alt_station
+        const priStation = measurements?.[priApi]?.[priCode]
         const altStation = measurements?.[altApi]?.[altCode]
-        const altLabel = altStation ? `${altStation.name}` : `${altApi.toUpperCase()} ${altCode}`
+        const priLabel = priStation?.name || `${priApi.toUpperCase()} ${priCode}`
+        const altLabel = altStation?.name || `${altApi.toUpperCase()} ${altCode}`
+        const useAltChecked = !!altStationPrefs?.[ptIdx]
+        const radioStyle = { width: 14, height: 14, cursor: 'pointer', accentColor: '#7aaaee', margin: 0 }
         return (
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: T.text2, marginBottom: 8, cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={!!altStationPrefs?.[ptIdx]}
-              onChange={e => setAltStationPrefs(prev => ({ ...prev, [ptIdx]: e.target.checked }))}
-              style={{ accentColor: '#7aaaee' }}
-            />
-            Use {altLabel} measurements
-          </label>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: useAltChecked ? T.text3 : T.text, cursor: 'pointer', userSelect: 'none' }}>
+              <input type="radio" name={`station-${ptIdx}`} checked={!useAltChecked}
+                onChange={() => setAltStationPrefs(prev => ({ ...prev, [ptIdx]: false }))}
+                style={radioStyle} />
+              {priLabel}
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: useAltChecked ? T.text : T.text3, cursor: 'pointer', userSelect: 'none' }}>
+              <input type="radio" name={`station-${ptIdx}`} checked={useAltChecked}
+                onChange={() => setAltStationPrefs(prev => ({ ...prev, [ptIdx]: true }))}
+                style={radioStyle} />
+              {altLabel}
+            </label>
+          </div>
         )
       })()}
 

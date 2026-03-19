@@ -24,6 +24,8 @@ ENV/
 # Pickled forecast/measurement cache
 *.pkl
 
+soaralarm_symbols.png
+
 # Pytest / coverage
 .pytest_cache/
 .coverage

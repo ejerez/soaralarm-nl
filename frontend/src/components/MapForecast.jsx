@@ -353,25 +353,17 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         )
       })
       const color = markerColor(pf)
+      const spotLink = point.link
+        ? `<br/><a href="${point.link}" target="_blank" rel="noopener noreferrer" style="color:#5578e8;font-size:12px;text-decoration:none;display:inline-block;margin-top:2px;">Spot information</a>`
+        : ''
       const marker = L.circleMarker([point.lat, point.lon], { radius: 6, color, fillColor: color, fillOpacity: 1, weight: 2 })
         .bindPopup(
           `<b>${point.name}</b><br/>Good heading: ${pf.wind_pizza[1]}h | Crosswind: ${pf.wind_pizza[0]+pf.wind_pizza[2]}h` +
-          `<br/><a href="#" data-ptidx="${ptIdx}" style="color:#5578e8;font-size:12px;text-decoration:none;display:inline-block;margin-top:4px;">` +
-          `Detailed Forecast</a>` +
-          `<br/><a href="https://www.google.com/maps?q=${point.lat},${point.lon}" target="_blank" rel="noopener noreferrer" style="color:#5578e8;font-size:12px;text-decoration:none;display:inline-block;margin-top:2px;">` +
-          `Google Maps</a>`
+          `<br/><a href="https://www.google.com/maps?q=${point.lat},${point.lon}" target="_blank" rel="noopener noreferrer" style="color:#5578e8;font-size:12px;text-decoration:none;display:inline-block;margin-top:4px;">` +
+          `Google Maps</a>` + spotLink
         )
       marker.on('popupopen', () => {
-        const container = marker.getPopup().getElement()
-        const link = container?.querySelector(`[data-ptidx="${ptIdx}"]`)
-        if (link) {
-          link.onclick = (e) => {
-            e.preventDefault()
-            data.setPtIdx(ptIdx)
-            marker.closePopup()
-            if (onNavigateToPoint) onNavigateToPoint()
-          }
-        }
+        data.setPtIdx(ptIdx)
       })
       marker.addTo(map)
       layersRef.current.push(marker)

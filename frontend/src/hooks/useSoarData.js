@@ -97,19 +97,6 @@ function readSettingsFromStorage() {
   }
 }
 
-// Returns true if now is within 90 minutes of sunrise/sunset for today's first point
-function isInDaylightWindow(rawForecast) {
-  try {
-    const todayFc = rawForecast?.[1]?.[0]
-    if (!todayFc?.sunrise || !todayFc?.sunset) return true
-    const now     = Date.now()
-    const sunrise = new Date(todayFc.sunrise).getTime()
-    const sunset  = new Date(todayFc.sunset).getTime()
-    const MARGIN  = 90 * 60 * 1000
-    return now >= sunrise - MARGIN && now <= sunset + MARGIN
-  } catch { return true }
-}
-
 export function useSoarData() {
   // ── Read initial settings + cache exactly once (inside useRef) ───────────
   // Computed at the top of the hook body these would re-run on every render;
@@ -247,6 +234,55 @@ export function useSoarData() {
     }
   }, [])  // stable — never recreated
 
+  // ── Country/mode switching ──────────────────────────────────────────────
+  const switchConfig = useCallback(async (newCountry, newMode) => {
+    try {
+      await api.setConfig({ country: newCountry, mode: newMode })
+      updateCacheScope(newCountry, newMode)
+      const [pts, d, st, wgs, mods, cfg] = await Promise.all([
+        api.points(), api.days(), api.status(), api.wings(), api.models(), api.config()
+      ])
+      setPoints(pts)
+      setDays(d.days)
+      setStatus(st)
+      setWings(wgs)
+      setModels(mods)
+      setAppConfig(cfg)
+
+      const modelKeys = Object.keys(mods)
+      if (!mods[settingsRef.current.model] && modelKeys.length > 0) {
+        const first = modelKeys[0]
+        setModel(first)
+        settingsRef.current = { ...settingsRef.current, model: first }
+      }
+
+      const firstWingKey = Object.keys(wgs)[0]
+      const valid = settingsRef.current.selectedWings.filter(w => wgs[w.key])
+      if (valid.length === 0 && firstWingKey) {
+        const corrected = [{ key: firstWingKey, size: wgs[firstWingKey].default_size }]
+        setSelectedWings(corrected)
+        settingsRef.current = { ...settingsRef.current, selectedWings: corrected }
+      } else if (valid.length < settingsRef.current.selectedWings.length) {
+        setSelectedWings(valid)
+        settingsRef.current = { ...settingsRef.current, selectedWings: valid }
+      }
+
+      try { setAltStationPrefs(JSON.parse(localStorage.getItem(`altStationPrefs:${newCountry}:${newMode}`) || '{}')) } catch { setAltStationPrefs({}) }
+
+      setDisplay(null)
+      displayRef.current = null
+      setRaw(null)
+      rawForecastRef.current = null
+      setMeasure(null)
+
+      if (st.forecast_available && !st.updating_forecast) {
+        fetchDisplay()
+      }
+    } catch (e) {
+      console.error('switchConfig', e)
+    }
+  }, [fetchDisplay])
+
   // ── Re-fetch immediately when settings change (don't wait for poll) ───────
   const isFirstRender = useRef(true)
   useEffect(() => {
@@ -303,7 +339,7 @@ export function useSoarData() {
           }
 
           if (st.forecast_stale && !st.updating_forecast) api.refreshForecast()
-          if (st.measurement_stale && !st.updating_measurements && isInDaylightWindow(rawForecastRef.current)) api.refreshMeasure()
+          if (st.measurement_stale && !st.updating_measurements && (st.measurement_in_daylight ?? true)) api.refreshMeasure()
 
           // Seed the updating refs so poll transition detection works from tick 1
           prevFcUpdatingRef.current = st.updating_forecast
@@ -339,7 +375,7 @@ export function useSoarData() {
         setStatus(st)
 
         if (st.forecast_stale && !st.updating_forecast) api.refreshForecast()
-        if (st.measurement_stale && !st.updating_measurements && isInDaylightWindow(rawForecastRef.current)) {
+        if (st.measurement_stale && !st.updating_measurements && (st.measurement_in_daylight ?? true)) {
           api.refreshMeasure()
         }
 
@@ -424,5 +460,6 @@ export function useSoarData() {
     refreshForecast: api.refreshForecast,
     refreshMeasure:  api.refreshMeasure,
     refetchDisplay:  fetchDisplay,
+    switchConfig,
   }
 }
