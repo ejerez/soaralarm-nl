@@ -5,7 +5,13 @@
         "name": "Zoutelande",
         "station": [ "rws", "vlaktevanderaan" ],
         "heading": 235,
-        "slope": { "steepness": "steep", "height": 45 }
+        "slope": { "steepness": "steep", "height": 45 },
+        "info": [
+            ["steep_dune.png", "<b style={{ color: '#dedede' }}>Steep dune</b>, about 45m tall, good lift in light winds. Takeoff only possible from the top of the dune."],
+            ["extreme_wind_gradient.png", "Due to the steepness and height of the dune, there is an <b style={{ color: '#dedede' }}>extreme wind gradient</b> at Zoutelande. The wind will be <b style={{ color: '#dedede' }}>much stronger</b> than forecasted at the top of the dune, and there may be no wind at all at the beach. Only attempt to fly in strong winds if you are an <b style={{ color: '#dedede' }}>experienced pilot</b> and very confident in your groundhandling. In light winds, try to lose as little altitude as possible on launch, and stay close to the terrain."],
+            ["crowded_takeoff.png", "No takeoff from the bottom, <b style={{ color: '#dedede' }}>small and crowded takeoff</b> at the top, only really suitable for experienced pilots with <b style={{ color: '#dedede' }}>good ground handling</b>."],
+            ["extreme_thorny_bushes.png", "Large <b style={{ color: '#dedede' }}>thorny trees</b> behind the takeoff. Be careful and avoid getting swept behind the dune at all costs."]
+        ]
     },
     {
         "lat": 52.564313,
@@ -14,7 +20,14 @@
         "station": [ "rws", "ijmuiden.havenhoofd.zuid" ],
         "alt_station": [ "nkv", "217"],
         "heading": 279,
-        "slope": { "steepness": "steep", "height": 17 }
+        "slope": { "steepness": "steep", "height": 17 },
+        "info": [
+            ["steep_dune.png", "<b style={{ color: '#dedede' }}>Steep dune</b>, almost 20m tall. Good lift in light winds, but difficult to climb for launch. It is easier to climb the less steep dunes closer to the entrance to the beach."],
+            ["wind_gradient.png", "At the steeper dunes, the <b style={{ color: '#dedede' }}>wind gradient</b> can make it so there's very little wind down at the beach."],
+            ["crowded.png", "Can get <b style={{ color: '#dedede' }}>crowded on weekends and holidays</b>."],
+            ["strandhuisjes.png", "<b style={{ color: '#dedede' }}>Strandhuisjes during Summer</b>. Be prepared to walk quite some distance to reach dunes not blocked by them, avoid flying near them if possible."],
+            ["thorny_bushes.png", "Beware of <b style={{ color: '#dedede' }}>thorny bushes</b> at the top of the steeper dunes."]
+        ]
     },
     {
         "lat": 52.502193,
@@ -22,7 +35,12 @@
         "name": "Wijk aan Zee",
         "station": [ "rws", "ijmuiden.havenhoofd.zuid" ],
         "heading": 284,
-        "slope": { "steepness": "moderate", "height": 21 }
+        "slope": { "steepness": "moderate", "height": 21 },
+        "info": [
+            ["moderate_dune.png", "<b style={{ color: '#dedede' }}>Moderate dune</b>, around 20m tall."],
+            ["crowded.png", "Can get <b style={{ color: '#dedede' }}>crowded on weekends and holidays</b>."],
+            ["strandhuisjes.png", "<b style={{ color: '#dedede' }}>Strandhuisjes during Summer</b>. Be prepared to walk quite some distance to reach dunes not blocked by them, avoid flying near them if possible."]
+        ]
     },
     {
         "lat": 52.302953,
@@ -31,7 +49,11 @@
         "station": [ "rws", "ijmuiden.havenhoofd.zuid" ],
         "alt_station": [ "nkv", "213" ],
         "heading": 295,
-        "slope": { "steepness": "moderate", "height": 20 }
+        "slope": { "steepness": "moderate", "height": 20 },
+        "info": [
+            ["moderate_dune.png", "<b style={{ color: '#dedede' }}>Moderate dune</b>, around 20m tall."],
+            ["crowded.png", "Can get <b style={{ color: '#dedede' }}>crowded on weekends and holidays</b>."]
+        ]
     },
     {
         "lat": 52.172783,
@@ -40,7 +62,11 @@
         "station": [ "rws", "ijmuiden.havenhoofd.zuid" ],
         "alt_station": [ "nkv", "213" ],
         "heading": 305,
-        "slope": { "steepness": "moderate", "height": 17 }
+        "slope": { "steepness": "moderate", "height": 17 },
+        "info": [
+            ["moderate_dune.png", "<b style={{ color: '#dedede' }}>Moderate dune</b>, almost 20m tall."],
+            ["crowded.png", "Can get <b style={{ color: '#dedede' }}>crowded on weekends and holidays</b>."]
+        ]
     },
     {
         "lat": 51.878431,
@@ -49,7 +75,11 @@
         "station": [ "rws", "stellendam.haringvlietsluizen.schuif1" ],
         "alt_station": [ "nkv", "214" ],
         "heading": 233,
-        "slope": { "steepness": "moderate", "height": 12 }
+        "slope": { "steepness": "moderate", "height": 12 },
+        "info": [
+            ["moderate_dune.png", "<b style={{ color: '#dedede' }}>Moderate dune</b>, around 12m tall."],
+            ["turbulence.png", "Can be <b style={{ color: '#dedede' }}>turbulent</b> with strong winds due to the presence of land upwind."]
+        ]
     },
     {
         "lat": 51.866796,
@@ -58,7 +88,11 @@
         "station": [ "rws", "stellendam.haringvlietsluizen.schuif1" ],
         "alt_station": [ "nkv", "214" ],
         "heading": 240,
-        "slope": { "steepness": "moderate", "height": 9 }
+        "slope": { "steepness": "moderate", "height": 9 },
+        "info": [
+            ["moderate_dune.png", "<b style={{ color: '#dedede' }}>Moderate dune</b>, around 9m tall."],
+            ["turbulence.png", "Can be <b style={{ color: '#dedede' }}>turbulent</b> with strong winds due to the presence of land upwind."]
+        ]
     },
     {
         "lat": 51.669710,
@@ -67,7 +101,12 @@
         "station": [ "rws", "oosterschelde.4" ],
         "heading": 214,
         "head_range": [-20, null],
-        "slope": { "steepness": "moderate", "height": 17 }
+        "slope": { "steepness": "moderate", "height": 17 },
+        "info": [
+            ["moderate_dune.png", "<b style={{ color: '#dedede' }}>Moderate dune</b>, almost 20m tall."],
+            ["extreme_turbulence.png", "<b style={{ color: '#dedede' }}>Very turbulent</b> with more than around 15deg left crosswind, due to the presence of wind turbines upwind."],
+            ["extreme_crowded.png", "<b style={{ color: '#dedede' }}>Very small site</b> that can get very crowded. If possible, <b style={{ color: '#dedede' }}>avoid on weekends and holidays</b>."]
+        ]
     },
     {
         "lat": 51.820073,
@@ -75,7 +114,11 @@
         "name": "Ouddorp Noord",
         "station": [ "rws", "brouwersdam.brouwershavensegat.2" ],
         "heading": 348,
-        "slope": { "steepness": "flat", "height": 7 }
+        "slope": { "steepness": "flat", "height": 7 },
+        "info": [
+            ["flat_dune.png", "<b style={{ color: '#dedede' }}>Flat dune</b>, just 7m tall. Requires decent wind to fly."],
+            ["extreme_crowded.png", "<b style={{ color: '#dedede' }}>Very small site</b> that can get very crowded. If possible, <b style={{ color: '#dedede' }}>avoid on weekends and holidays</b>."]
+        ]
     },
     {
         "lat": 51.813616,
@@ -83,7 +126,12 @@
         "name": "Ouddorp Vuur.",
         "station": [ "rws", "brouwersdam.brouwershavensegat.2" ],
         "heading": 310,
-        "slope": { "steepness": "steep", "height": 12 }
+        "slope": { "steepness": "steep", "height": 12 },
+        "info": [
+            ["steep_dune.png", "<b style={{ color: '#dedede' }}>Steep dune</b>, good lift in light wind, but difficult to climb."],
+            ["wind_gradient.png", "The <b style={{ color: '#dedede' }}>wind gradient</b> due to the steep dunes can make it so there's very little wind down at the beach. Try to take off on a less steep section of the dune."],
+            ["extreme_crowded.png", "<b style={{ color: '#dedede' }}>Very small site</b> that can get very crowded. If possible, <b style={{ color: '#dedede' }}>avoid on weekends and holidays</b>."]
+        ]
     },
     {
         "lat": 51.784865,
@@ -91,7 +139,12 @@
         "name": "Ouddorp Zuid",
         "station": [ "rws", "brouwersdam.brouwershavensegat.2" ],
         "heading": 266,
-        "slope": { "steepness": "steep", "height": 8 }
+        "slope": { "steepness": "steep", "height": 8 },
+        "info": [
+            ["steep_dune.png", "<b style={{ color: '#dedede' }}>Steep dune</b>, good lift in light wind, but difficult to climb."],
+            ["wind_gradient.png", "The <b style={{ color: '#dedede' }}>wind gradient</b> due to the steep dunes can make it so there's very little wind down at the beach. Try to take off on a less steep section of the dune."],
+            ["extreme_crowded.png", "<b style={{ color: '#dedede' }}>Very small site</b> that can get very crowded. If possible, <b style={{ color: '#dedede' }}>avoid on weekends and holidays</b>."]
+        ]
     },
     {
         "lat": 51.74087,
@@ -99,6 +152,10 @@
         "name": "Renesse",
         "station": [ "rws", "brouwersdam.brouwershavensegat.2" ],
         "heading": 13,
-        "slope": { "steepness": "flat", "height": 10 }
+        "slope": { "steepness": "flat", "height": 10 },
+        "info": [
+            ["flat_dune.png", "<b style={{ color: '#dedede' }}>Flat dune</b>, requires decent wind to fly."],
+            ["extreme_crowded.png", "<b style={{ color: '#dedede' }}>Very small site</b> that can get very crowded. If possible, <b style={{ color: '#dedede' }}>avoid on weekends and holidays</b>."]
+        ]
     }
 ]
