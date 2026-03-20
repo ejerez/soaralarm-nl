@@ -40,7 +40,7 @@ const code = {
 const DATA_SOURCES_MODULES = import.meta.glob('./DataSources_*.jsx')
 
 export default function Info({ data }) {
-  const { points, wings, ranges, country, selectedWings, weight, customWind, windMin, windMax } = data
+  const { points, wings, ranges, country, mode, countries, modes, selectedWings, weight, customWind, windMin, windMax } = data
   const w = parseFloat(weight) || DEFAULT_WEIGHT
 
   // Wings to show: fall back to all wing keys if nothing selected
@@ -102,6 +102,12 @@ export default function Info({ data }) {
             </li>
           ))}
         </ul>
+
+        <p style={{ ...p, marginTop: 12, fontStyle: 'italic' }}>
+          For your current selection (<b style={{ color: '#dedede' }}>{modes?.[mode] || mode}</b>,{' '}
+          <b style={{ color: '#dedede' }}>{countries?.[country]?.name || country}</b>), the ranges
+          are calculated using the following formulas:
+        </p>
 
         <h3 style={h3}>Wind speed ranges</h3>
         <p style={p}>
