@@ -415,6 +415,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       bestPtByDiMap[di] = best
       bar.push({
         day: shortenDay(days[di] || `Day ${di}`),
+        fullDay: days[di] || `Day ${di}`,
         di,
         good: bpf?.good_hours || 0, cross: bpf?.cross_hours || 0,
         gusty: bpf?.gusty_hours || 0, cross_gusty: bpf?.cross_gusty_hours || 0,
@@ -490,7 +491,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
           <BarChart data={barData} margin={{ top: 40, right: 8, left: 0, bottom: 0 }} onClick={e => { const d = e?.activePayload?.[0]?.payload; if (d?.di != null) selectDay(d.di) }} style={{ cursor: 'pointer' }}>
             <XAxis dataKey="day" tick={{ fill: T.text2, fontSize: 11, fontFamily: T.font }} interval={0} />
             <YAxis width={28} tick={{ fill: T.text2, fontSize: 12, fontFamily: T.font }} />
-            <Tooltip {...TOOLTIP_STYLE} formatter={(val, name) => val > 0 ? [`${val}h`, name] : [null, null]} />
+            <Tooltip {...TOOLTIP_STYLE} cursor={false} labelFormatter={(_, payload) => payload?.[0]?.payload?.fullDay || ''} formatter={(val, name) => val > 0 ? [`${val}h`, name] : [null, null]} />
             {(() => { const sel = barData.find(d => d.di === dateIdx); return sel ? <ReferenceArea x1={sel.day} x2={sel.day} fill="#ffffff" fillOpacity={0.10} ifOverflow="visible" /> : null })()}
             <Bar dataKey="good"        name="Good wind"        stackId="a" fill={C.good}       radius={[0,0,0,0]} />
             <Bar dataKey="cross"       name="Crosswind"        stackId="a" fill={C.cross}      radius={[0,0,0,0]} />
