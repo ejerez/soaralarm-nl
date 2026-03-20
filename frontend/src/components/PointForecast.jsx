@@ -203,9 +203,9 @@ export default function PointForecast({ data }) {
   const point = points[ptIdx]
   const dayFc = rawForecast?.[dateIdx]?.[ptIdx]
 
-  const prevDateIdxRef = useRef(dateIdx)
+  const prevDateIdxRef = useRef(null)
   useEffect(() => {
-    if (prevDateIdxRef.current === dateIdx) return  // no change — don't override explicit selection
+    if (prevDateIdxRef.current !== null && prevDateIdxRef.current === dateIdx) return  // no change — don't override explicit selection
     prevDateIdxRef.current = dateIdx
     if (!displayForecast) return
     const dayPf = displayForecast[dateIdx] || []
@@ -386,10 +386,10 @@ export default function PointForecast({ data }) {
               <span key={wr.key} style={{ marginRight: 16 }}>
                 <b style={{ color: T.text }}>{wr.key==='custom' ? 'Custom' : `${displayName} ${wr.size}m²`}</b>
                 {': '}
-                <span style={{ color: '#1fd100' }}>{Math.round(wMin)}</span>
+                <span style={{ color: '#1fd100' }}>{Math.round(toUnit(wMin))}</span>
                 {' – '}
-                <span style={{ color: '#6be655' }}>{Math.round(wMax)}</span>
-                {' km/h'}
+                <span style={{ color: '#6be655' }}>{Math.round(toUnit(wMax))}</span>
+                {` ${speedUnit}`}
               </span>
             )
           })}

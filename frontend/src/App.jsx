@@ -224,8 +224,8 @@ export default function App() {
             {days.map((d, i) => <option key={d} value={i}>{d}</option>)}
           </select>
 
-          <span style={{ fontSize: 11, color: T.text3, borderLeft: `1px solid ${T.borderDim}`, paddingLeft: 10 }}>
-            {modes?.[mode] ?? mode} · {countries?.[country]?.name ?? country} · {data.models?.[model]?.display_name ?? model}
+          <span style={{ fontSize: 11, color: T.text3, paddingLeft: 10 }}>
+            {data.models?.[model]?.display_name ?? model} | {countries?.[country]?.name ?? country} | {modes?.[mode] ?? mode}
           </span>
 
           {/* Confidence + weather pills */}

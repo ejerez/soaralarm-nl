@@ -40,8 +40,10 @@ const code = {
 const DATA_SOURCES_MODULES = import.meta.glob('./DataSources_*.jsx')
 
 export default function Info({ data }) {
-  const { points, wings, ranges, country, mode, countries, modes, selectedWings, weight, customWind, windMin, windMax } = data
+  const { points, wings, ranges, country, mode, countries, modes, selectedWings, weight, customWind, windMin, windMax, speedUnit = 'km/h' } = data
   const w = parseFloat(weight) || DEFAULT_WEIGHT
+  const SPEED_FACTOR = { 'km/h': 1, 'kt': 1 / 1.852, 'm/s': 1 / 3.6 }
+  const toUnit = (v) => v == null ? null : Math.round(v * SPEED_FACTOR[speedUnit])
 
   // Wings to show: fall back to all wing keys if nothing selected
   const wingKeys  = Object.keys(wings)
@@ -126,7 +128,7 @@ export default function Info({ data }) {
             <p style={p}>Base <b style={{ color: '#dedede' }}>minimum wind speeds</b> by steepness (for a 10m dune):</p>
             <ul style={{ ...p, paddingLeft: 20 }}>
               {Object.entries(ranges.min_speed_by_steepness).map(([k, v]) => (
-                <li key={k}><b style={{ color: '#dedede' }}>{k}</b>: {v} km/h</li>
+                <li key={k}><b style={{ color: '#dedede' }}>{k}</b>: {toUnit(v)} {speedUnit}</li>
               ))}
             </ul>
           </>
@@ -137,7 +139,7 @@ export default function Info({ data }) {
             <p style={p}>Base <b style={{ color: '#dedede' }}>maximum gust speeds</b> per wing type (for a 10m dune):</p>
             <ul style={{ ...p, paddingLeft: 20 }}>
               {Object.entries(ranges.max_speed_by_wing).map(([k, v]) => (
-                <li key={k}><b style={{ color: '#dedede' }}>{wings[k]?.display_name || k}</b>: {v} km/h</li>
+                <li key={k}><b style={{ color: '#dedede' }}>{wings[k]?.display_name || k}</b>: {toUnit(v)} {speedUnit}</li>
               ))}
             </ul>
           </>
@@ -215,7 +217,7 @@ export default function Info({ data }) {
         <p style={{ ...p, marginBottom: 16 }}>
           These are the values for the current selected wings:{' '}
           {customWind
-            ? <span>Custom wind range <b style={{ color: '#6be655' }}>{windMin}</b> – <b style={{ color: '#55e68f' }}>{windMax}</b> km/h</span>
+            ? <span>Custom wind range <b style={{ color: '#6be655' }}>{toUnit(windMin)}</b> – <b style={{ color: '#55e68f' }}>{toUnit(windMax)}</b> {speedUnit}</span>
             : <>
                 {activeWings.map((aw, i) => (
                   <span key={aw.key}>
@@ -237,11 +239,11 @@ export default function Info({ data }) {
                 <th style={th}>Good range</th>
                 <th style={th}>Cross range</th>
                 {customWind
-                  ? <th style={th}>Wind (km/h)<br /><span style={{ color: '#828282', fontWeight: 400 }}>custom range</span></th>
+                  ? <th style={th}>Wind ({speedUnit})<br /><span style={{ color: '#828282', fontWeight: 400 }}>custom range</span></th>
                   : activeWings.map(aw => (
                       <th key={aw.key} style={th}>
                         {wings[aw.key]?.display_name ?? aw.key}<br />
-                        {aw.size} m² <span style={{ color: '#828282', fontWeight: 400 }}>[km/h]</span>
+                        {aw.size} m² <span style={{ color: '#828282', fontWeight: 400 }}>[{speedUnit}]</span>
                       </th>
                     ))
                 }
@@ -262,9 +264,9 @@ export default function Info({ data }) {
                   </td>
                   {customWind
                     ? <td style={td}>
-                        <span style={{ color: '#6be655' }}>{windMin}</span>
+                        <span style={{ color: '#6be655' }}>{toUnit(windMin)}</span>
                         {' – '}
-                        <span style={{ color: '#55e68f' }}>{windMax}</span>
+                        <span style={{ color: '#55e68f' }}>{toUnit(windMax)}</span>
                       </td>
                     : activeWings.map(aw => {
                         const base = pt.wind_range?.[aw.key]
@@ -272,9 +274,9 @@ export default function Info({ data }) {
                         const [mn, mx] = effectiveRange(base, wings[aw.key].default_size, aw.size, w)
                         return (
                           <td key={aw.key} style={td}>
-                            <span style={{ color: '#6be655' }}>{mn}</span>
+                            <span style={{ color: '#6be655' }}>{toUnit(mn)}</span>
                             {' – '}
-                            <span style={{ color: '#55e68f' }}>{mx}</span>
+                            <span style={{ color: '#55e68f' }}>{toUnit(mx)}</span>
                           </td>
                         )
                       })

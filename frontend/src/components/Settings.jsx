@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 
 const MAX_WINGS = 5
 
@@ -17,28 +17,12 @@ const T = {
   font:      "'DM Sans', system-ui, sans-serif",
 }
 
-const card    = { background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: '20px 24px', maxWidth: 480 }
+const card    = { background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: '20px 24px', maxWidth: 480, marginBottom: 16 }
 const field   = { marginBottom: 22 }
 const label_  = { display: 'block', marginBottom: 6, fontSize: 12, color: T.text2, fontWeight: 500, letterSpacing: '0.02em', textTransform: 'uppercase' }
 const select_ = { background: T.raised, color: T.text, border: `1px solid ${T.borderEm}`, borderRadius: 6, padding: '7px 10px', fontSize: 13, cursor: 'pointer', fontFamily: T.font }
-const input_  = { background: T.raised, color: T.text, border: `1px solid ${T.borderEm}`, borderRadius: 6, padding: '6px 10px', fontSize: 13, width: 64, textAlign: 'right', fontFamily: T.font }
+const input_  = { background: T.raised, color: T.text, border: `1px solid ${T.borderEm}`, borderRadius: 6, padding: '6px 10px', fontSize: 13, width: 85, textAlign: 'right', fontFamily: T.font }
 const saveBtn = { background: T.accent, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 22px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: T.font }
-const savedMsg = { marginLeft: 10, fontSize: 12, color: '#1fd100' }
-
-function InfoCircle({ text, open, onToggle, ref: r }) {
-  return (
-    <span ref={r} style={{ position: 'relative', display: 'inline-block' }}>
-      <button onClick={onToggle} aria-label="Info" style={{
-        background: open ? T.raised : 'transparent',
-        color: open ? '#8888cc' : T.text3,
-        border: `1px solid ${T.border}`,
-        borderRadius: '50%', width: 20, height: 20,
-        fontSize: 11, lineHeight: 1, cursor: 'pointer', flexShrink: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-      }}>ⓘ</button>
-    </span>
-  )
-}
 
 function Tooltip({ children, width = 280 }) {
   return (
@@ -93,19 +77,21 @@ function WingRow({ entry, wings, isRemovable, onChange, onRemove }) {
             }}>ⓘ</button>
             {tipOpen && <Tooltip>{tooltip}</Tooltip>}
           </span>
-        ) : <div style={{ width: 20, flexShrink: 0 }} />}
+        ) : null}
 
-        <input type="text" inputMode="numeric" pattern="\d*" style={{ ...input_, width: 48, flexShrink: 0 }}
+        {isRemovable
+          ? <button onClick={onRemove} title="Remove" style={{ background:'transparent', border:`1px solid ${T.border}`, borderRadius:4, width:26, height:26, cursor:'pointer', color:T.text2, fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>✕</button>
+          : null
+        }
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, paddingLeft: 2 }}>
+        <span style={{ fontSize: 12, color: T.text3 }}>Size</span>
+        <input type="text" inputMode="numeric" pattern="\d*" style={{ ...input_, width: 48 }}
           value={entry.size}
           onChange={e => { const v = e.target.value; if (v===''||/^\d+$/.test(v)) onChange({...entry,size:v===''?'':Number(v)}) }}
           placeholder="m²" title="Wing size in m²"
         />
-        <span style={{ fontSize: 12, color: T.text2, whiteSpace: 'nowrap', flexShrink: 0 }}>m²</span>
-
-        {isRemovable
-          ? <button onClick={onRemove} title="Remove" style={{ background:'transparent', border:`1px solid ${T.border}`, borderRadius:4, width:26, height:26, cursor:'pointer', color:T.text2, fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>✕</button>
-          : <div style={{ width: 26, flexShrink: 0 }} />
-        }
+        <span style={{ fontSize: 12, color: T.text2 }}>m²</span>
       </div>
       {tipOpen && tooltip && (
         <div style={{ marginTop: 6, padding: '8px 12px', background: T.card, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: 12, color: T.text2, lineHeight: 1.55 }}>
@@ -140,41 +126,56 @@ export default function Settings({ data }) {
           speedUnit, setSpeedUnit,
           wings, models, countries, modes, country, mode, status, refreshForecast, refetchDisplay, switchConfig } = data
 
-  const [localModel,     setLocalModel]     = useState(model)
-  const [localTs,        setLocalTs]        = useState(timeStart)
-  const [localTe,        setLocalTe]        = useState(timeEnd)
-  const [localWings,     setLocalWings]     = useState(selectedWings)
-  const [localWeight,    setLocalWeight]    = useState(weight)
-  const [localCustomWind,setLocalCustomWind]= useState(customWind)
-  const [localWindMin,   setLocalWindMin]   = useState(windMin)
-  const [localWindMax,   setLocalWindMax]   = useState(windMax)
-  const [saved,          setSaved]          = useState(false)
-
   const wingKeys = Object.keys(wings)
   const firstKey = wingKeys[0]
-  const rows = (localWings.length === 0 && firstKey)
+  const rows = (selectedWings.length === 0 && firstKey)
     ? [{ key: firstKey, size: wings[firstKey].default_size }]
-    : localWings
+    : selectedWings
 
-  function updateRow(i, v) { setLocalWings(rows.map((r, j) => j === i ? v : r)) }
-  function removeRow(i)    { setLocalWings(rows.filter((_, j) => j !== i)) }
-  function addRow()        { if (rows.length >= MAX_WINGS || !firstKey) return; setLocalWings([...rows, { key: firstKey, size: wings[firstKey]?.default_size ?? 0 }]) }
+  // Auto-save: debounced refetch after any change
+  const refetchTimer = useRef(null)
+  const autoApply = useCallback(() => {
+    clearTimeout(refetchTimer.current)
+    refetchTimer.current = setTimeout(() => refetchDisplay(), 300)
+  }, [refetchDisplay])
 
-  function handleSave() {
-    const cleaned = rows.map(r => ({ key: r.key, size: Number(r.size) || 0 }))
-    setModel(localModel); setTimeStart(localTs); setTimeEnd(localTe)
-    setSelectedWings(cleaned); setWeight(localWeight)
-    setCustomWind(localCustomWind)
-    setWindMin(Number(localWindMin) || 15); setWindMax(Number(localWindMax) || 60)
-    setSaved(true); refetchDisplay()
-    setTimeout(() => setSaved(false), 2500)
+  function updateRow(i, v) {
+    const next = rows.map((r, j) => j === i ? v : r)
+    setSelectedWings(next.map(r => ({ key: r.key, size: Number(r.size) || 0 })))
+    autoApply()
+  }
+  function removeRow(i) {
+    const next = rows.filter((_, j) => j !== i)
+    setSelectedWings(next.map(r => ({ key: r.key, size: Number(r.size) || 0 })))
+    autoApply()
+  }
+  function addRow() {
+    if (rows.length >= MAX_WINGS || !firstKey) return
+    const next = [...rows, { key: firstKey, size: wings[firstKey]?.default_size ?? 0 }]
+    setSelectedWings(next.map(r => ({ key: r.key, size: Number(r.size) || 0 })))
+    autoApply()
   }
 
   return (
     <div>
       <div style={{ marginBottom: 20, fontSize: 16, fontWeight: 600, color: T.text }}>Settings</div>
+
+      {/* Tutorial button */}
+      <button
+        onClick={() => window.dispatchEvent(new Event('soaralarm:start-tutorial'))}
+        style={{
+          background: 'transparent', color: T.text2,
+          border: `1px solid ${T.border}`, borderRadius: 8,
+          padding: '9px 22px', fontSize: 13, cursor: 'pointer',
+          fontFamily: T.font, display: 'inline-flex', alignItems: 'center', gap: 8,
+          marginBottom: 16,
+        }}
+      >
+        <img src="/paraglider_small.png" width={26} height={26} alt="" /> App Tutorial
+      </button>
+
+      {/* Card 1: Country, Mode, Speed Unit, Forecast Model */}
       <div style={card}>
-        {/* Country & Mode side by side */}
         <div data-tutorial="settings-country-mode" style={{ display: 'flex', gap: 12, marginBottom: 22 }}>
           <div style={{ flex: 1 }}>
             <label style={label_}>Country</label>
@@ -209,32 +210,35 @@ export default function Settings({ data }) {
           </select>
         </div>
 
-        <div data-tutorial="settings-model" style={field}>
+        <div data-tutorial="settings-model" style={{ marginBottom: 0 }}>
           <label style={label_}>Forecast Model {countries?.[country]?.name || ''}</label>
-          <select style={{ ...select_, width: '100%' }} value={localModel} onChange={e => setLocalModel(e.target.value)}>
+          <select style={{ ...select_, width: '100%' }} value={model} onChange={e => { setModel(e.target.value); autoApply() }}>
             {Object.entries(models).map(([key, m]) => (
               <option key={key} value={key}>{m.display_name}</option>
             ))}
           </select>
         </div>
+      </div>
 
+      {/* Card 2: Wings, Weight, Custom Wind */}
+      <div style={card}>
         <div style={field}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
-              <input type="checkbox" checked={localCustomWind} onChange={e => setLocalCustomWind(e.target.checked)}
+              <input type="checkbox" checked={customWind} onChange={e => { setCustomWind(e.target.checked); autoApply() }}
                 style={{ width: 15, height: 15, cursor: 'pointer', accentColor: T.accent }} />
               <span style={{ fontSize: 13, color: T.text, fontWeight: 500 }}>Custom Wind Range</span>
             </label>
             <CustomWindTooltip />
           </div>
-          {localCustomWind && (
+          {customWind && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', paddingLeft: 23 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontSize: 12, color: T.text2 }}>Min. wind</span>
                 <input type="text" inputMode="numeric" pattern="\d*" style={{ ...input_, width: 60 }}
-                  value={localWindMin}
-                  onChange={e => { if (/^\d*$/.test(e.target.value)) setLocalWindMin(e.target.value) }}
-                  onBlur={e => { const n = parseInt(e.target.value); setLocalWindMin(isNaN(n) ? 15 : n) }}
+                  value={windMin}
+                  onChange={e => { if (/^\d*$/.test(e.target.value)) { setWindMin(e.target.value); autoApply() } }}
+                  onBlur={e => { const n = parseInt(e.target.value); setWindMin(isNaN(n) ? 15 : n); autoApply() }}
                   placeholder="15" />
                 <span style={{ fontSize: 12, color: T.text2 }}>km/h</span>
               </div>
@@ -242,9 +246,9 @@ export default function Settings({ data }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontSize: 12, color: T.text2 }}>Max. gusts</span>
                 <input type="text" inputMode="numeric" pattern="\d*" style={{ ...input_, width: 60 }}
-                  value={localWindMax}
-                  onChange={e => { if (/^\d*$/.test(e.target.value)) setLocalWindMax(e.target.value) }}
-                  onBlur={e => { const n = parseInt(e.target.value); setLocalWindMax(isNaN(n) ? 60 : n) }}
+                  value={windMax}
+                  onChange={e => { if (/^\d*$/.test(e.target.value)) { setWindMax(e.target.value); autoApply() } }}
+                  onBlur={e => { const n = parseInt(e.target.value); setWindMax(isNaN(n) ? 60 : n); autoApply() }}
                   placeholder="60" />
                 <span style={{ fontSize: 12, color: T.text2 }}>km/h</span>
               </div>
@@ -252,7 +256,7 @@ export default function Settings({ data }) {
           )}
         </div>
 
-        <div style={{ opacity: localCustomWind ? 0.4 : 1, pointerEvents: localCustomWind ? 'none' : 'auto', transition: 'opacity 0.2s' }}>
+        <div style={{ opacity: customWind ? 0.4 : 1, pointerEvents: customWind ? 'none' : 'auto', transition: 'opacity 0.2s' }}>
           <div data-tutorial="settings-wings" style={field}>
             <label style={label_}>Wings</label>
             {rows.map((entry, i) => (
@@ -267,56 +271,34 @@ export default function Settings({ data }) {
             <div style={{ fontSize: 11, color: T.text3, marginTop: 6 }}>Up to {MAX_WINGS} wings.</div>
           </div>
 
-          <div data-tutorial="settings-weight" style={field}>
+          <div data-tutorial="settings-weight" style={{ marginBottom: 0 }}>
             <label style={label_}>Total Weight in Flight</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input type="text" inputMode="decimal" style={{ ...input_, width: 80 }}
-                value={localWeight}
-                onChange={e => { const v=e.target.value; if(v===''||/^\d*\.?\d*$/.test(v)) setLocalWeight(v) }}
-                onBlur={e => { const n=parseFloat(e.target.value); setLocalWeight((!isNaN(n)&&n>0)?n:75) }}
+                value={weight}
+                onChange={e => { const v=e.target.value; if(v===''||/^\d*\.?\d*$/.test(v)) { setWeight(v); autoApply() } }}
+                onBlur={e => { const n=parseFloat(e.target.value); setWeight((!isNaN(n)&&n>0)?n:75); autoApply() }}
                 placeholder="75" />
               <span style={{ fontSize: 12, color: T.text2 }}>kg</span>
             </div>
             <div style={{ fontSize: 11, color: T.text3, marginTop: 5 }}>Used to adjust flyable wind ranges.</div>
           </div>
         </div>
-
-        <div data-tutorial="settings-window" style={field}>
-          <label style={label_}>Availability Window</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <input type="time" style={input_} value={localTs} onChange={e => setLocalTs(e.target.value)} />
-            <span style={{ color: T.text3 }}>→</span>
-            <input type="time" style={input_} value={localTe} onChange={e => setLocalTe(e.target.value)} />
-          </div>
-          <div style={{ fontSize: 11, color: T.text3, marginTop: 5 }}>Flyable hours are only counted within this window.</div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', marginTop: 4 }}>
-          <button style={saveBtn} onClick={handleSave}>Save &amp; Apply</button>
-          {saved && <span style={savedMsg}>✓ Applied</span>}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', marginTop: 20 }}></div>
-        <button
-          onClick={() => window.dispatchEvent(new Event('soaralarm:start-tutorial'))}
-          style={{
-            background: 'transparent', color: T.text2,
-            border: `1px solid ${T.border}`, borderRadius: 8,
-            padding: '9px 22px', fontSize: 13, cursor: 'pointer',
-            fontFamily: T.font, display: 'inline-flex', alignItems: 'center', gap: 8,
-          }}
-        >
-          <img src="/paraglider_small.png" width={26} height={26} alt="" /> App Tutorial
-        </button>
       </div>
 
-      {/* Tour button */}
-      <div style={{ textAlign: 'center', margin: '16px 0 4px' }}>
-        
+      {/* Card 3: Availability Window */}
+      <div style={card} data-tutorial="settings-window">
+        <label style={label_}>Availability Window</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <input type="time" style={input_} value={timeStart} onChange={e => { setTimeStart(e.target.value); autoApply() }} />
+          <span style={{ color: T.text3 }}>→</span>
+          <input type="time" style={input_} value={timeEnd} onChange={e => { setTimeEnd(e.target.value); autoApply() }} />
+        </div>
+        <div style={{ fontSize: 11, color: T.text3, marginTop: 5 }}>Flyable hours are only counted within this window.</div>
       </div>
 
       {/* Status panel */}
-      <div style={{ ...card, marginTop: 16 }}>
+      <div style={card}>
         <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 14 }}>Data Status</div>
         <StatusRow label="Forecast"     age={status?.forecast_age_seconds}    stale={status?.forecast_stale}    updating={status?.updating_forecast} />
         <StatusRow label="Measurements" age={status?.measurement_age_seconds} stale={status?.measurement_stale} updating={status?.updating_measurements} inDaylight={status?.measurement_in_daylight ?? true} />

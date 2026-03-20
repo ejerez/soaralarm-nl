@@ -137,13 +137,13 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
   const FS_DAY = Math.round(Math.max(11, Math.min(14, W * 0.024)))   // day name
   const FS_PT  = Math.round(Math.max(9,  Math.min(11, W * 0.019)))   // point name
   const FS_CRT = Math.round(Math.max(8,  Math.min(10, W * 0.016)))   // certainty
-  // LEFT must be wide enough to fit the longest point name; 0.62 approximates
-  // average character width for DM Sans at the given font size
-  const longestPtChars = Math.max(0, ...ganttRows.map(r => (r.point || '').length))
-  const LEFT   = Math.round(Math.max(
-    longestPtChars * FS_PT * 0.62 + 10,   // enough for the longest label + gap
-    FS_DAY * 4,                             // at least ~4 chars of the day name
-    Math.min(W * 0.21, 110),                // never wider than 21 % of container
+  // LEFT must be wide enough to fit the longest label (day name or point name)
+  // 0.58 approximates average character width for DM Sans at the given font size
+  const longestPtChars  = Math.max(0, ...ganttRows.map(r => (r.point || '').length))
+  const longestDayChars = Math.max(0, ...days.map(d => (d || '').length))
+  const LEFT = Math.round(Math.max(
+    longestPtChars  * FS_PT  * 0.58 + 8,
+    longestDayChars * FS_DAY * 0.58 + 8,
   ))
 
   const allTimes = [
@@ -302,10 +302,29 @@ export default function MapForecast({ data, onNavigateToPoint }) {
   const [plotDays,     setPlotDays]     = useState(() => { try { return Number(localStorage.getItem('plotDays')) || 5 } catch { return 5 } })
   const [showYesterday, setShowYesterday] = useState(() => { try { return localStorage.getItem('showYesterday') === 'true' } catch { return false } })
 
+  // Auto-select best point on initial load
+  const initialSelected = useRef(false)
+  useEffect(() => {
+    if (initialSelected.current || !displayForecast || !points.length) return
+    initialSelected.current = true
+    const dayPf = displayForecast[dateIdx] || []
+    let bestQuality = -1
+    dayPf.forEach(pf => { const q = pf.good_hours + pf.gusty_hours; if (q > bestQuality) bestQuality = q })
+    let best = 0, bestFly = -1
+    dayPf.forEach((pf, pi) => {
+      const q = pf.good_hours + pf.gusty_hours
+      const f = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
+      if (q === bestQuality && f > bestFly) { bestFly = f; best = pi }
+    })
+    data.setPtIdx(best)
+  }, [displayForecast, points, dateIdx])
+
   const mapRef     = useRef(null)
   const leafletRef = useRef(null)
   const layersRef  = useRef([])
   const markersRef = useRef([])
+  const ptIdxRef   = useRef(ptIdx)
+  ptIdxRef.current = ptIdx
 
   // Smaller markers on narrow screens to reduce overlap in clusters
   const isMobile   = typeof window !== 'undefined' && window.innerWidth < 500
@@ -381,7 +400,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       layersRef.current.push(marker)
     })
     // Apply highlight to current selection after creating markers
-    const curPt = data.ptIdx
+    const curPt = ptIdxRef.current
     markersRef.current.forEach(({ marker, color }, i) => {
       const selected = i === curPt
       marker.setRadius(selected ? selRadius : baseRadius)
