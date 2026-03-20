@@ -177,7 +177,7 @@ function InfoSymbols({ info }) {
             key={i}
             src={`/symbols/${img}`}
             alt=""
-            style={{ width: 'clamp(40px, 10vw, 56px)', height: 'clamp(40px, 10vw, 56px)', cursor: 'pointer', borderRadius: 6, border: openIdx === i ? `2px solid ${T.border}` : '2px solid transparent' }}
+            style={{ width: 'clamp(46px, 11.5vw, 64px)', height: 'clamp(46px, 11.5vw, 64px)', cursor: 'pointer', borderRadius: 6, border: openIdx === i ? `2px solid ${T.border}` : '2px solid transparent' }}
             onClick={() => setOpenIdx(openIdx === i ? null : i)}
           />
         ))}
@@ -249,26 +249,28 @@ export default function PointForecast({ data }) {
 
   return (
     <div>
-      <div data-tutorial="pt-selectors" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-        <select style={select_} value={ptIdx} onChange={e => setPtIdx(Number(e.target.value))}>
+      <div data-tutorial="pt-selectors">
+        <select style={{ ...select_, marginBottom: 8 }} value={ptIdx} onChange={e => setPtIdx(Number(e.target.value))}>
           {points.map((p,i) => <option key={p.name} value={i}>{p.name}</option>)}
         </select>
-        <a href={`https://www.google.com/maps/place/${point.lat}N+${point.lon}E`}
-          target="_blank" rel="noopener noreferrer"
-          style={{ fontSize: 12, color: T.text2, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 14 }}
-        >
-          <img src="https://img.icons8.com/ios-filled/28/5e5e7a/marker.png" width={12} height={12} alt="" />
-          Google Maps
-        </a>
-        {point.link && (
-          <a href={point.link}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
+          <a href={`https://www.google.com/maps/place/${point.lat}N+${point.lon}E`}
             target="_blank" rel="noopener noreferrer"
-            style={{ fontSize: 12, color: T.text2, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 14 }}
+            style={{ fontSize: 12, color: T.text2, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
           >
-            <img src="https://img.icons8.com/ios-filled/28/5e5e7a/info.png" width={12} height={12} alt="" />
-            Spot information
+            <img src="https://img.icons8.com/ios-filled/28/5e5e7a/marker.png" width={12} height={12} alt="" />
+            Google Maps
           </a>
-        )}
+          {point.link && (
+            <a href={point.link}
+              target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: 12, color: T.text2, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              <img src="https://img.icons8.com/ios-filled/28/5e5e7a/info.png" width={12} height={12} alt="" />
+              Spot information
+            </a>
+          )}
+        </div>
       </div>
 
       {/* Site info symbols */}

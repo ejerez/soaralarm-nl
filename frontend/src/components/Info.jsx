@@ -106,17 +106,45 @@ export default function Info({ data }) {
         <p style={p}>
           The <b style={{ color: '#dedede' }}>minimum flyable speed</b> at each location is determined
           by the dune steepness category (flat, moderate, steep) and wind gradient compensation is applied
-          as a function of dune height. For your current selection (<b style={{ color: '#dedede' }}>{modes?.[mode] || mode}</b>):
+          as a function of dune height. 
         </p>
-        <div style={{ ...code, display: 'block', padding: '8px 14px', margin: '8px 0 12px' }}>
-          factor = {ranges?.speed_height_scaling?.formula || '(A − B · height) / C'}
-        </div>
+
+        {ranges?.min_speed_by_steepness && (
+          <>
+            <p style={p}>Base <b style={{ color: '#dedede' }}>minimum wind speeds</b> by steepness (before height scaling):</p>
+            <ul style={{ ...p, paddingLeft: 20 }}>
+              {Object.entries(ranges.min_speed_by_steepness).map(([k, v]) => (
+                <li key={k}><b style={{ color: '#dedede' }}>{k}</b>: {v} km/h</li>
+              ))}
+            </ul>
+          </>
+        )}
+
+        {ranges?.max_speed_by_wing && (
+          <>
+            <p style={p}>Base <b style={{ color: '#dedede' }}>maximum gust speeds</b> per wing type (before height scaling):</p>
+            <ul style={{ ...p, paddingLeft: 20 }}>
+              {Object.entries(ranges.max_speed_by_wing).map(([k, v]) => (
+                <li key={k}><b style={{ color: '#dedede' }}>{wings[k]?.display_name || k}</b>: {v} km/h</li>
+              ))}
+            </ul>
+          </>
+        )}
+
         <p style={p}>
           Taller dunes produce a greater wind gradient, thus
           the wind speed is greater at the top of the dune, and the spot is flyable at lower forecasted
           windspeeds. The <b style={{ color: '#dedede' }}>maximum flyable speed</b> is set
           per wing type and scaled by the same wind gradient factor.
         </p>
+
+        <p style={p}>
+          For your current selection (<b style={{ color: '#dedede' }}>{modes?.[mode] || mode}</b>):
+        </p>
+
+        <div style={{ ...code, display: 'block', padding: '8px 14px', margin: '8px 0 12px' }}>
+          factor = {ranges?.speed_height_scaling?.formula || '(A − B · height) / C'}
+        </div>
 
         <h3 style={h3}>Wind range scaling for different sizes and weights</h3>
         <p style={p}>

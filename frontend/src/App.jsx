@@ -168,7 +168,7 @@ export default function App() {
     <div style={s.app}>
       <div style={s.center}>
         <img src="/paraglider_small.png" width={44} height={44} alt="" />
-        <span style={{ fontSize: 13 }}>Loading Soaralarm NL…</span>
+        <span style={{ fontSize: 13 }}>Loading Soaralarm…</span>
       </div>
     </div>
   )
