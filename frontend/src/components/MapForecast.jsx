@@ -24,7 +24,7 @@ const T = {
   text:      '#dedede',
   text2:     '#9a9a9a',
   text3:     '#757575',
-  font:      "'DM Sans', system-ui, sans-serif",
+  font:      "'Atkinson Hyperlegible', system-ui, sans-serif",
 }
 // Flyable colours — slightly desaturated for a more refined look
 const C = {
@@ -296,7 +296,7 @@ const Legendsmall_ = ({ items }) => (
 )
 
 export default function MapForecast({ data, onNavigateToPoint }) {
-  const { displayForecast, certainty, points, days, dateIdx, setDateIdx, ptIdx } = data
+  const { displayForecast, certainty, points, days, dateIdx, setDateIdx, ptIdx, timeStart, timeEnd } = data
 
   const [plotDays,     setPlotDays]     = useState(() => { try { return Number(localStorage.getItem('plotDays')) || 5 } catch { return 5 } })
   const [showYesterday, setShowYesterday] = useState(() => { try { return localStorage.getItem('showYesterday') === 'true' } catch { return false } })
@@ -423,6 +423,20 @@ export default function MapForecast({ data, onNavigateToPoint }) {
 
   const { barData, ganttRows, weatherRows, certByDay, weatherByDay, bestPtByDi } = useMemo(() => {
     if (!displayForecast || !points.length) return { barData: [], ganttRows: [], weatherRows: [], certByDay: {}, weatherByDay: {} }
+    // Clamp a gantt entry to the availability window; returns null if fully outside
+    const clampToWindow = (g) => {
+      const sDate = g.start.slice(0, 10) // "YYYY-MM-DD"
+      const winStart = timeStart !== '00:00' ? new Date(`${sDate}T${timeStart}`).getTime() : -Infinity
+      const winEnd   = timeEnd !== '23:59'  ? new Date(`${sDate}T${timeEnd}`).getTime()   :  Infinity
+      const gStart = new Date(g.start).getTime()
+      const gEnd   = new Date(g.end).getTime() || gStart // handle single-point
+      if (gEnd <= winStart || gStart >= winEnd) return null
+      return {
+        ...g,
+        start: gStart < winStart ? new Date(winStart).toISOString() : g.start,
+        end:   gEnd > winEnd     ? new Date(winEnd).toISOString()   : g.end,
+      }
+    }
     const bar = [], gantt = [], weather = [], certByDayMap = {}, weatherByDayMap = {}, bestPtByDiMap = {}
     // di=0 is Yesterday, di=1 is Today; plotDays counts forward from Today
     const maxDi = plotDays  // Today=1 … Today+plotDays-1 = plotDays
@@ -451,12 +465,21 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       const shortDay = shortenDay(dayName)  // barData uses short names — key weather map the same way
       if (certainty?.[di]) certByDayMap[dayName] = certainty[di]
       weatherByDayMap[shortDay] = { has_fog: dayPf.some(pf => pf.has_fog), has_rain: dayPf.some(pf => pf.has_rain) }
-      if (bpf?.gantt)      bpf.gantt.forEach(g => gantt.push({ day: dayName, point: bpt?.name||'', type: g.type, start: g.start, end: g.end }))
-      if (bestFly > 0 && bpf?.fog_gantt)  bpf.fog_gantt.forEach(g => weather.push({ day: dayName, type: g.type, start: g.start, end: g.end }))
-      if (bestFly > 0 && bpf?.rain_gantt) bpf.rain_gantt.forEach(g => weather.push({ day: dayName, type: g.type, start: g.start, end: g.end }))
+      if (bpf?.gantt) bpf.gantt.forEach(g => {
+        const c = clampToWindow({ day: dayName, point: bpt?.name||'', type: g.type, start: g.start, end: g.end })
+        if (c) gantt.push(c)
+      })
+      if (bestFly > 0 && bpf?.fog_gantt) bpf.fog_gantt.forEach(g => {
+        const c = clampToWindow({ day: dayName, type: g.type, start: g.start, end: g.end })
+        if (c) weather.push(c)
+      })
+      if (bestFly > 0 && bpf?.rain_gantt) bpf.rain_gantt.forEach(g => {
+        const c = clampToWindow({ day: dayName, type: g.type, start: g.start, end: g.end })
+        if (c) weather.push(c)
+      })
     })
     return { barData: bar, ganttRows: gantt, weatherRows: weather, certByDay: certByDayMap, weatherByDay: weatherByDayMap, bestPtByDi: bestPtByDiMap }
-  }, [displayForecast, points, days, certainty, plotDays, showYesterday])
+  }, [displayForecast, points, days, certainty, plotDays, showYesterday, timeStart, timeEnd])
   const selectDay = (di) => { setDateIdx(di); if (bestPtByDi[di] != null) data.setPtIdx(bestPtByDi[di]) }
 
   const TOOLTIP_STYLE = {

@@ -14,7 +14,7 @@ const T = {
   text:      '#dedede',
   text2:     '#9a9a9a',
   text3:     '#757575',
-  font:      "'DM Sans', system-ui, sans-serif",
+  font:      "'Atkinson Hyperlegible', system-ui, sans-serif",
 }
 
 const card_ = { background: T.card, border: `1px solid ${T.borderDim}`, borderRadius: 8, padding: '14px 0', marginBottom: 16 }

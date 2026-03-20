@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useSoarData } from './hooks/useSoarData.js'
 import MapForecast, { certLabel } from './components/MapForecast.jsx'
 import PointForecast from './components/PointForecast.jsx'
@@ -6,12 +6,12 @@ import Settings      from './components/Settings.jsx'
 import Info          from './components/Info.jsx'
 import Tutorial      from './components/Tutorial.jsx'
 
-// Inject Inter font once
-if (typeof document !== 'undefined' && !document.getElementById('soar-inter')) {
+// Inject fonts once
+if (typeof document !== 'undefined' && !document.getElementById('soar-fonts')) {
   const link = document.createElement('link')
-  link.id   = 'soar-inter'
+  link.id   = 'soar-fonts'
   link.rel  = 'stylesheet'
-  link.href = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap'
+  link.href = 'https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap'
   document.head.appendChild(link)
 }
 
@@ -29,7 +29,7 @@ const T = {
   text3:     '#757575',
   accent:    '#5578e8',
   accentBg:  'rgba(85,120,232,0.12)',
-  font:      "'DM Sans', system-ui, sans-serif",
+  font:      "'Atkinson Hyperlegible', system-ui, sans-serif",
 }
 
 function I8({ name, size = 16, color = '5e5e7a', style: s = {} }) {
@@ -56,7 +56,7 @@ const s = {
     background: T.bg,
     color: T.text,
     fontFamily: T.font,
-    fontSize: 14,
+    fontSize: 17,
   },
   header: {
     padding: '18px 20px 0',
@@ -162,7 +162,30 @@ const s = {
 export default function App() {
   const [activeTab, setActiveTab] = useState(0)
   const data = useSoarData()
-  const { status, days, loading, error, dateIdx, setDateIdx, certainty, model, countries, modes, country, mode } = data
+  const { status, days, loading, error, dateIdx, setDateIdx, certainty, model, countries, modes, country, mode, ptIdx, altFont, outdoorsMode } = data
+
+  // Apply preference overrides globally via injected <style>
+  useEffect(() => {
+    let style = document.getElementById('soar-prefs')
+    if (!style) {
+      style = document.createElement('style')
+      style.id = 'soar-prefs'
+      document.head.appendChild(style)
+    }
+    const rules = []
+    if (altFont) rules.push(
+      `* { font-family: 'DM Sans', system-ui, sans-serif !important; }`,
+      `#root { font-size: 14px !important; }`,
+    )
+    if (outdoorsMode) rules.push(
+      `#root { filter: contrast(1.5) brightness(1.15) saturate(1.3); }`,
+      `.leaflet-container { filter: contrast(0.67) brightness(0.87) saturate(0.77); }`,
+      `.leaflet-tile-pane { filter: brightness(0.5) contrast(1.15); }`,
+      `.leaflet-marker-pane, .leaflet-overlay-pane, .leaflet-popup-pane { filter: contrast(1.6) saturate(1.7) brightness(1.3); }`,
+      `* { text-shadow: 0 0 1px rgba(0,0,0,0.6); }`,
+    )
+    style.textContent = rules.join('\n')
+  }, [altFont, outdoorsMode])
 
   if (loading) return (
     <div style={s.app}>
@@ -233,17 +256,16 @@ export default function App() {
             const c = certainty?.[dateIdx]
             if (!c) return null
             const dayBar = data.displayForecast?.[dateIdx]
-            const hasFly = dayBar?.some(pf =>
-              (pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours) > 0
-            )
-            if (!hasFly) return null
-            const { label, color } = certLabel(c.agree, c.total)
-            const bestPf = dayBar?.[c.best_pi ?? 0]
+            const selPf = dayBar?.[ptIdx]
+            const selFly = selPf ? (selPf.good_hours + selPf.cross_hours + selPf.gusty_hours + selPf.cross_gusty_hours) : 0
+            if (selFly === 0) return null
+            const agree = c.by_point?.[ptIdx] ?? c.agree
+            const { label, color } = certLabel(agree, c.total)
             return (
               <>
                 <span style={s.pill(color, color + '1a')}>{label}</span>
-                {bestPf?.has_rain && <span style={s.pill('#3a7bd5', '#4a8fd41a')}>Rain</span>}
-                {bestPf?.has_fog  && <span style={s.pill('#8888aa', '#8888aa1a')}>Fog</span>}
+                {selPf?.has_rain && <span style={s.pill('#3a7bd5', '#4a8fd41a')}>Rain</span>}
+                {selPf?.has_fog  && <span style={s.pill('#8888aa', '#8888aa1a')}>Fog</span>}
               </>
             )
           })()}

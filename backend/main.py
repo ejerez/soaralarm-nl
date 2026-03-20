@@ -418,7 +418,7 @@ def get_display_forecast(
                     or (ag == best_agree and quality == best_quality and fly > best_fly)):
                 best_agree, best_quality, best_fly, best_pi = ag, quality, fly, pi
 
-        certainty.append({"agree": best_agree, "total": total, "best_pi": best_pi})
+        certainty.append({"agree": best_agree, "total": total, "best_pi": best_pi, "by_point": point_agree})
 
     return {"model": model, "display": disp, "certainty": certainty}
 

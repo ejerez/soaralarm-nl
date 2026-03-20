@@ -11,7 +11,7 @@ const T = {
   text2:  '#888888',
   text3:  '#555555',
   accent: '#5578e8',
-  font:   "'DM Sans', system-ui, sans-serif",
+  font:   "'Atkinson Hyperlegible', system-ui, sans-serif",
 }
 
 const STEPS = [
@@ -112,6 +112,11 @@ const STEPS = [
     tab: 2, selector: '[data-tutorial="settings-weight"]', position: 'below',
     title: 'Total flight weight',
     body:  <>Your <b style={{ color: T.text }}>all-up weight</b> in kilograms – pilot, harness, payload and wing combined. This scales the calculated wind ranges: a <b style={{ color: T.text }}>heavier</b> pilot on the same wing flies <b style={{ color: T.text }}>faster</b>.</>,
+  },
+  {
+    tab: 2, selector: '[data-tutorial="settings-preferences"]', position: 'below',
+    title: 'Preferences',
+    body:  <><b style={{ color: T.text }}>Alternative Font</b> switches to DM Sans. <b style={{ color: T.text }}>Sunny Mode</b> boosts brightness and contrast to make the app more visible when outside on sunny days.</>,
   },
   {
     tab: 2, selector: '[data-tutorial="settings-window"]', position: 'below',

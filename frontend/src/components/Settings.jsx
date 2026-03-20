@@ -14,7 +14,7 @@ const T = {
   text2:     '#9a9a9a',
   text3:     '#757575',
   accent:    '#5578e8',
-  font:      "'DM Sans', system-ui, sans-serif",
+  font:      "'Atkinson Hyperlegible', system-ui, sans-serif",
 }
 
 const card    = { background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: '20px 24px', maxWidth: 480, marginBottom: 16 }
@@ -123,6 +123,7 @@ export default function Settings({ data }) {
           selectedWings, setSelectedWings, weight, setWeight,
           customWind, setCustomWind, windMin, setWindMin, windMax, setWindMax,
           speedUnit, setSpeedUnit,
+          altFont, setAltFont, outdoorsMode, setOutdoorsMode,
           wings, models, countries, modes, country, mode, status, refreshForecast, refetchDisplay, switchConfig } = data
 
   const wingKeys = Object.keys(wings)
@@ -285,15 +286,39 @@ export default function Settings({ data }) {
         </div>
       </div>
 
-      {/* Card 3: Availability Window */}
-      <div style={card} data-tutorial="settings-window">
-        <label style={label_}>Availability Window</label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <input type="time" style={input_} value={timeStart} onChange={e => { setTimeStart(e.target.value); autoApply() }} />
-          <span style={{ color: T.text3 }}>→</span>
-          <input type="time" style={input_} value={timeEnd} onChange={e => { setTimeEnd(e.target.value); autoApply() }} />
+      {/* Card 3: Preferences */}
+      <div style={card} data-tutorial="settings-preferences">
+        <label style={{ ...label_, marginBottom: 14 }}>Preferences</label>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+              <input type="checkbox" checked={altFont} onChange={e => setAltFont(e.target.checked)}
+                style={{ width: 15, height: 15, cursor: 'pointer', accentColor: T.accent }} />
+              <span style={{ fontSize: 13, color: T.text, fontWeight: 500 }}>Alternative Font</span>
+            </label>
+          </div>
+          <div style={{ fontSize: 11, color: T.text3, marginTop: 4, paddingLeft: 23 }}>Switches to DM Sans.</div>
         </div>
-        <div style={{ fontSize: 11, color: T.text3, marginTop: 5 }}>Flyable hours are only counted within this window.</div>
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+              <input type="checkbox" checked={outdoorsMode} onChange={e => setOutdoorsMode(e.target.checked)}
+                style={{ width: 15, height: 15, cursor: 'pointer', accentColor: T.accent }} />
+              <span style={{ fontSize: 13, color: T.text, fontWeight: 500 }}>Sunny Mode</span>
+            </label>
+          </div>
+          <div style={{ fontSize: 11, color: T.text3, marginTop: 4, paddingLeft: 23 }}>High contrast mode for sunny days.</div>
+        </div>
+
+        <div data-tutorial="settings-window">
+          <h3 style={{ fontSize: 12, color: T.text2, fontWeight: 500, letterSpacing: '0.02em', textTransform: 'uppercase', marginBottom: 8 }}>Availability Window</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <input type="time" style={input_} value={timeStart} onChange={e => { setTimeStart(e.target.value); autoApply() }} />
+            <span style={{ color: T.text3 }}>→</span>
+            <input type="time" style={input_} value={timeEnd} onChange={e => { setTimeEnd(e.target.value); autoApply() }} />
+          </div>
+          <div style={{ fontSize: 11, color: T.text3, marginTop: 5 }}>Flyable hours are calculated within this window.</div>
+        </div>
       </div>
 
       {/* Status panel */}

@@ -106,6 +106,8 @@ function readSettingsFromStorage() {
     windMin:       parseFloat(localStorage.getItem('windMin') ?? '15'),
     windMax:       parseFloat(localStorage.getItem('windMax') ?? '60'),
     speedUnit:     localStorage.getItem('speedUnit')    || 'km/h',
+    altFont:   localStorage.getItem('altFont') === 'true',
+    outdoorsMode:  localStorage.getItem('outdoorsMode') === 'true',
   }
 }
 
@@ -173,6 +175,8 @@ export function useSoarData() {
   const [windMin, setWindMin]           = useState(initSettings.windMin)
   const [windMax, setWindMax]           = useState(initSettings.windMax)
   const [speedUnit, setSpeedUnit]       = useState(initSettings.speedUnit)
+  const [altFont, setAltFont]           = useState(initSettings.altFont)
+  const [outdoorsMode, setOutdoorsMode] = useState(initSettings.outdoorsMode)
   const [dateIdx, setDateIdx]           = useState(1)
   const [ptIdx,   setPtIdx]             = useState(0)
 
@@ -204,6 +208,8 @@ export function useSoarData() {
   useEffect(() => { localStorage.setItem('windMin',       windMin) },      [windMin])
   useEffect(() => { localStorage.setItem('windMax',       windMax) },      [windMax])
   useEffect(() => { localStorage.setItem('speedUnit',     speedUnit) },    [speedUnit])
+  useEffect(() => { localStorage.setItem('altFont',   altFont) },  [altFont])
+  useEffect(() => { localStorage.setItem('outdoorsMode',  outdoorsMode) }, [outdoorsMode])
   useEffect(() => { localStorage.setItem(`altStationPrefs:${cacheScope()}`, JSON.stringify(altStationPrefs)) }, [altStationPrefs])
 
   // ── Fetch display forecast ────────────────────────────────────────────────
@@ -470,6 +476,8 @@ export function useSoarData() {
     windMin, setWindMin,
     windMax, setWindMax,
     speedUnit, setSpeedUnit,
+    altFont, setAltFont,
+    outdoorsMode, setOutdoorsMode,
     dateIdx, setDateIdx,
     ptIdx,   setPtIdx,
     refreshForecast: api.refreshForecast,
