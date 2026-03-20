@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, LabelList } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, LabelList, ReferenceArea } from 'recharts'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -111,7 +111,7 @@ function InfoTooltip({ text }) {
   )
 }
 
-function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick }) {
+function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateIdx }) {
   const COLOR         = { good: C.good, cross: C.cross, good_gusty: C.gusty, cross_gusty: C.crossGusty, no: 'transparent' }
   const WEATHER_COLOR = { fog: C.fog, rain: C.rain }
 
@@ -226,6 +226,7 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick }) {
           const pointName   = flyableRows.length > 0 ? rows[0].point : null
           const wRows = weatherGrouped[day] || []
           const hasCert = flyableRows.length > 0 && certByDay?.[day]
+          const isSelectedDay = days.indexOf(day) === dateIdx
           // Vertical layout within row: day name + optional point + optional cert
           const lineCount = 1 + (pointName ? 1 : 0) + (hasCert ? 1 : 0)
           const lineH = FS_DAY * 1.35
@@ -233,9 +234,12 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick }) {
           const textTop = y + (DAY_H - blockH) / 2 + FS_DAY * 0.85
           return (
             <g key={day}>
-              <text x={LEFT - 5} y={textTop} fontSize={FS_DAY} fill={T.text2} textAnchor="end">{day}</text>
+              {isSelectedDay && (
+                <rect x={0} y={y} width={W} height={DAY_H} fill="#ffffff" opacity={0.1} rx={4} />
+              )}
+              <text x={LEFT - 5} y={textTop} fontSize={FS_DAY} fill={isSelectedDay ? T.text : T.text2} textAnchor="end" fontWeight={isSelectedDay ? 600 : 400}>{day}</text>
               {pointName && (
-                <text x={LEFT - 5} y={textTop + lineH} fontSize={FS_PT} fill={T.text3} textAnchor="end" fontStyle="italic">
+                <text x={LEFT - 5} y={textTop + lineH} fontSize={FS_PT} fill={isSelectedDay ? T.text2 : T.text3} textAnchor="end" fontStyle="italic" fontWeight={isSelectedDay ? 600 : 400}>
                   {pointName}
                 </text>
               )}
@@ -293,14 +297,20 @@ const Legendsmall_ = ({ items }) => (
 )
 
 export default function MapForecast({ data, onNavigateToPoint }) {
-  const { displayForecast, certainty, points, days, dateIdx, setDateIdx } = data
+  const { displayForecast, certainty, points, days, dateIdx, setDateIdx, ptIdx } = data
 
   const [plotDays,     setPlotDays]     = useState(() => { try { return Number(localStorage.getItem('plotDays')) || 5 } catch { return 5 } })
   const [showYesterday, setShowYesterday] = useState(() => { try { return localStorage.getItem('showYesterday') === 'true' } catch { return false } })
 
-  const mapRef    = useRef(null)
+  const mapRef     = useRef(null)
   const leafletRef = useRef(null)
   const layersRef  = useRef([])
+  const markersRef = useRef([])
+
+  // Smaller markers on narrow screens to reduce overlap in clusters
+  const isMobile   = typeof window !== 'undefined' && window.innerWidth < 500
+  const baseRadius = isMobile ? 4 : 6
+  const selRadius  = isMobile ? 7 : 9
 
   // Compute bounds from points so the map auto-fits any country
   const pointsBounds = useMemo(() => {
@@ -341,11 +351,12 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     if (!leafletRef.current || !displayForecast || !points.length) return
     layersRef.current.forEach(l => l.remove())
     layersRef.current = []
+    markersRef.current = []
     const map   = leafletRef.current
     const dayPf = displayForecast[dateIdx] || []
     const maxMag = Math.max(1, ...dayPf.map(pf => Math.max(...(pf.wind_pizza || [0]))))
-    dayPf.forEach((pf, ptIdx) => {
-      const point = points[ptIdx]
+    dayPf.forEach((pf, pi) => {
+      const point = points[pi]
       if (!point) return
       windPolygons(point, pf, maxMag).forEach(poly => {
         layersRef.current.push(
@@ -356,19 +367,33 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       const spotLink = point.link
         ? `<br/><a href="${point.link}" target="_blank" rel="noopener noreferrer" style="color:#5578e8;font-size:12px;text-decoration:none;display:inline-block;margin-top:2px;">Spot information</a>`
         : ''
-      const marker = L.circleMarker([point.lat, point.lon], { radius: 6, color, fillColor: color, fillOpacity: 1, weight: 2 })
+      const marker = L.circleMarker([point.lat, point.lon], {
+        radius: baseRadius, color, fillColor: color, fillOpacity: 1, weight: 2,
+      })
         .bindPopup(
           `<b>${point.name}</b><br/>Good heading: ${pf.wind_pizza[1]}h | Crosswind: ${pf.wind_pizza[0]+pf.wind_pizza[2]}h` +
           `<br/><a href="https://www.google.com/maps?q=${point.lat},${point.lon}" target="_blank" rel="noopener noreferrer" style="color:#5578e8;font-size:12px;text-decoration:none;display:inline-block;margin-top:4px;">` +
           `Google Maps</a>` + spotLink
         )
-      marker.on('popupopen', () => {
-        data.setPtIdx(ptIdx)
-      })
+      marker.on('click', () => { data.setPtIdx(pi) })
       marker.addTo(map)
+      markersRef.current.push({ marker, color })
       layersRef.current.push(marker)
     })
   }, [displayForecast, points, dateIdx])
+
+  // Highlight selected marker without recreating all markers
+  useEffect(() => {
+    markersRef.current.forEach(({ marker, color }, i) => {
+      const selected = i === ptIdx
+      marker.setRadius(selected ? selRadius : baseRadius)
+      marker.setStyle({
+        color: selected ? '#ffffff' : color,
+        weight: selected ? 3 : 2,
+      })
+      if (selected) marker.bringToFront()
+    })
+  }, [ptIdx, baseRadius, selRadius])
 
   const { barData, ganttRows, weatherRows, certByDay, weatherByDay, bestPtByDi } = useMemo(() => {
     if (!displayForecast || !points.length) return { barData: [], ganttRows: [], weatherRows: [], certByDay: {}, weatherByDay: {} }
@@ -466,11 +491,19 @@ export default function MapForecast({ data, onNavigateToPoint }) {
             <XAxis dataKey="day" tick={{ fill: T.text2, fontSize: 11, fontFamily: T.font }} interval={0} />
             <YAxis width={28} tick={{ fill: T.text2, fontSize: 12, fontFamily: T.font }} />
             <Tooltip {...TOOLTIP_STYLE} formatter={(val, name) => val > 0 ? [`${val}h`, name] : [null, null]} />
+            {(() => { const sel = barData.find(d => d.di === dateIdx); return sel ? <ReferenceArea x1={sel.day} x2={sel.day} fill="#ffffff" fillOpacity={0.10} ifOverflow="visible" /> : null })()}
             <Bar dataKey="good"        name="Good wind"        stackId="a" fill={C.good}       radius={[0,0,0,0]} />
             <Bar dataKey="cross"       name="Crosswind"        stackId="a" fill={C.cross}      radius={[0,0,0,0]} />
             <Bar dataKey="gusty"       name="Gusty"            stackId="a" fill={C.gusty}      radius={[0,0,0,0]} />
             <Bar dataKey="cross_gusty" name="Crosswind, Gusty" stackId="a" fill={C.crossGusty} radius={[0,0,0,0]}>
-              <LabelList dataKey="label" position="top" style={{ fill: T.text2, fontSize: 'clamp(8px,1.4vw,10px)' }} />
+              <LabelList dataKey="label" position="top" content={({ x, y, width, value, index }) => {
+                if (!value) return null
+                const selected = barData[index]?.di === dateIdx
+                return (
+                  <text x={x + width / 2} y={y - 6} textAnchor="middle" fontSize="clamp(8px,1.4vw,10px)" fontFamily={T.font}
+                    fill={selected ? T.text : T.text2} fontWeight={selected ? 600 : 400}>{value}</text>
+                )
+              }} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -508,7 +541,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
 
       {/* Gantt */}
       <div data-tutorial="gantt" style={{ background: T.card, borderRadius: 8, padding: '12px 4px', border: `1px solid ${T.borderDim}`, overflowX: 'auto', marginTop: 8 }}>
-        <GanttChart ganttRows={ganttRows} weatherRows={weatherRows} days={days} certByDay={certByDay} onDayClick={selectDay} />
+        <GanttChart ganttRows={ganttRows} weatherRows={weatherRows} days={days} certByDay={certByDay} onDayClick={selectDay} dateIdx={dateIdx} />
         <div style={{ padding: '6px 12px 0' }}>
           <Legendsmall_ items={[
             { color: C.good, name: 'Good wind' }, { color: C.cross, name: 'Crosswind' },
