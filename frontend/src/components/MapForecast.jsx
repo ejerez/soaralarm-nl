@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react'
+import { fs, fsc } from '../fs.js'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, LabelList, ReferenceArea } from 'recharts'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -90,7 +91,7 @@ function InfoTooltip({ text }) {
         border: `1px solid ${T.border}`,
         borderRadius: '50%',
         width: 16, height: 16,
-        fontSize: 10, lineHeight: 1,
+        fontSize: fs(10), lineHeight: 1,
         cursor: 'pointer',
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         padding: 0,
@@ -101,7 +102,7 @@ function InfoTooltip({ text }) {
           transform: 'translateX(-50%)', width: 280,
           background: T.card, border: `1px solid ${T.border}`,
           borderRadius: 6, padding: '8px 12px',
-          fontSize: 12, color: T.text2, lineHeight: 1.55, zIndex: 100,
+          fontSize: fs(12), color: T.text2, lineHeight: 1.55, zIndex: 100,
           boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
         }}>
           {text}
@@ -203,7 +204,7 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
         <div style={{
           position: 'absolute', left: Math.min(tooltip.x, W - 160), top: tooltip.y - 46,
           background: T.card, border: `1px solid ${T.borderEm}`, borderRadius: 6,
-          padding: '6px 10px', fontSize: 12, color: T.text, fontFamily: T.font,
+          padding: '6px 10px', fontSize: fs(12), color: T.text, fontFamily: T.font,
           pointerEvents: 'none', zIndex: 10, whiteSpace: 'nowrap',
           boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
         }}>
@@ -215,7 +216,7 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
         {hourLabels.map(h => (
           <g key={h.label + h.x}>
             <line x1={h.x} y1={20} x2={h.x} y2={svgH} stroke="#2a2a2a" strokeWidth={0.5} />
-            <text x={h.x} y={14} fontSize={FS_HR} fill={T.text3} textAnchor="middle">{h.label}</text>
+            <text x={h.x} y={14} fontSize={fs(FS_HR)} fill={T.text3} textAnchor="middle">{h.label}</text>
           </g>
         ))}
         {dayKeys.map((day, di) => {
@@ -236,9 +237,9 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
               {isSelectedDay && (
                 <rect x={0} y={y} width={W} height={DAY_H} fill="#ffffff" opacity={0.1} rx={4} />
               )}
-              <text x={LEFT - 5} y={textTop} fontSize={FS_DAY} fill={isSelectedDay ? T.text : T.text2} textAnchor="end" fontWeight={isSelectedDay ? 600 : 400}>{day}</text>
+              <text x={LEFT - 5} y={textTop} fontSize={fs(FS_DAY)} fill={isSelectedDay ? T.text : T.text2} textAnchor="end" fontWeight={isSelectedDay ? 600 : 400}>{day}</text>
               {pointName && (
-                <text x={LEFT - 5} y={textTop + lineH} fontSize={FS_PT} fill={isSelectedDay ? T.text2 : T.text3} textAnchor="end" fontStyle="italic" fontWeight={isSelectedDay ? 600 : 400}>
+                <text x={LEFT - 5} y={textTop + lineH} fontSize={fs(FS_PT)} fill={isSelectedDay ? T.text2 : T.text3} textAnchor="end" fontStyle="italic" fontWeight={isSelectedDay ? 600 : 400}>
                   {pointName}
                 </text>
               )}
@@ -246,7 +247,7 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
                 const { label, color } = certLabel(certByDay[day].agree, certByDay[day].total)
                 const certY = textTop + lineH * (pointName ? 2 : 1)
                 return (
-                  <text x={LEFT - 5} y={certY} fontSize={FS_CRT} fill={color} textAnchor="end" fontWeight="600">
+                  <text x={LEFT - 5} y={certY} fontSize={fs(FS_CRT)} fill={color} textAnchor="end" fontWeight="600">
                     {label.replace(' Confidence', '')}
                   </text>
                 )
@@ -274,7 +275,7 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
 const FLYABLE_DISCLAIMER = "The calculated flyable hours and windows are only an optimistic estimate based on your indicated wing type and weight, and are in no case a replacement for the pilot's own judgement. Always verify that forecasted conditions are appropriate for your exact wing model, skill level, physical ability and risk tolerance. See the Info tab for details on how flyability is calculated."
 
 const Legend_ = ({ items }) => (
-  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: "clamp(8px, 1.4vw, 12px)", color: T.text2 }}>
+  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: fsc(8, '1.4vw', 12), color: T.text2 }}>
     {items.map(({ color, name }) => (
       <span key={name} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
         <span style={{ width: 9, height: 9, background: color, borderRadius: 2, flexShrink: 0, display: 'inline-block' }} />
@@ -285,7 +286,7 @@ const Legend_ = ({ items }) => (
 )
 
 const Legendsmall_ = ({ items }) => (
-  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', fontSize: "clamp(6px, 1.4vw, 12px)", color: T.text2 }}>
+  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', fontSize: fsc(6, '1.4vw', 12), color: T.text2 }}>
     {items.map(({ color, name }) => (
       <span key={name} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
         <span style={{ width: 9, height: 9, background: color, borderRadius: 2, flexShrink: 0, display: 'inline-block' }} />
@@ -483,7 +484,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
   const selectDay = (di) => { setDateIdx(di); if (bestPtByDi[di] != null) data.setPtIdx(bestPtByDi[di]) }
 
   const TOOLTIP_STYLE = {
-    contentStyle: { background: T.card, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: 12, fontFamily: T.font },
+    contentStyle: { background: T.card, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: fs(12), fontFamily: T.font },
     labelStyle: { color: T.text2 },
   }
 
@@ -497,19 +498,19 @@ export default function MapForecast({ data, onNavigateToPoint }) {
 
       {/* Plot controls */}
       <div data-tutorial="plotcontrols" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10, flexWrap: 'wrap' }}>
-        <label style={{ fontSize: 12, color: T.text2, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <label style={{ fontSize: fs(12), color: T.text2, display: 'flex', alignItems: 'center', gap: 6 }}>
           Forecast days
           <select
             value={plotDays}
             onChange={e => { const v = Number(e.target.value); setPlotDays(v); try { localStorage.setItem('plotDays', v) } catch {} }}
-            style={{ background: T.raised, color: T.text, border: `1px solid ${T.borderEm}`, borderRadius: 5, padding: '3px 7px', fontSize: 12, cursor: 'pointer', fontFamily: T.font }}
+            style={{ background: T.raised, color: T.text, border: `1px solid ${T.borderEm}`, borderRadius: 5, padding: '3px 7px', fontSize: fs(12), cursor: 'pointer', fontFamily: T.font }}
           >
             <option value={3}>3</option>
             <option value={5}>5</option>
             <option value={7}>7</option>
           </select>
         </label>
-        <label style={{ fontSize: 12, color: T.text2, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
+        <label style={{ fontSize: fs(12), color: T.text2, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
           <input
             type="checkbox"
             checked={showYesterday}
@@ -529,8 +530,8 @@ export default function MapForecast({ data, onNavigateToPoint }) {
               if (!w?.has_fog && !w?.has_rain) return <div key={i} style={{ flex: 1 }} />
               return (
                 <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                  {w.has_rain && <span style={{ fontSize: 'clamp(7px,1.4vw,10px)', fontWeight: 600, color: '#3a7bd5', background: '#4a8fd418', padding: '1px 4px', borderRadius: 3, lineHeight: 1.3, display: 'inline-block' }}>Rain</span>}
-                  {w.has_fog  && <span style={{ fontSize: 'clamp(7px,1.4vw,10px)', fontWeight: 600, color: '#9090b0', background: '#9090b018', padding: '1px 4px', borderRadius: 3, lineHeight: 1.3, display: 'inline-block' }}>Fog</span>}
+                  {w.has_rain && <span style={{ fontSize: fsc(7, '1.4vw', 10), fontWeight: 600, color: '#3a7bd5', background: '#4a8fd418', padding: '1px 4px', borderRadius: 3, lineHeight: 1.3, display: 'inline-block' }}>Rain</span>}
+                  {w.has_fog  && <span style={{ fontSize: fsc(7, '1.4vw', 10), fontWeight: 600, color: '#9090b0', background: '#9090b018', padding: '1px 4px', borderRadius: 3, lineHeight: 1.3, display: 'inline-block' }}>Fog</span>}
                 </div>
               )
             })}
@@ -538,8 +539,8 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         )}
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={barData} margin={{ top: 40, right: 8, left: 0, bottom: 0 }} onClick={e => { const d = e?.activePayload?.[0]?.payload; if (d?.di != null) selectDay(d.di) }} style={{ cursor: 'pointer' }}>
-            <XAxis dataKey="day" tick={{ fill: T.text2, fontSize: 11, fontFamily: T.font }} interval={0} />
-            <YAxis width={28} tick={{ fill: T.text2, fontSize: 12, fontFamily: T.font }} />
+            <XAxis dataKey="day" tick={{ fill: T.text2, fontSize: fs(11), fontFamily: T.font }} interval={0} />
+            <YAxis width={28} tick={{ fill: T.text2, fontSize: fs(12), fontFamily: T.font }} />
             <Tooltip {...TOOLTIP_STYLE} cursor={false} labelFormatter={(_, payload) => payload?.[0]?.payload?.fullDay || ''} formatter={(val, name) => val > 0 ? [`${val}h`, name] : [null, null]} />
             {(() => { const sel = barData.find(d => d.di === dateIdx); return sel ? <ReferenceArea x1={sel.day} x2={sel.day} fill="#ffffff" fillOpacity={0.10} ifOverflow="visible" /> : null })()}
             <Bar dataKey="good"        name="Good wind"        stackId="a" fill={C.good}       radius={[0,0,0,0]} />
@@ -550,7 +551,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
                 if (!value) return null
                 const selected = barData[index]?.di === dateIdx
                 return (
-                  <text x={x + width / 2} y={y - 6} textAnchor="middle" fontSize="clamp(8px,1.4vw,10px)" fontFamily={T.font}
+                  <text x={x + width / 2} y={y - 6} textAnchor="middle" fontSize={fsc(8, '1.4vw', 10)} fontFamily={T.font}
                     fill={selected ? T.text : T.text2} fontWeight={selected ? 600 : 400}>{value}</text>
                 )
               }} />
@@ -571,7 +572,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
               const { label, color } = certLabel(c.agree, c.total)
               return (
                 <div key={i} style={{ flex: 1, textAlign: 'center' }}>
-                  <span style={{ fontSize: 'clamp(7px,1.4vw,10px)', fontWeight: 600, color, background: color+'18', padding: '2px 4px', borderRadius: 3, display: 'inline-block' }}>
+                  <span style={{ fontSize: fsc(7, '1.4vw', 10), fontWeight: 600, color, background: color+'18', padding: '2px 4px', borderRadius: 3, display: 'inline-block' }}>
                     {label.replace(' Confidence', '')}
                   </span>
                 </div>
@@ -607,7 +608,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         background: T.card, borderRadius: 6,
         border: `1px solid ${T.borderDim}`,
         borderLeft: `3px solid ${T.border}`,
-        fontSize: 11, color: T.text2, lineHeight: 1.55,
+        fontSize: fs(11), color: T.text2, lineHeight: 1.55,
         display: 'flex', alignItems: 'flex-start', gap: 8,
       }}>
         <span>{FLYABLE_DISCLAIMER}</span>

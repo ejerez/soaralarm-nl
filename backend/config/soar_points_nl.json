@@ -161,7 +161,7 @@
         "slope": { "steepness": "moderate", "height": 17 },
         "info": [
             ["moderate_dune.png", "<b style={{ color: '#dedede' }}>Moderate dune</b>, almost 20m tall."],
-            ["extreme_turbulence.png", "<b style={{ color: '#dedede' }}>Very turbulent</b> with more than around 15deg left crosswind, due to the presence of wind turbines upwind."],
+            ["extreme_turbulence.png", "<b style={{ color: '#dedede' }}>Very turbulent</b> with more than around 15° left crosswind, due to the presence of wind turbines upwind."],
             ["extreme_crowded.png", "<b style={{ color: '#dedede' }}>Very small site</b> that can get very crowded. If possible, <b style={{ color: '#dedede' }}>avoid on weekends and holidays</b>."]
         ],
         "link": "https://wildvliegen.nl/vliegplekken/nederland/westenschouwen/"

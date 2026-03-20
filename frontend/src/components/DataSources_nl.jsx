@@ -1,7 +1,8 @@
 import React from 'react'
+import { fs } from '../fs.js'
 
-const h3 = { fontSize: 11, fontWeight: 600, color: '#9a9a9a', marginBottom: 8, marginTop: 16, textTransform: 'uppercase', letterSpacing: '0.04em' }
-const p  = { fontSize: 13, color: '#9a9a9a', lineHeight: 1.7, margin: '0 0 8px' }
+const h3 = { fontSize: fs(11), fontWeight: 600, color: '#9a9a9a', marginBottom: 8, marginTop: 16, textTransform: 'uppercase', letterSpacing: '0.04em' }
+const p  = { fontSize: fs(13), color: '#9a9a9a', lineHeight: 1.7, margin: '0 0 8px' }
 const link = { color: '#7eb8f7', textDecoration: 'none' }
 const th = { padding: '6px 10px', textAlign: 'left', color: '#aaa', fontWeight: 600, whiteSpace: 'nowrap' }
 const td = { padding: '7px 10px', color: '#888', whiteSpace: 'nowrap' }
@@ -62,7 +63,7 @@ export default function DataSources_nl() {
 
       {/* Confidence score table */}
       <div style={{ overflowX: 'auto', marginBottom: 8 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fs(12) }}>
           <thead>
             <tr style={{ borderBottom: '1px solid #676767' }}>
               <th style={th}>Badge</th>
@@ -84,7 +85,7 @@ export default function DataSources_nl() {
                     background: color + '22',
                     color,
                     fontWeight: 700,
-                    fontSize: 11,
+                    fontSize: fs(11),
                     padding: '2px 7px',
                     borderRadius: 4,
                   }}>{label}</span>

@@ -107,6 +107,7 @@ function readSettingsFromStorage() {
     windMax:       parseFloat(localStorage.getItem('windMax') ?? '60'),
     speedUnit:     localStorage.getItem('speedUnit')    || 'km/h',
     altFont:   localStorage.getItem('altFont') === 'true',
+    largeFont: localStorage.getItem('largeFont') === 'true',
     outdoorsMode:  localStorage.getItem('outdoorsMode') === 'true',
   }
 }
@@ -176,6 +177,7 @@ export function useSoarData() {
   const [windMax, setWindMax]           = useState(initSettings.windMax)
   const [speedUnit, setSpeedUnit]       = useState(initSettings.speedUnit)
   const [altFont, setAltFont]           = useState(initSettings.altFont)
+  const [largeFont, setLargeFont]       = useState(initSettings.largeFont)
   const [outdoorsMode, setOutdoorsMode] = useState(initSettings.outdoorsMode)
   const [dateIdx, setDateIdx]           = useState(1)
   const [ptIdx,   setPtIdx]             = useState(0)
@@ -209,6 +211,7 @@ export function useSoarData() {
   useEffect(() => { localStorage.setItem('windMax',       windMax) },      [windMax])
   useEffect(() => { localStorage.setItem('speedUnit',     speedUnit) },    [speedUnit])
   useEffect(() => { localStorage.setItem('altFont',   altFont) },  [altFont])
+  useEffect(() => { localStorage.setItem('largeFont', largeFont) }, [largeFont])
   useEffect(() => { localStorage.setItem('outdoorsMode',  outdoorsMode) }, [outdoorsMode])
   useEffect(() => { localStorage.setItem(`altStationPrefs:${cacheScope()}`, JSON.stringify(altStationPrefs)) }, [altStationPrefs])
 
@@ -477,6 +480,7 @@ export function useSoarData() {
     windMax, setWindMax,
     speedUnit, setSpeedUnit,
     altFont, setAltFont,
+    largeFont, setLargeFont,
     outdoorsMode, setOutdoorsMode,
     dateIdx, setDateIdx,
     ptIdx,   setPtIdx,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { fs } from '../fs.js'
 
 const DEFAULT_WEIGHT = 70.0
 
@@ -20,9 +21,9 @@ const card = {
   padding: '20px 24px',
   marginBottom: 16,
 }
-const h2 = { fontSize: 15, fontWeight: 600, color: '#dedede', marginBottom: 12, marginTop: 0 }
-const h3 = { fontSize: 11, fontWeight: 600, color: '#9a9a9a', marginBottom: 8, marginTop: 16, textTransform: 'uppercase', letterSpacing: '0.04em' }
-const p  = { fontSize: 13, color: '#9a9a9a', lineHeight: 1.7, margin: '0 0 8px' }
+const h2 = { fontSize: fs(15), fontWeight: 600, color: '#dedede', marginBottom: 12, marginTop: 0 }
+const h3 = { fontSize: fs(11), fontWeight: 600, color: '#9a9a9a', marginBottom: 8, marginTop: 16, textTransform: 'uppercase', letterSpacing: '0.04em' }
+const p  = { fontSize: fs(13), color: '#9a9a9a', lineHeight: 1.7, margin: '0 0 8px' }
 
 const code = {
   display: 'inline-block',
@@ -31,7 +32,7 @@ const code = {
   borderRadius: 4,
   padding: '2px 8px',
   fontFamily: 'monospace',
-  fontSize: 13,
+  fontSize: fs(13),
   color: '#cccccc',
   margin: '4px 0',
 }
@@ -231,7 +232,7 @@ export default function Info({ data }) {
         </p>
 
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fs(12) }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #686868' }}>
                 <th style={th}>Location</th>
@@ -398,7 +399,7 @@ export default function Info({ data }) {
       </div>
 
       {/* ── GitHub link ── */}
-      <div style={{ textAlign: 'center', padding: '8px 0 24px', fontSize: 15, color: '#555' }}>
+      <div style={{ textAlign: 'center', padding: '8px 0 24px', fontSize: fs(15), color: '#555' }}>
         <a
           href="https://github.com/ejerez/soaralarm-nl"
           target="_blank"

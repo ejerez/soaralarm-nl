@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { fs, fsc } from '../fs.js'
 
 const STORAGE_KEY = 'soaralarm_welcomed'
 const SPOT_PAD    = 8
@@ -116,7 +117,7 @@ const STEPS = [
   {
     tab: 2, selector: '[data-tutorial="settings-preferences"]', position: 'below',
     title: 'Preferences',
-    body:  <><b style={{ color: T.text }}>Alternative Font</b> switches to DM Sans. <b style={{ color: T.text }}>Sunny Mode</b> boosts brightness and contrast to make the app more visible when outside on sunny days.</>,
+    body:  <>Here you will find some very useful features. <b style={{ color: T.text }}>Sunny Mode</b> boosts brightness and contrast to make the app <b style={{ color: T.text }}>more visible</b> when <b style={{ color: T.text }}>outside on sunny days</b>. <b style={{ color: T.text }}>Large Font</b> increases the font size for <b style={{ color: T.text }}>easier reading</b>. <b style={{ color: T.text }}>Alternative Font</b> switches to <b style={{ color: T.text }}>DM Sans</b>.</>,
   },
   {
     tab: 2, selector: '[data-tutorial="settings-window"]', position: 'below',
@@ -313,7 +314,7 @@ export default function Tutorial({ activeTab, onSwitchTab }) {
     }
   }
 
-  const btnBase = { border: 'none', borderRadius: 7, padding: 'clamp(6px,2vw,8px) clamp(14px,4vw,20px)', fontSize: 'clamp(12px,3.5vw,13px)', cursor: 'pointer', fontFamily: T.font }
+  const btnBase = { border: 'none', borderRadius: 7, padding: 'clamp(6px,2vw,8px) clamp(14px,4vw,20px)', fontSize: fsc(12, '3.5vw', 13), cursor: 'pointer', fontFamily: T.font }
 
   return (
     <>
@@ -351,16 +352,16 @@ export default function Tutorial({ activeTab, onSwitchTab }) {
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <span style={{ fontSize: 11, color: T.text3, letterSpacing: '0.04em' }}>
+          <span style={{ fontSize: fs(11), color: T.text3, letterSpacing: '0.04em' }}>
             STEP {step + 1} OF {STEPS.length}
           </span>
-          <button onClick={close} style={{ background: 'none', border: 'none', color: T.text3, fontSize: 20, cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}>×</button>
+          <button onClick={close} style={{ background: 'none', border: 'none', color: T.text3, fontSize: fs(20), cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}>×</button>
         </div>
 
-        <div style={{ fontSize: 'clamp(13px, 4vw, 15px)', fontWeight: 700, color: T.text, marginBottom: 8, lineHeight: 1.3 }}>
+        <div style={{ fontSize: fsc(13, '4vw', 15), fontWeight: 700, color: T.text, marginBottom: 8, lineHeight: 1.3 }}>
           {current.title}
         </div>
-        <div style={{ fontSize: 'clamp(12px, 3.5vw, 13px)', color: T.text2, lineHeight: 1.65 }}>
+        <div style={{ fontSize: fsc(12, '3.5vw', 13), color: T.text2, lineHeight: 1.65 }}>
           {current.body}
         </div>
 
@@ -392,7 +393,7 @@ export default function Tutorial({ activeTab, onSwitchTab }) {
         </div>
 
         {step === 0 && (
-          <div style={{ textAlign: 'center', marginTop: 10, fontSize: 11, color: T.text3 }}>
+          <div style={{ textAlign: 'center', marginTop: 10, fontSize: fs(11), color: T.text3 }}>
             Click anywhere outside this card or press 'Next' to advance.
           </div>
         )}

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
+import { fs, fsc } from '../fs.js'
 import {
   ComposedChart, Area, Line, XAxis, YAxis, Scatter,
   CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine,
@@ -18,11 +19,11 @@ const T = {
 }
 
 const card_ = { background: T.card, border: `1px solid ${T.borderDim}`, borderRadius: 8, padding: '14px 0', marginBottom: 16 }
-const sectionTitle_ = { fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 12, paddingLeft: 14, letterSpacing: '0.04em', textTransform: 'uppercase' }
-const select_ = { background: T.raised, color: T.text, border: `1px solid ${T.border}`, borderRadius: 6, padding: '6px 10px', fontSize: 13, cursor: 'pointer', marginBottom: 14, fontFamily: T.font }
-const TOOLTIP = { contentStyle: { background: T.card, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: 12, fontFamily: T.font }, labelStyle: { color: T.text2 }, labelFormatter: fmtTime }
+const sectionTitle_ = { fontSize: fs(12), fontWeight: 600, color: T.text2, marginBottom: 12, paddingLeft: 14, letterSpacing: '0.04em', textTransform: 'uppercase' }
+const select_ = { background: T.raised, color: T.text, border: `1px solid ${T.border}`, borderRadius: 6, padding: '6px 10px', fontSize: fs(13), cursor: 'pointer', marginBottom: 14, fontFamily: T.font }
+const TOOLTIP = { contentStyle: { background: T.card, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: fs(12), fontFamily: T.font }, labelStyle: { color: T.text2 }, labelFormatter: fmtTime }
 const GRID_STROKE = '#2a2a2a'
-const TICK  = { fill: T.text2, fontSize: 11, fontFamily: T.font }
+const TICK  = { fill: T.text2, fontSize: fs(11), fontFamily: T.font }
 
 function fmtTime(ms) {
   const d = new Date(ms)
@@ -115,7 +116,7 @@ function WindTooltip({ active, payload, label, unit = 'km/h' }) {
   const d = payload[0]?.payload ?? {}
 
   const box = (children) => (
-    <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 6, padding: '8px 10px', fontSize: 12, fontFamily: T.font }}>
+    <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 6, padding: '8px 10px', fontSize: fs(12), fontFamily: T.font }}>
       <div style={{ color: T.text2, marginBottom: 6 }}>{fmtTime(label)}</div>
       {children}
     </div>
@@ -186,7 +187,7 @@ function InfoSymbols({ info }) {
         <div style={{
           marginTop: 6, padding: '10px 14px',
           background: T.card, border: `1px solid ${T.border}`, borderRadius: 8,
-          fontSize: 12, color: T.text2, lineHeight: 1.6,
+          fontSize: fs(12), color: T.text2, lineHeight: 1.6,
           boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
         }}>
           <div dangerouslySetInnerHTML={{ __html: fixHtml(info[openIdx][1]) }} />
@@ -242,7 +243,7 @@ export default function PointForecast({ data }) {
   const dirData  = useMemo(() => (!dayFc||!point)?[]:buildDirData(dayFc,measurements,headingStationRef,dayFc.sunrise,dayFc.sunset,heading), [dayFc,measurements,headingStationRef,point,heading])
   const tempData = useMemo(() => (!dayFc||!point)?[]:buildTempData(dayFc), [dayFc,point])
 
-  if (!point || !dayFc) return <div style={{ color: T.text2, padding: '40px 0', textAlign: 'center', fontSize: 13 }}>No data available for this selection.</div>
+  if (!point || !dayFc) return <div style={{ color: T.text2, padding: '40px 0', textAlign: 'center', fontSize: fs(13) }}>No data available for this selection.</div>
 
   const dispPf     = displayForecast?.[dateIdx]?.[ptIdx]
   const wind_ranges = dispPf?.wind_ranges ?? []
@@ -256,7 +257,7 @@ export default function PointForecast({ data }) {
         <div style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
           <a href={`https://www.google.com/maps/place/${point.lat}N+${point.lon}E`}
             target="_blank" rel="noopener noreferrer"
-            style={{ fontSize: 12, color: T.text2, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+            style={{ fontSize: fs(12), color: T.text2, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
           >
             <img src="https://img.icons8.com/ios-filled/28/5e5e7a/marker.png" width={12} height={12} alt="" />
             Google Maps
@@ -264,7 +265,7 @@ export default function PointForecast({ data }) {
           {point.link && (
             <a href={point.link}
               target="_blank" rel="noopener noreferrer"
-              style={{ fontSize: 12, color: T.text2, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+              style={{ fontSize: fs(12), color: T.text2, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
             >
               <img src="https://img.icons8.com/ios-filled/28/5e5e7a/info.png" width={12} height={12} alt="" />
               Spot information
@@ -288,13 +289,13 @@ export default function PointForecast({ data }) {
         const radioStyle = { width: 14, height: 14, cursor: 'pointer', accentColor: '#7aaaee', margin: 0 }
         return (
           <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: useAltChecked ? T.text3 : T.text, cursor: 'pointer', userSelect: 'none' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: fs(13), color: useAltChecked ? T.text3 : T.text, cursor: 'pointer', userSelect: 'none' }}>
               <input type="radio" name={`station-${ptIdx}`} checked={!useAltChecked}
                 onChange={() => setAltStationPrefs(prev => ({ ...prev, [ptIdx]: false }))}
                 style={radioStyle} />
               {priLabel}
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: useAltChecked ? T.text : T.text3, cursor: 'pointer', userSelect: 'none' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: fs(13), color: useAltChecked ? T.text : T.text3, cursor: 'pointer', userSelect: 'none' }}>
               <input type="radio" name={`station-${ptIdx}`} checked={useAltChecked}
                 onChange={() => setAltStationPrefs(prev => ({ ...prev, [ptIdx]: true }))}
                 style={radioStyle} />
@@ -314,7 +315,7 @@ export default function PointForecast({ data }) {
             <YAxis yAxisId="wind" tick={TICK} width={30} />
             <YAxis yAxisId="rain" orientation="right" tick={false} width={1} />
             <Tooltip content={<WindTooltip unit={speedUnit} />} />
-            <Legend wrapperStyle={{ fontSize:"clamp(8px, 1.4vw, 12px)", color: T.text2, fontFamily: T.font }} />
+            <Legend wrapperStyle={{ fontSize:fsc(8, '1.4vw', 12), color: T.text2, fontFamily: T.font }} />
             {wind_ranges.map((wing, i) => {
               const dash = DASH[i % DASH.length]
               const displayName = wings[wing.key]?.display_name ?? wing.key
@@ -323,8 +324,8 @@ export default function PointForecast({ data }) {
               const posMin = i%2===0 ? 'insideTopLeft' : 'insideTopRight'
               const posMax = i%2===0 ? 'insideBottomLeft' : 'insideBottomRight'
               return [
-                <ReferenceLine key={`min-${wing.key}`} yAxisId="wind" y={toUnit(wMin)} stroke="#3aaa66" strokeWidth={1.5} strokeDasharray={dash} label={{ value:`↑ ${label} ↑`, fill:'#1fd100', fontSize:8, position:posMin }} />,
-                <ReferenceLine key={`max-${wing.key}`} yAxisId="wind" y={toUnit(wMax)} stroke="#3aaa80" strokeWidth={1.5} strokeDasharray={dash} label={{ value:`↓ ${label} ↓`, fill:'#6be655', fontSize:8, position:posMax }} />,
+                <ReferenceLine key={`min-${wing.key}`} yAxisId="wind" y={toUnit(wMin)} stroke="#3aaa66" strokeWidth={1.5} strokeDasharray={dash} label={{ value:`↑ ${label} ↑`, fill:'#1fd100', fontSize:fs(8), position:posMin }} />,
+                <ReferenceLine key={`max-${wing.key}`} yAxisId="wind" y={toUnit(wMax)} stroke="#3aaa80" strokeWidth={1.5} strokeDasharray={dash} label={{ value:`↓ ${label} ↓`, fill:'#6be655', fontSize:fs(8), position:posMax }} />,
               ]
             })}
             <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"    name={`Gusts (${speedUnit})`}        fill="#c07028" stroke="#c07028" fillOpacity={0.25} dot={false} connectNulls />
@@ -346,11 +347,11 @@ export default function PointForecast({ data }) {
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin','dataMax']} tickFormatter={fmtTime} tick={TICK} />
             <YAxis tick={TICK} domain={[domainLow, domainHigh]} width={30} allowDataOverflow />
             <Tooltip {...TOOLTIP} />
-            <Legend wrapperStyle={{ fontSize:"clamp(8px, 1.4vw, 12px)", color: T.text2, fontFamily: T.font }} />
+            <Legend wrapperStyle={{ fontSize:fsc(8, '1.4vw', 12), color: T.text2, fontFamily: T.font }} />
             <ReferenceArea y1={lowerBound} y2={lowerIdeal} fill="#d27a2d" fillOpacity={0.45} />
             <ReferenceArea y1={lowerIdeal} y2={upperIdeal} fill="#25b863" fillOpacity={0.45} />
             <ReferenceArea y1={upperIdeal} y2={upperBound} fill="#d27a2d" fillOpacity={0.45} />
-            <ReferenceLine y={heading} stroke={T.text3} strokeDasharray="4 2" label={{ value:`${heading}°`, fill: T.text3, fontSize:11 }} />
+            <ReferenceLine y={heading} stroke={T.text3} strokeDasharray="4 2" label={{ value:`${heading}°`, fill: T.text3, fontSize:fs(11) }} />
             <Line type="monotone" dataKey="wind_dir" name="Forecast heading (°)" stroke="#aaaacc" dot={false} strokeWidth={2}   connectNulls />
             <Line type="linear"   dataKey="meas_dir" name="Measured heading (°)" stroke={T.text}    dot={false} strokeWidth={1.5} connectNulls strokeDasharray="5 3" />
           </ComposedChart>
@@ -367,8 +368,8 @@ export default function PointForecast({ data }) {
             <YAxis yAxisId="temp" tick={{ ...TICK, fill: '#c09030' }} width={30} />
             <YAxis yAxisId="vis"  orientation="right" tick={TICK} width={24} />
             <Tooltip {...TOOLTIP} />
-            <Legend wrapperStyle={{ fontSize:"clamp(8px, 1.4vw, 12px)", color: T.text2, fontFamily: T.font }} />
-            <ReferenceLine yAxisId="vis" y={0.1} stroke="#c04040" strokeDasharray="4 2" label={{ value:'Min visibility', fill:'#c12e0d', fontSize:11 }} />
+            <Legend wrapperStyle={{ fontSize:fsc(8, '1.4vw', 12), color: T.text2, fontFamily: T.font }} />
+            <ReferenceLine yAxisId="vis" y={0.1} stroke="#c04040" strokeDasharray="4 2" label={{ value:'Min visibility', fill:'#c12e0d', fontSize:fs(11) }} />
             <Line yAxisId="temp" type="monotone" dataKey="temperature" name="Temp (°C)"       stroke="#c09030" dot={false} strokeWidth={2} />
             <Line yAxisId="vis"  type="monotone" dataKey="visibility"  name="Visibility (km)" stroke={T.text2} dot={false} strokeWidth={2} />
           </ComposedChart>
@@ -377,7 +378,7 @@ export default function PointForecast({ data }) {
 
       {/* Wind ranges */}
       {wind_ranges.length > 0 && (
-        <div data-tutorial="pt-ranges" style={{ fontSize: 12, color: T.text2, marginTop: 4, lineHeight: 2 }}>
+        <div data-tutorial="pt-ranges" style={{ fontSize: fs(12), color: T.text2, marginTop: 4, lineHeight: 2 }}>
           <span style={{ color: T.text, fontWeight: 600 }}>Wind ranges at {point.name}:</span><br />
           {wind_ranges.map(wr => {
             const displayName = wings[wr.key]?.display_name ?? wr.key
@@ -397,7 +398,7 @@ export default function PointForecast({ data }) {
       )}
 
       {/* Station info */}
-      <div style={{ fontSize: 12, color: T.text2, marginTop: 12, lineHeight: 1.8 }}>
+      <div style={{ fontSize: fs(12), color: T.text2, marginTop: 12, lineHeight: 1.8 }}>
         {(() => {
           if (!windStationRef) return null
           const [api, code] = windStationRef

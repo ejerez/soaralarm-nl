@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { fs } from './fs.js'
 import { useSoarData } from './hooks/useSoarData.js'
 import MapForecast, { certLabel } from './components/MapForecast.jsx'
 import PointForecast from './components/PointForecast.jsx'
@@ -56,7 +57,7 @@ const s = {
     background: T.bg,
     color: T.text,
     fontFamily: T.font,
-    fontSize: 17,
+    fontSize: fs(14),
   },
   header: {
     padding: '18px 20px 0',
@@ -68,7 +69,7 @@ const s = {
     marginBottom: 16,
   },
   title: {
-    fontSize: 18,
+    fontSize: fs(18),
     fontWeight: 700,
     color: T.text,
     letterSpacing: '-0.3px',
@@ -85,7 +86,7 @@ const s = {
     flexShrink: 0,
   }),
   statusText: {
-    fontSize: 12,
+    fontSize: fs(12),
     color: T.text2,
     display: 'flex',
     alignItems: 'center',
@@ -108,7 +109,7 @@ const s = {
     borderBottom: active ? `2px solid ${T.accent}` : '2px solid transparent',
     cursor: 'pointer',
     fontWeight: active ? 600 : 400,
-    fontSize: 13,
+    fontSize: fs(13),
     background: 'transparent',
     color: active ? T.text : T.text2,
     fontFamily: T.font,
@@ -133,15 +134,15 @@ const s = {
     border: `1px solid ${T.borderEm}`,
     borderRadius: 6,
     padding: '5px 10px',
-    fontSize: 13,
+    fontSize: fs(13),
     cursor: 'pointer',
     fontFamily: T.font,
   },
-  label: { fontSize: 12, color: T.text2 },
+  label: { fontSize: fs(12), color: T.text2 },
   pill: (color, bg) => ({
     padding: '2px 8px',
     borderRadius: 20,
-    fontSize: 11,
+    fontSize: fs(11),
     fontWeight: 600,
     color,
     background: bg,
@@ -162,7 +163,7 @@ const s = {
 export default function App() {
   const [activeTab, setActiveTab] = useState(0)
   const data = useSoarData()
-  const { status, days, loading, error, dateIdx, setDateIdx, certainty, model, countries, modes, country, mode, ptIdx, altFont, outdoorsMode } = data
+  const { status, days, loading, error, dateIdx, setDateIdx, certainty, model, countries, modes, country, mode, ptIdx, altFont, largeFont, outdoorsMode } = data
 
   // Apply preference overrides globally via injected <style>
   useEffect(() => {
@@ -175,8 +176,11 @@ export default function App() {
     const rules = []
     if (altFont) rules.push(
       `* { font-family: 'DM Sans', system-ui, sans-serif !important; }`,
-      `#root { font-size: 14px !important; }`,
     )
+    // Atkinson has smaller glyphs than DM Sans, so base scale is 1.15.
+    // Large font adds +0.25 on top of either base.
+    const scale = (altFont ? 1.0 : 1.05) + (largeFont ? 0.25 : 0)
+    document.documentElement.style.setProperty('--fs', scale)
     if (outdoorsMode) rules.push(
       `#root { filter: contrast(1.5) brightness(1.15) saturate(1.3); }`,
       `.leaflet-container { filter: contrast(0.67) brightness(0.87) saturate(0.77); }`,
@@ -185,13 +189,13 @@ export default function App() {
       `* { text-shadow: 0 0 1px rgba(0,0,0,0.6); }`,
     )
     style.textContent = rules.join('\n')
-  }, [altFont, outdoorsMode])
+  }, [altFont, largeFont, outdoorsMode])
 
   if (loading) return (
     <div style={s.app}>
       <div style={s.center}>
         <img src="/paraglider_small.png" width={44} height={44} alt="" />
-        <span style={{ fontSize: 13 }}>Loading Soaralarm…</span>
+        <span style={{ fontSize: fs(13) }}>Loading Soaralarm…</span>
       </div>
     </div>
   )
@@ -201,7 +205,7 @@ export default function App() {
       <div style={s.center}>
         <I8 name="error" size={36} color="d64040" />
         <span>Could not reach API: {error}</span>
-        <span style={{ fontSize: 12 }}>Make sure the FastAPI backend is running on port 8000</span>
+        <span style={{ fontSize: fs(12) }}>Make sure the FastAPI backend is running on port 8000</span>
       </div>
     </div>
   )
@@ -247,7 +251,7 @@ export default function App() {
             {days.map((d, i) => <option key={d} value={i}>{d}</option>)}
           </select>
 
-          <span style={{ fontSize: 11, color: T.text3, paddingLeft: 10 }}>
+          <span style={{ fontSize: fs(11), color: T.text3, paddingLeft: 10 }}>
             {data.models?.[model]?.display_name ?? model} | {countries?.[country]?.name ?? country} | {modes?.[mode] ?? mode}
           </span>
 
@@ -271,7 +275,7 @@ export default function App() {
           })()}
 
           {status?.forecast_age_seconds != null && (
-            <span style={{ fontSize: 11, color: T.text3, marginLeft: 'auto' }}>
+            <span style={{ fontSize: fs(11), color: T.text3, marginLeft: 'auto' }}>
               Forecast updated {Math.round(status.forecast_age_seconds / 60)} min ago
             </span>
           )}
@@ -293,7 +297,7 @@ function LoadingPanel() {
   return (
     <div style={{ textAlign: 'center', padding: '64px 20px', color: '#888888' }}>
       <img src="/paraglider_small.png" width={44} height={44} alt="" style={{ marginBottom: 12 }} />
-      <div style={{ fontSize: 13 }}>Fetching forecast data…</div>
+      <div style={{ fontSize: fs(13) }}>Fetching forecast data…</div>
     </div>
   )
 }
