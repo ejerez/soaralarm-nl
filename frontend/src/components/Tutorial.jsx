@@ -63,14 +63,9 @@ const STEPS = [
     body:  <>Choose any <b style={{ color: T.text }}>soaring location</b> from the dropdown. The calculated <b style={{ color: T.text }}>best location</b> for the selected day is set by default. <b style={{ color: T.text }}>Google Maps</b> takes you to the coordinates, and <b style={{ color: T.text }}>Spot information</b> links to a detailed description of the site. At locations with multiple weather stations, <b style={{ color: T.text }}>radio buttons</b> let you choose which station's measurements to overlay.</>,
   },
   {
-    tab: 1, selector: null, position: 'center',
-    title: 'Site information symbols',
-    body:  <>Each soaring location has <b style={{ color: T.text }}>information symbols</b> that convey important details at a glance – things like dune type, hazards, regulations, and other useful info. Let's take a look.</>,
-  },
-  {
     tab: 1, selector: '[data-tutorial="pt-symbols"]', position: 'below',
     title: 'Site information symbols',
-    body:  <>These are the symbols for the currently selected spot. <b style={{ color: T.text }}>Tap any symbol</b> to read the information it contains.</>,
+    body:  <>Each soaring location has <b style={{ color: T.text }}>information symbols</b> that convey important details at a glance – things like dune type, hazards, regulations, and other useful info. <b style={{ color: T.text }}>Tap a symbol</b> to read the information it contains.</>,
   },
   {
     tab: 1, selector: '[data-tutorial="pt-wind"]', position: 'below',

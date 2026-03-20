@@ -1,22 +1,5 @@
 [
     {
-        "lat": 51.492894,
-        "lon": 3.499841,
-        "name": "Zoutelande",
-        "station": [ "rws", "vlaktevanderaan" ],
-        "heading": 235,
-        "slope": { "steepness": "steep", "height": 45 },
-        "info": [
-            ["regulations.png", "<b style={{ color: '#dedede' }}>Flying forbidden 10:00-18:00</b> in the period of <b style={{ color: '#dedede' }}>June 15 to September 1st</b> due to crowds at the beach. You will be fined if you fly."],
-            ["steep_dune.png", "<b style={{ color: '#dedede' }}>Steep dune</b>, about 45m tall, good lift in light winds. Takeoff only possible from the top of the dune."],
-            ["extreme_wind_gradient.png", "Due to the steepness and height of the dune, there is an <b style={{ color: '#dedede' }}>extreme wind gradient</b> at Zoutelande. The wind will be <b style={{ color: '#dedede' }}>much stronger</b> than forecasted at the top of the dune, and there may be no wind at all at the beach. Only attempt to fly in strong winds if you are an <b style={{ color: '#dedede' }}>experienced pilot</b> and very confident in your groundhandling. In light winds, try to lose as little altitude as possible on launch, and stay close to the terrain."],
-            ["crowded_takeoff.png", "No takeoff from the bottom. <b style={{ color: '#dedede' }}>Small and crowded takeoff</b> at the top, only really suitable for experienced pilots with <b style={{ color: '#dedede' }}>good ground handling</b>."],
-            ["extreme_thorny_bushes.png", "Large <b style={{ color: '#dedede' }}>thorny trees</b> behind the takeoff. Be careful and avoid getting swept behind the dune at all costs."],
-            ["double_dune.png", "Watch out for rotor and landing hazards due to the <b style={{ color: '#dedede' }}>front dune</b>."]
-        ],
-        "link": "https://wildvliegen.nl/vliegplekken/nederland/zoutelande/"
-    },
-    {
         "lat": 52.564313,
         "lon": 4.608334,
         "name": "Castricum aan Zee",
@@ -85,8 +68,8 @@
         "heading": 233,
         "slope": { "steepness": "moderate", "height": 12 },
         "info": [
-            ["regulations.png", "<b style={{ color: '#dedede' }}>Occassionaly closed</b> due to the bird breeding season between <b style={{ color: '#dedede' }}>March 15 to August 15</b>. You can then fly at the southern beach. <b style={{ color: '#dedede' }}>Always respect beach closures</b>."],
             ["moderate_dune.png", "<b style={{ color: '#dedede' }}>Moderate dune</b>, around 12m tall."],
+            ["regulations.png", "<b style={{ color: '#dedede' }}>Occassionaly closed</b> due to the bird breeding season between <b style={{ color: '#dedede' }}>March 15 to August 15</b>. You can then fly at the southern beach. <b style={{ color: '#dedede' }}>Always respect beach closures</b>."],
             ["turbulence.png", "Can be <b style={{ color: '#dedede' }}>turbulent</b> with strong winds due to the presence of land upwind."]
         ],
         "link": "https://wildvliegen.nl/vliegplekken/nederland/rockanje/"
@@ -106,6 +89,69 @@
         "link": "https://wildvliegen.nl/vliegplekken/nederland/rockanje/"
     },
     {
+        "lat": 51.820073,
+        "lon": 3.873061,
+        "name": "Ouddorp Noord",
+        "station": [ "rws", "brouwersdam.brouwershavensegat.2" ],
+        "heading": 348,
+        "slope": { "steepness": "flat", "height": 7 },
+        "info": [
+            ["flat_dune.png", "<b style={{ color: '#dedede' }}>Flat dune</b>, just 7m tall. Requires decent wind to fly."],
+            ["regulations.png", "<b style={{ color: '#dedede' }}>Do not fly before 18:00 in the Summer</b> if the beach is crowded. <b style={{ color: '#dedede' }}>Occassionaly closed during Summer</b> due to the bird breeding season. <b style={{ color: '#dedede' }}>Always respect beach closures</b>."],
+            ["extreme_crowded.png", "<b style={{ color: '#dedede' }}>Very small site</b> that can get very crowded. If possible, <b style={{ color: '#dedede' }}>avoid on weekends and holidays</b>."]
+        ],
+        "link": "https://wildvliegen.nl/vliegplekken/nederland/ouddorp/"
+    },
+    {
+        "lat": 51.813616,
+        "lon": 3.859960,
+        "name": "Ouddorp Vuur.",
+        "station": [ "rws", "brouwersdam.brouwershavensegat.2" ],
+        "heading": 310,
+        "slope": { "steepness": "steep", "height": 12 },
+        "info": [
+            ["steep_dune.png", "<b style={{ color: '#dedede' }}>Steep dune</b> about 12m tall, good lift in light wind, but difficult to climb."],
+            ["regulations.png", "<b style={{ color: '#dedede' }}>Do not fly before 18:00 in the Summer</b> if the beach is crowded. <b style={{ color: '#dedede' }}>Occassionaly closed during Summer</b> due to the bird breeding season. <b style={{ color: '#dedede' }}>Always respect beach closures</b>."],
+            ["extreme_crowded.png", "<b style={{ color: '#dedede' }}>Very small site</b> that can get very crowded. If possible, <b style={{ color: '#dedede' }}>avoid on weekends and holidays</b>."],
+            ["wind_gradient.png", "The <b style={{ color: '#dedede' }}>wind gradient</b> due to the steep dunes can make it so there's very little wind down at the beach, but the lift once in the air is better than expected."],
+            ["thorny_bushes.png", "Watch out for the <b style={{ color: '#dedede' }}>thorny bushes</b> on the dune."]
+        ],
+        "link": "https://wildvliegen.nl/vliegplekken/nederland/ouddorp/"
+    },
+    {
+        "lat": 51.784865,
+        "lon": 3.865283,
+        "name": "Ouddorp Zuid",
+        "station": [ "rws", "brouwersdam.brouwershavensegat.2" ],
+        "heading": 266,
+        "slope": { "steepness": "steep", "height": 8 },
+        "info": [
+            ["steep_dune.png", "<b style={{ color: '#dedede' }}>Steep dune</b> about 8m tall, good lift in light wind, but difficult to climb. Try taking off from the less steep section near the entrance o the beach."],
+            ["regulations.png", "<b style={{ color: '#dedede' }}>Do not fly before 18:00 in the Summer</b> if the beach is crowded. <b style={{ color: '#dedede' }}>Occassionaly closed during Summer</b> due to the bird breeding season. <b style={{ color: '#dedede' }}>Always respect beach closures</b>."],
+            ["extreme_crowded.png", "<b style={{ color: '#dedede' }}>Very small site</b> that can get very crowded. If possible, <b style={{ color: '#dedede' }}>avoid on weekends and holidays</b>."],
+            ["wind_gradient.png", "The <b style={{ color: '#dedede' }}>wind gradient</b> due to the steep dunes can make it so there's very little wind down at the beach, but the lift once in the air is better than expected."],
+            ["thorny_bushes.png", "Watch out for the <b style={{ color: '#dedede' }}>thorny bushes</b> on the dune."]
+        ],
+        "link": "https://wildvliegen.nl/vliegplekken/nederland/ouddorp/"
+    },
+    {
+        "lat": 51.74087,
+        "lon": 3.810101,
+        "name": "Renesse",
+        "station": [ "rws", "brouwersdam.brouwershavensegat.2" ],
+        "heading": 13,
+        "slope": { "steepness": "flat", "height": 10 },
+        "info": [
+            ["flat_dune.png", "<b style={{ colors: '#dedede' }}>Flat dune</b>, requires decent wind to fly."],
+            ["regulations.png", "<b style={{ color: '#dedede' }}>Do not fly before 18:00 in the Summer</b> if the beach is crowded. <b style={{ color: '#dedede' }}>Stay away from Strandpaviljoen Corazon</b> to avoid complaints."],
+            ["extreme_crowded.png", "<b style={{ color: '#dedede' }}>Very small site</b> that can get very crowded. If possible, <b style={{ color: '#dedede' }}>avoid on weekends and holidays</b>."],
+            ["extreme_thorny_bushes.png", "Watch out for the <b style={{ color: '#dedede' }}>thorny bushes</b> on the dune. There's also <b style={{ color: '#dedede' }}>thorny trees</b> behind the dune, avoid getting swept over the dune at all costs."],
+            ["takeoff.png", "Few <b style={{ color: '#dedede' }}>launch places</b> made complicated by the prevalent <b style={{ color: '#dedede' }}>thorny bushes</b>. Good groundhandling advised."],
+            ["double_dune.png", "Watch out for rotor and landing hazards due to the <b style={{ color: '#dedede' }}>front dune</b>."]
+        ],
+        "link": "https://wildvliegen.nl/vliegplekken/nederland/renesse/"
+    },
+    {
         "lat": 51.669710,
         "lon": 3.704394,
         "name": "Westenschouwen",
@@ -121,66 +167,20 @@
         "link": "https://wildvliegen.nl/vliegplekken/nederland/westenschouwen/"
     },
     {
-        "lat": 51.820073,
-        "lon": 3.873061,
-        "name": "Ouddorp Noord",
-        "station": [ "rws", "brouwersdam.brouwershavensegat.2" ],
-        "heading": 348,
-        "slope": { "steepness": "flat", "height": 7 },
+        "lat": 51.492894,
+        "lon": 3.499841,
+        "name": "Zoutelande",
+        "station": [ "rws", "vlaktevanderaan" ],
+        "heading": 235,
+        "slope": { "steepness": "steep", "height": 45 },
         "info": [
-            ["regulations.png", "<b style={{ color: '#dedede' }}>Do not fly before 18:00 in the Summer</b> if the beach is crowded. <b style={{ color: '#dedede' }}>Occassionaly closed during Summer</b> due to the bird breeding season. <b style={{ color: '#dedede' }}>Always respect beach closures</b>."],
-            ["flat_dune.png", "<b style={{ color: '#dedede' }}>Flat dune</b>, just 7m tall. Requires decent wind to fly."],
-            ["extreme_crowded.png", "<b style={{ color: '#dedede' }}>Very small site</b> that can get very crowded. If possible, <b style={{ color: '#dedede' }}>avoid on weekends and holidays</b>."]
+            ["steep_dune.png", "<b style={{ color: '#dedede' }}>Steep dune</b>, about 45m tall, good lift in light winds. Takeoff only possible from the top of the dune."],
+            ["regulations.png", "<b style={{ color: '#dedede' }}>Flying forbidden 10:00-18:00</b> in the period of <b style={{ color: '#dedede' }}>June 15th to September 1st</b> due to crowds at the beach. Pay attention to the rules on where you can land. Violations often result in fines."],
+            ["extreme_wind_gradient.png", "Due to the steepness and height of the dune, there is an <b style={{ color: '#dedede' }}>extreme wind gradient</b> at Zoutelande. The wind will be <b style={{ color: '#dedede' }}>much stronger</b> than forecasted at the top of the dune, and there may be no wind at all at the beach. Only attempt to fly in strong winds if you are an <b style={{ color: '#dedede' }}>experienced pilot</b> and very confident in your groundhandling. In light winds, try to lose as little altitude as possible on launch, and stay close to the terrain."],
+            ["crowded_takeoff.png", "No takeoff from the bottom. <b style={{ color: '#dedede' }}>Small and crowded takeoff</b> at the top, only really suitable for experienced pilots with <b style={{ color: '#dedede' }}>good ground handling</b>."],
+            ["extreme_thorny_bushes.png", "Large <b style={{ color: '#dedede' }}>thorny trees</b> behind the takeoff. Be careful and avoid getting swept behind the dune at all costs."],
+            ["double_dune.png", "Watch out for rotor and landing hazards due to the <b style={{ color: '#dedede' }}>front dune</b>."]
         ],
-        "link": "https://wildvliegen.nl/vliegplekken/nederland/ouddorp/"
-    },
-    {
-        "lat": 51.813616,
-        "lon": 3.859960,
-        "name": "Ouddorp Vuur.",
-        "station": [ "rws", "brouwersdam.brouwershavensegat.2" ],
-        "heading": 310,
-        "slope": { "steepness": "steep", "height": 12 },
-        "info": [
-            ["regulations.png", "<b style={{ color: '#dedede' }}>Do not fly before 18:00 in the Summer</b> if the beach is crowded. <b style={{ color: '#dedede' }}>Occassionaly closed during Summer</b> due to the bird breeding season. <b style={{ color: '#dedede' }}>Always respect beach closures</b>."],
-            ["steep_dune.png", "<b style={{ color: '#dedede' }}>Steep dune</b>, good lift in light wind, but difficult to climb."],
-            ["wind_gradient.png", "The <b style={{ color: '#dedede' }}>wind gradient</b> due to the steep dunes can make it so there's very little wind down at the beach. Try to take off on a less steep section of the dune."],
-            ["extreme_crowded.png", "<b style={{ color: '#dedede' }}>Very small site</b> that can get very crowded. If possible, <b style={{ color: '#dedede' }}>avoid on weekends and holidays</b>."],
-            ["thorny_bushes.png", "Watch out for the <b style={{ color: '#dedede' }}>thorny bushes</b> on the dune."]
-        ],
-        "link": "https://wildvliegen.nl/vliegplekken/nederland/ouddorp/"
-    },
-    {
-        "lat": 51.784865,
-        "lon": 3.865283,
-        "name": "Ouddorp Zuid",
-        "station": [ "rws", "brouwersdam.brouwershavensegat.2" ],
-        "heading": 266,
-        "slope": { "steepness": "steep", "height": 8 },
-        "info": [
-            ["regulations.png", "<b style={{ color: '#dedede' }}>Do not fly before 18:00 in the Summer</b> if the beach is crowded. <b style={{ color: '#dedede' }}>Occassionaly closed during Summer</b> due to the bird breeding season. <b style={{ color: '#dedede' }}>Always respect beach closures</b>."],
-            ["steep_dune.png", "<b style={{ color: '#dedede' }}>Steep dune</b>, good lift in light wind, but difficult to climb."],
-            ["wind_gradient.png", "The <b style={{ color: '#dedede' }}>wind gradient</b> due to the steep dunes can make it so there's very little wind down at the beach. Try to take off on a less steep section of the dune."],
-            ["extreme_crowded.png", "<b style={{ color: '#dedede' }}>Very small site</b> that can get very crowded. If possible, <b style={{ color: '#dedede' }}>avoid on weekends and holidays</b>."],
-            ["thorny_bushes.png", "Watch out for the <b style={{ color: '#dedede' }}>thorny bushes</b> on the dune."]
-        ],
-        "link": "https://wildvliegen.nl/vliegplekken/nederland/ouddorp/"
-    },
-    {
-        "lat": 51.74087,
-        "lon": 3.810101,
-        "name": "Renesse",
-        "station": [ "rws", "brouwersdam.brouwershavensegat.2" ],
-        "heading": 13,
-        "slope": { "steepness": "flat", "height": 10 },
-        "info": [
-            ["regulations.png", "<b style={{ color: '#dedede' }}>Do not fly before 18:00 in the Summer</b> if the beach is crowded. <b style={{ color: '#dedede' }}>Stay away from Strandpaviljoen Corazon</b> to avoid complaints."],
-            ["flat_dune.png", "<b style={{ colors: '#dedede' }}>Flat dune</b>, requires decent wind to fly."],
-            ["extreme_crowded.png", "<b style={{ color: '#dedede' }}>Very small site</b> that can get very crowded. If possible, <b style={{ color: '#dedede' }}>avoid on weekends and holidays</b>."],
-            ["double_dune.png", "Watch out for rotor and landing hazards due to the <b style={{ color: '#dedede' }}>front dune</b>."],
-            ["extreme_thorny_bushes.png", "Watch out for the <b style={{ color: '#dedede' }}>thorny bushes</b> on the dune. There's also <b style={{ color: '#dedede' }}>thorny trees</b> behind the dune, avoid getting swept over the dune at all costs."],
-            ["takeoff.png", "Few <b style={{ color: '#dedede' }}>launch places</b> made complicated by the prevalent <b style={{ color: '#dedede' }}>thorny bushes</b>. Good groundhandling advised."]
-        ],
-        "link": "https://wildvliegen.nl/vliegplekken/nederland/renesse/"
+        "link": "https://wildvliegen.nl/vliegplekken/nederland/zoutelande/"
     }
 ]

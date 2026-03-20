@@ -5,7 +5,7 @@
         "steep": 22.0
     },
     "max_speed_by_wing": {
-        "scraper_16": 65.0,
+        "scraper_16": 60.0,
         "hopper_16": 50.0,
         "paraglider_16": 40.0
     },

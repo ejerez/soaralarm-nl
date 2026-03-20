@@ -102,16 +102,28 @@ export default function Info({ data }) {
             </li>
           ))}
         </ul>
+
+        <h3 style={h3}>Low end of wind ranges</h3>
+        <p style={p}>
+          While different wings have different glide ratios, most wings have a similar c<sub>L max</sub>, and in any case the main limitations on the low end
+          of the range are the takeoff options, dune geometry and pilot skill – not the efficiency of the wing.
+        </p>
+        <p style={p}>
+          As such, the minimum flyable
+          speed for each wing is determined by the dune steepness and height at each location, and the wing area and total in-flight weight.
+          All wing types with the same area will have the same calculated minimum speed at a given location.
+        </p>
+
         <h3 style={h3}>Wind speed ranges</h3>
         <p style={p}>
           The <b style={{ color: '#dedede' }}>minimum flyable speed</b> at each location is determined
           by the dune steepness category (flat, moderate, steep) and wind gradient compensation is applied
-          as a function of dune height. 
+          as a function of dune height. See the speeds below for your current selection (<b style={{ color: '#dedede' }}>{modes?.[mode] || mode}</b>).
         </p>
 
         {ranges?.min_speed_by_steepness && (
           <>
-            <p style={p}>Base <b style={{ color: '#dedede' }}>minimum wind speeds</b> by steepness (before height scaling):</p>
+            <p style={p}>Base <b style={{ color: '#dedede' }}>minimum wind speeds</b> by steepness (for a 10m dune):</p>
             <ul style={{ ...p, paddingLeft: 20 }}>
               {Object.entries(ranges.min_speed_by_steepness).map(([k, v]) => (
                 <li key={k}><b style={{ color: '#dedede' }}>{k}</b>: {v} km/h</li>
@@ -122,7 +134,7 @@ export default function Info({ data }) {
 
         {ranges?.max_speed_by_wing && (
           <>
-            <p style={p}>Base <b style={{ color: '#dedede' }}>maximum gust speeds</b> per wing type (before height scaling):</p>
+            <p style={p}>Base <b style={{ color: '#dedede' }}>maximum gust speeds</b> per wing type (for a 10m dune):</p>
             <ul style={{ ...p, paddingLeft: 20 }}>
               {Object.entries(ranges.max_speed_by_wing).map(([k, v]) => (
                 <li key={k}><b style={{ color: '#dedede' }}>{wings[k]?.display_name || k}</b>: {v} km/h</li>
@@ -132,14 +144,10 @@ export default function Info({ data }) {
         )}
 
         <p style={p}>
-          Taller dunes produce a greater wind gradient, thus
+          Taller dunes have a more pronounced wind gradient, thus
           the wind speed is greater at the top of the dune, and the spot is flyable at lower forecasted
-          windspeeds. The <b style={{ color: '#dedede' }}>maximum flyable speed</b> is set
-          per wing type and scaled by the same wind gradient factor.
-        </p>
-
-        <p style={p}>
-          For your current selection (<b style={{ color: '#dedede' }}>{modes?.[mode] || mode}</b>):
+          windspeeds. The speed ranges are corrected for dune heigh using the 
+          following <b style={{ color: '#dedede' }}>wind gradient factor</b> function:
         </p>
 
         <div style={{ ...code, display: 'block', padding: '8px 14px', margin: '8px 0 12px' }}>
@@ -148,8 +156,8 @@ export default function Info({ data }) {
 
         <h3 style={h3}>Wind range scaling for different sizes and weights</h3>
         <p style={p}>
-          Wind ranges for different wing sizes and pilot weights are derived from the base ranges by solving
-          for constant lift:
+          Wind ranges for different wing sizes and pilot weights are derived from the base ranges 
+          by <b style={{ color: '#dedede' }}>solving for constant lift</b>:
         </p>
         <div style={{ ...code, display: 'block', padding: '8px 14px', margin: '8px 0 12px' }}>
           v₂ = v₁ · √((W₂/W₁) · (A₁/A₂))
@@ -162,7 +170,7 @@ export default function Info({ data }) {
 
         <h3 style={h3}>Heading ranges</h3>
         <p style={p}>
-          The flyable heading range at each location is calculated as a function of
+          The <b style={{ color: '#dedede' }}>flyable heading range</b> at each location is calculated as a function of
           dune height. For your current selection (<b style={{ color: '#dedede' }}>{modes?.[mode] || mode}</b>):
         </p>
         <div style={{ ...code, display: 'block', padding: '8px 14px', margin: '8px 0 12px' }}>
@@ -196,19 +204,6 @@ export default function Info({ data }) {
           Alternatively, the <b style={{ color: '#dedede' }}>Custom Wind Range</b> option in Settings disables
           wing and weight-based calculations and applies a single user-defined minimum wind speed and maximum
           gust speed uniformly to all locations.
-        </p>
-      </div>
-
-      <div style={card}>
-        <h2 style={h2}>Low end of wind ranges</h2>
-        <p style={p}>
-          While different wings have different glide ratios, most wings have a similar c<sub>L max</sub>, and in any case the main limitations on the low end
-          of the range are the takeoff options, dune geometry and pilot skill – not the efficiency of the wing.
-        </p>
-        <p style={p}>
-          As such, the minimum flyable
-          speed for each wing is determined by the dune steepness and height at each location, and the wing area and total in-flight weight.
-          All wing types with the same area will show the same minimum speed at a given location.
         </p>
       </div>
 
@@ -337,21 +332,64 @@ export default function Info({ data }) {
       <div style={card}>
         <h2 style={h2}>Contact</h2>
         <p style={p}>
-          For questions, general ideas, or anything else, you can send an email to{' '}
-          <a href="mailto:info@soaralarm.nl" target="_blank" rel="noopener noreferrer" style={link}>
-            info@soaralarm.nl
+          For questions or feedback, you can send an email to{' '}
+          <a href="mailto:info@soaralarm.eu" target="_blank" rel="noopener noreferrer" style={link}>
+            info@soaralarm.eu
           </a>
+          {' '}or{' '}
+          <a href="mailto:feedback@soaralarm.eu" target="_blank" rel="noopener noreferrer" style={link}>
+            feedback@soaralarm.eu
+          </a>,{' '}respectively.
         </p>
 
         <p style={p}>
-          For feedback, send an email to{' '}
-          <a href="mailto:feedback@soaralarm.nl" target="_blank" rel="noopener noreferrer" style={link}>
-            feedback@soaralarm.nl
-          </a>
+          Want to request a new feature or spot/country be added? Send an email with the necessary information to{' '}
+          <a href="mailto:requests@soaralarm.eu" target="_blank" rel="noopener noreferrer" style={link}>
+            requests@soaralarm.eu
+          </a>.
         </p>
 
         <p style={p}>
-          Please do understand that this is a hobby project, done entirely on my free time. Major decisions about the way the app works have already 
+          <b style={{ color: '#dedede' }}>For requesting new spots</b>:
+        </p>
+
+        <ul style={{ ...p, paddingLeft: 20 }}>
+          <li>
+            Spot name.
+          </li>
+          <li>
+            Exact coordinates of the takeoff.
+          </li>
+          <li>
+            Steepness of the slope in degrees, or alternatively a few good pictures in which the angle of the slope is clearly visible.
+          </li>
+          <li>
+            Height of the dune/hill in meters.
+          </li>
+          <li>
+            A description of the spot. Any regulations, peculiarities or good-to-knows, any hazards.
+          </li>
+          <li>
+            The minimum and maximum windspeeds, and minimum and maximum headings/crosswind angles you can fly at the site, as well as your wing model and size, and your weight (including the wing and harness), so I can check that the computed wind and heading ranges are correct.
+          </li>
+        </ul>
+        <p style={p}>
+          <b style={{ color: '#dedede' }}>Note</b>:
+        </p>
+        <ul style={{ ...p, paddingLeft: 20 }}>
+          <li>
+            Only soaring spots allowed for the time being.
+          </li>
+          <li>
+            No spots where it's illegal or sketchy to fly.
+          </li>
+          <li>
+            Only spots within Europe.
+          </li>
+        </ul>
+
+        <p style={p}>
+          Please do understand that this is a hobby project. Major decisions about the way the app works have already 
           been made, and the reasoning behind a lot of them is explained here, on the <b style={{ color: '#dedede' }}>Info tab</b>. Your feedback is 
           greatly appreciated, but bear in mind I probably won't be able to reply to every email.
         </p>

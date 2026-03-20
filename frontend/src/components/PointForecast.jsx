@@ -177,7 +177,7 @@ function InfoSymbols({ info }) {
             key={i}
             src={`/symbols/${img}`}
             alt=""
-            style={{ width: 'clamp(46px, 11.5vw, 64px)', height: 'clamp(46px, 11.5vw, 64px)', cursor: 'pointer', borderRadius: 6, opacity: 0.7, border: openIdx === i ? `2px solid ${T.border}` : '2px solid transparent' }}
+            style={{ width: 'clamp(46px, 11.5vw, 64px)', height: 'clamp(46px, 11.5vw, 64px)', cursor: 'pointer', borderRadius: 6, opacity: 0.75, border: openIdx === i ? `2px solid ${T.border}` : '2px solid transparent' }}
             onClick={() => setOpenIdx(openIdx === i ? null : i)}
           />
         ))}
