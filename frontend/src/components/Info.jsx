@@ -102,18 +102,11 @@ export default function Info({ data }) {
             </li>
           ))}
         </ul>
-
-        <p style={{ ...p, marginTop: 12, fontStyle: 'italic' }}>
-          For your current selection (<b style={{ color: '#dedede' }}>{modes?.[mode] || mode}</b>,{' '}
-          <b style={{ color: '#dedede' }}>{countries?.[country]?.name || country}</b>), the ranges
-          are calculated using the following formulas:
-        </p>
-
         <h3 style={h3}>Wind speed ranges</h3>
         <p style={p}>
           The <b style={{ color: '#dedede' }}>minimum flyable speed</b> at each location is determined
           by the dune steepness category (flat, moderate, steep) and wind gradient compensation is applied
-          as a function of dune height:
+          as a function of dune height. For your current selection (<b style={{ color: '#dedede' }}>{modes?.[mode] || mode}</b>):
         </p>
         <div style={{ ...code, display: 'block', padding: '8px 14px', margin: '8px 0 12px' }}>
           factor = {ranges?.speed_height_scaling?.formula || '(A − B · height) / C'}
@@ -142,7 +135,7 @@ export default function Info({ data }) {
         <h3 style={h3}>Heading ranges</h3>
         <p style={p}>
           The flyable heading range at each location is calculated as a function of
-          dune height:
+          dune height. For your current selection (<b style={{ color: '#dedede' }}>{modes?.[mode] || mode}</b>):
         </p>
         <div style={{ ...code, display: 'block', padding: '8px 14px', margin: '8px 0 12px' }}>
           half_range = {ranges?.heading_range?.formula || 'A + B · ln(height)'}
