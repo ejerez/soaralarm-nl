@@ -380,6 +380,14 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       markersRef.current.push({ marker, color })
       layersRef.current.push(marker)
     })
+    // Apply highlight to current selection after creating markers
+    const curPt = data.ptIdx
+    markersRef.current.forEach(({ marker, color }, i) => {
+      const selected = i === curPt
+      marker.setRadius(selected ? selRadius : baseRadius)
+      marker.setStyle({ color: selected ? '#ffffff' : color, weight: selected ? 3 : 2 })
+      if (selected) marker.bringToFront()
+    })
   }, [displayForecast, points, dateIdx])
 
   // Highlight selected marker without recreating all markers
@@ -472,7 +480,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       </div>
 
       {/* Bar chart */}
-      <div data-tutorial="barchart" style={{ position: 'relative' }}>
+      <div data-tutorial="barchart" style={{ position: 'relative', WebkitTapHighlightColor: 'transparent' }}>
         {barData.some(d => weatherByDay[d.day]?.has_fog || weatherByDay[d.day]?.has_rain) && (
           <div style={{ position: 'absolute', top: 'clamp(20px, -2.5vw, 14px)', left: 28, right: 8, display: 'flex', zIndex: 1, pointerEvents: 'none' }}>
             {barData.map((d, i) => {
