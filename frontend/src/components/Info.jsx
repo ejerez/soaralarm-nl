@@ -329,7 +329,7 @@ export default function Info({ data }) {
       <div style={card}>
         <h2 style={h2}>Privacy</h2>
         <p style={p}>
-          All your settings and preferences are only stored locally in your browser, and Soaralarm NL does 
+          All your settings and preferences are only stored locally in your browser, and Soaralarm does 
           not collect or store any information of any kind about its users.
         </p>
       </div>

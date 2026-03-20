@@ -127,7 +127,7 @@ const STEPS = [
   {
     tab: 2, selector: null, position: 'center',
     title: "You're all set!",
-    body:  <>That covers everything Soaralarm NL has to offer (for now!). You can <b style={{ color: T.text }}>redo this tutorial</b> at any time from the <b style={{ color: T.text }}>Settings tab</b>. Always bear in mind: flyable hour estimates are optimistic overestimations – <b style={{ color: T.text }}>always check that the conditions are suitable for your exact wing model and size, skill level and risk tolerance before attempting to fly</b>.</>,
+    body:  <>That covers everything Soaralarm has to offer (for now!). You can <b style={{ color: T.text }}>redo this tutorial</b> at any time from the <b style={{ color: T.text }}>Settings tab</b>. Always bear in mind: flyable hour estimates are optimistic overestimations – <b style={{ color: T.text }}>always check that the conditions are suitable for your exact wing model and size, skill level and risk tolerance before attempting to fly</b>.</>,
   },
 ]
 
