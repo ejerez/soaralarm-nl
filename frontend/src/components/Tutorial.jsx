@@ -17,14 +17,14 @@ const T = {
 const STEPS = [
   {
     tab: 0, selector: null, position: 'center',
-    title: <><img src="/paraglider_small.png" width={22} height={22} style={{ verticalAlign: 'middle', marginRight: 8 }} alt="" />Welcome to Soaralarm NL</>,
-    body:  <>Soaralarm NL is a <b style={{ color: T.text }}>free and open-source, feature-rich forecasting tool</b> built for pilots soaring the dunes along the Dutch coast. This tutorial will show how to use it step by step.</>,
+    title: <><img src="/paraglider_small.png" width={22} height={22} style={{ verticalAlign: 'middle', marginRight: 8 }} alt="" />Welcome to Soaralarm</>,
+    body:  <>Soaralarm is a <b style={{ color: T.text }}>free and open-source, feature-rich forecasting tool</b> built for pilots soaring in several European countries. This tutorial will show how to use it step by step.</>,
   },
   // ── Map tab intro ──
   {
     tab: 0, selector: null, position: 'center',
     title: 'Map tab',
-    body:  <>The <b style={{ color: T.text }}>Map tab</b> gives you a bird's-eye view of the upcoming forecast. It shows an overview map with all soaring locations, a chart of estimated flyable hours per day, multi-model confidence scores, and a timeline of flyable windows. Use it to quickly identify <b style={{ color: T.text }}>when and where</b> conditions look best.</>,
+    body:  <>The <b style={{ color: T.text }}>Map tab</b> gives you an overall view of the forecast, to quickly identify <b style={{ color: T.text }}>when and where</b> conditions look best.</>,
   },
   {
     tab: 0, selector: '[data-tutorial="map"]', position: 'below',
@@ -44,7 +44,7 @@ const STEPS = [
   {
     tab: 0, selector: '[data-tutorial="confidence"]', position: 'above',
     title: 'Confidence scores',
-    body:  <>These scores reflect how many of the four weather models (KNMI, ECMWF, ICON and AROME) agree there will be flyable hours for that location and day. So <b style={{ color: '#d3357c' }}>★ means only one model predicts flyable conditions</b>, while <b style={{ color: '#00e6bc' }}>★★★★ means all 4 models do</b>. Not all models are available for all days, from day 3 only 3 models are used (KNMI blends into ECMWF), from day 4 only 2 (Arome HD provides no more forecasts).</>,
+    body:  <>These scores reflect how many of the four weather models agree there will be flyable hours for that location and day. So <b style={{ color: '#d3357c' }}>★ means only one model predicts flyable conditions</b>, while <b style={{ color: '#00e6bc' }}>★★★★ means all 4 models do</b>. Not all models are available for all days, as some only produce forecasts for a limited number of days.</>,
   },
   {
     tab: 0, selector: '[data-tutorial="gantt"]', position: 'above',
@@ -55,12 +55,17 @@ const STEPS = [
   {
     tab: 1, selector: null, position: 'center',
     title: 'Point tab',
-    body:  <>The <b style={{ color: T.text }}>Point tab</b> shows detailed hourly forecasts and live measurements for a single location. Use it to inspect wind speed, gusts, heading, temperature, visibility, and precipitation before heading out. Each location also has <b style={{ color: T.text }}>site information symbols</b> and a <b style={{ color: T.text }}>Spot information</b> link with practical tips about the site.</>,
+    body:  <>The <b style={{ color: T.text }}>Point tab</b> shows detailed hourly forecasts and live measurements – as well as important information – for the selected spot.</>,
   },
   {
     tab: 1, selector: '[data-tutorial="pt-selectors"]', position: 'below',
     title: 'Location, links and site info',
-    body:  <>Choose any <b style={{ color: T.text }}>soaring location</b> from the dropdown. The calculated <b style={{ color: T.text }}>best location</b> for the selected day is set by default. <b style={{ color: T.text }}>Google Maps</b> takes you to the coordinates, and <b style={{ color: T.text }}>Spot information</b> links to a detailed description of the site. Below, the <b style={{ color: T.text }}>site information symbols</b> highlight key characteristics of the location – tap any symbol to read more about it. At locations with multiple weather stations, <b style={{ color: T.text }}>radio buttons</b> let you choose which station's measurements to overlay.</>,
+    body:  <>Choose any <b style={{ color: T.text }}>soaring location</b> from the dropdown. The calculated <b style={{ color: T.text }}>best location</b> for the selected day is set by default. <b style={{ color: T.text }}>Google Maps</b> takes you to the coordinates, and <b style={{ color: T.text }}>Spot information</b> links to a detailed description of the site. At locations with multiple weather stations, <b style={{ color: T.text }}>radio buttons</b> let you choose which station's measurements to overlay.</>,
+  },
+  {
+    tab: 1, selector: '[data-tutorial="pt-symbols"]', position: 'below',
+    title: 'Site information symbols',
+    body:  <>These symbols contain important information for the spot – things like dune type, hazards, regulations, and other useful info. <b style={{ color: T.text }}>Tap any symbol</b> to read the information it contains.</>,
   },
   {
     tab: 1, selector: '[data-tutorial="pt-wind"]', position: 'below',
@@ -81,12 +86,12 @@ const STEPS = [
   {
     tab: 2, selector: null, position: 'center',
     title: 'Settings tab',
-    body:  <>The <b style={{ color: T.text }}>Settings tab</b> lets you configure the app to your specific setup. Choose your country and flying mode, select a forecast model, set your wings and weight for accurate wind range calculations, and define your availability window. All settings are saved locally in your browser.</>,
+    body:  <>The <b style={{ color: T.text }}>Settings tab</b> lets you configure the app to your specific setup and preferences. All settings are saved locally in your browser.</>,
   },
   {
     tab: 2, selector: '[data-tutorial="settings-country-mode"]', position: 'below',
     title: 'Country and Mode',
-    body:  <>Select the <b style={{ color: T.text }}>Country</b> to choose which set of soaring locations to display, and the <b style={{ color: T.text }}>Mode</b> to switch between wing types (e.g. paragliding). Each country has its own forecast models, locations, and measurement stations, and each mode has its own wing catalogue and wind range calibration.</>,
+    body:  <>Select the <b style={{ color: T.text }}>Country</b> to choose which set of soaring locations to display, and the <b style={{ color: T.text }}>Mode</b> to select aircraft type (e.g. paragliding or hang gliding). Each country has its own forecast models, locations, and measurement stations, and each mode has its own wing catalogue and wind range calibration.</>,
   },
   {
     tab: 2, selector: '[data-tutorial="settings-speed-unit"]', position: 'below',
@@ -96,7 +101,7 @@ const STEPS = [
   {
     tab: 2, selector: '[data-tutorial="settings-model"]', position: 'below',
     title: 'Forecast model',
-    body:  <>Choose which weather model is used by the hourly <b style={{ color: T.text }}>Point tab</b> charts. The Map tab always combines all available models for confidence scoring. <b style={{ color: T.text }}>KNMI HARMONIE</b> is generally the <b style={{ color: T.text }}>most accurate</b> for Dutch coastal locations.</>,
+    body:  <>Choose which weather model is used by the hourly <b style={{ color: T.text }}>Point tab</b> charts. The Map tab always combines all available models for confidence scoring. The <b style={{ color: T.text }}>default model</b> is generally the <b style={{ color: T.text }}>most accurate</b> for your selected country.</>,
   },
   {
     tab: 2, selector: '[data-tutorial="settings-wings"]', position: 'below',
@@ -114,11 +119,6 @@ const STEPS = [
     body:  <>Restricts the <b style={{ color: T.text }}>flyable hours</b> to those that fall within the times you are <b style={{ color: T.text }}>actually available to fly</b>. If you set 10:00 → 17:00, any flyable forecast hours outside that window are excluded from the flyable hours and flyable windows in the <b style={{ color: T.text }}>Map tab</b>.</>,
   },
   // ── Info tab intro ──
-  {
-    tab: 3, selector: null, position: 'center',
-    title: "Info tab",
-    body:  <>The <b style={{ color: T.text }}>Info tab</b> explains how the app works under the hood – how flyable hours are calculated, the wind range scaling formula, heading ranges, data sources, and per-location wind range and heading tables for your current wing setup.</>,
-  },
   {
     tab: 2, selector: null, position: 'center',
     title: "You're all set!",

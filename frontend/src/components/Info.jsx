@@ -86,10 +86,9 @@ export default function Info({ data }) {
         <h2 style={h2}>Flyability calculation</h2>
 
         <p style={p}>
-          Wind ranges and headings for each location are computed by a{' '}
-          <span style={code}>point_ranges()</span> function that takes the site's{' '}
-          <b style={{ color: '#dedede' }}>dune steepness</b> and{' '}
-          <b style={{ color: '#dedede' }}>dune height</b> as inputs. The base calibration assumes
+          Wind ranges and headings for each location are computed from the {' '}
+          <b style={{ color: '#dedede' }}>slope steepness</b> and{' '}
+          <b style={{ color: '#dedede' }}>height</b>. The base ranges are callibrated to 
           an experienced pilot of <b style={{ color: '#dedede' }}>70 kg</b> flying the
           following wings:
         </p>

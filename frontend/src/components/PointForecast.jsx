@@ -170,7 +170,7 @@ function InfoSymbols({ info }) {
   const fixHtml = (html) => html.replace(/style=\{\{\s*colors?:\s*'([^']+)'\s*\}\}/g, 'style="color:$1"')
 
   return (
-    <div ref={rowRef} style={{ position: 'relative', marginBottom: 10 }}>
+    <div ref={rowRef} data-tutorial="pt-symbols" style={{ position: 'relative', marginBottom: 10 }}>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {info.map(([img, _], i) => (
           <img
