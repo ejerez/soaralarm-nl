@@ -75,7 +75,6 @@ function WingRow({ entry, wings, isRemovable, onChange, onRemove }) {
               fontSize: 11, lineHeight: 1, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
             }}>ⓘ</button>
-            {tipOpen && <Tooltip>{tooltip}</Tooltip>}
           </span>
         ) : null}
 

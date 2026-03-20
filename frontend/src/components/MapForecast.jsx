@@ -137,13 +137,22 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
   const FS_DAY = Math.round(Math.max(11, Math.min(14, W * 0.024)))   // day name
   const FS_PT  = Math.round(Math.max(9,  Math.min(11, W * 0.019)))   // point name
   const FS_CRT = Math.round(Math.max(8,  Math.min(10, W * 0.016)))   // certainty
+  const TYPE_LABEL = { good: 'Good', cross: 'Crosswind', good_gusty: 'Gusty', cross_gusty: 'Crosswind, Gusty', fog: 'Fog', rain: 'Rain' }
+  const fmtH = (iso) => { const d = new Date(iso); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
+  const [tooltip, setTooltip] = useState(null)
+
+  const grouped = {}
+  for (const r of ganttRows) { if (!grouped[r.day]) grouped[r.day] = []; grouped[r.day].push(r) }
+  const weatherGrouped = {}
+  for (const r of (weatherRows || [])) { if (!weatherGrouped[r.day]) weatherGrouped[r.day] = []; weatherGrouped[r.day].push(r) }
+  const dayKeys = [...new Set(ganttRows.map(r => r.day))]
+
   // LEFT must be wide enough to fit the longest label (day name or point name)
-  // 0.58 approximates average character width for DM Sans at the given font size
   const longestPtChars  = Math.max(0, ...ganttRows.map(r => (r.point || '').length))
-  const longestDayChars = Math.max(0, ...days.map(d => (d || '').length))
+  const longestDayChars = Math.max(0, ...dayKeys.map(d => (d || '').length))
   const LEFT = Math.round(Math.max(
-    longestPtChars  * FS_PT  * 0.58 + 8,
-    longestDayChars * FS_DAY * 0.58 + 8,
+    longestPtChars  * FS_PT  * 0.52 + 6,
+    longestDayChars * FS_DAY * 0.52 + 6,
   ))
 
   const allTimes = [
@@ -175,16 +184,6 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
     const startFmt = fmtH(start); const endFmt = fmtH(new Date(eMs - 3600_000))
     return startFmt === endFmt ? startFmt : `${startFmt} – ${endFmt}`
   }
-
-  const TYPE_LABEL = { good: 'Good', cross: 'Crosswind', good_gusty: 'Gusty', cross_gusty: 'Crosswind, Gusty', fog: 'Fog', rain: 'Rain' }
-  const fmtH = (iso) => { const d = new Date(iso); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
-  const [tooltip, setTooltip] = useState(null)
-
-  const grouped = {}
-  for (const r of ganttRows) { if (!grouped[r.day]) grouped[r.day] = []; grouped[r.day].push(r) }
-  const weatherGrouped = {}
-  for (const r of (weatherRows || [])) { if (!weatherGrouped[r.day]) weatherGrouped[r.day] = []; weatherGrouped[r.day].push(r) }
-  const dayKeys = [...new Set(ganttRows.map(r => r.day))]
 
   const svgH = dayKeys.length * DAY_H + 30
   const hourLabels = []
