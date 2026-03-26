@@ -332,9 +332,10 @@ export default function PointForecast({ data }) {
         </ResponsiveContainer>
       </div>
 
+      <div data-tutorial="pt-ranges">
       {/* Wind ranges */}
       {wind_ranges.length > 0 && (
-        <div data-tutorial="pt-ranges" style={{ fontSize: fs(12), color: T.text2, marginTop: 4, lineHeight: 2 }}>
+        <div style={{ fontSize: fs(12), color: T.text2, marginTop: 4, lineHeight: 2 }}>
           <span style={{ color: T.text, fontWeight: 600 }}>Wind ranges at {point.name}:</span><br />
           {wind_ranges.map(wr => {
             const displayName = wings[wr.key]?.display_name ?? wr.key
@@ -413,6 +414,7 @@ export default function PointForecast({ data }) {
           ? <>Offshore forecast at <b style={{ color: T.text }}>{dayFc.offshore_actual_lat.toFixed(5)}°N, {dayFc.offshore_actual_lon.toFixed(5)}°E</b></>
           : 'Offshore forecast coordinates unavailable'
         }
+      </div>
       </div>
     </div>
   )
