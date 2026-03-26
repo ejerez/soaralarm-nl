@@ -177,10 +177,11 @@ export default function Info({ data }) {
           dune height. For your current selection (<b style={{ color: '#dedede' }}>{modes?.[mode] || mode}</b>):
         </p>
         <div style={{ ...code, display: 'block', padding: '8px 14px', margin: '8px 0 12px' }}>
-          half_range = {ranges?.heading_range?.formula || 'A + B · ln(height)'}
+          half_range = {ranges?.heading_range?.formula || '60 · (height/15) / (sqrt((height/15)^2 + 1))'}
         </div>
         <p style={p}>
-          This means taller dunes accept a wider range of
+          Plus a -+5° offset depending on the steepness of the slope. 
+          This means taller, steeper slopes accept a wider range of
           wind directions. The <b style={{ color: '#dedede' }}>good heading</b> zone is always a fixed
           fraction ({ranges?.heading_range?.good_fraction != null
             ? `${Math.round(ranges.heading_range.good_fraction * 100)}%`

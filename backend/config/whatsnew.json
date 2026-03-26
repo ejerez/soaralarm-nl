@@ -16,6 +16,10 @@
         {
             "feature": "Visibility",
             "message": "<b>Sunny Mode</b> and <b>Large Font</b> are now available in the Settings, to make it easier to see the app for different people in different conditions."
+        },
+        {
+            "feature": "Better heading range estimation",
+            "message": "The function used to compute flyable heading ranges has been updated to an asymptotic function with compensation for dune steepness, for <b>more accurate heading ranges</b> for each location."
         }
     ]
 }
