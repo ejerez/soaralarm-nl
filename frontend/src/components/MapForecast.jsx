@@ -112,7 +112,7 @@ function InfoTooltip({ text }) {
   )
 }
 
-function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateIdx }) {
+function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateIdx, isLocations }) {
   const COLOR         = { good: C.good, cross: C.cross, good_gusty: C.gusty, cross_gusty: C.crossGusty, no: 'transparent' }
   const WEATHER_COLOR = { fog: C.fog, rain: C.rain }
 
@@ -149,12 +149,22 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
   const dayKeys = [...new Set(ganttRows.map(r => r.day))]
 
   // LEFT must be wide enough to fit the longest label (day name or point name)
-  const longestPtChars  = Math.max(0, ...ganttRows.map(r => (r.point || '').length))
-  const longestDayChars = Math.max(0, ...dayKeys.map(d => (d || '').length))
-  const LEFT = Math.round(Math.max(
-    longestPtChars  * FS_PT  * 0.52 + 6,
-    longestDayChars * FS_DAY * 0.52 + 6,
-  ))
+  let LEFT
+  if (isLocations) {
+    // Canvas measurement for accurate location-name widths
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    ctx.font = `600 ${FS_DAY}px ${T.font}`
+    const maxDayW = Math.max(0, ...dayKeys.map(d => ctx.measureText(d || '').width))
+    LEFT = Math.round(maxDayW + 10)
+  } else {
+    const longestPtChars  = Math.max(0, ...ganttRows.map(r => (r.point || '').length))
+    const longestDayChars = Math.max(0, ...dayKeys.map(d => (d || '').length))
+    LEFT = Math.round(Math.max(
+      longestPtChars  * FS_PT  * 0.52 + 6,
+      longestDayChars * FS_DAY * 0.52 + 6,
+    ))
+  }
 
   const allTimes = [
     ...ganttRows,
@@ -163,7 +173,7 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
   const rawMinT = allTimes.length ? Math.min(...allTimes.map(t => t.getTime())) : 0
   const rawMaxT = allTimes.length ? Math.max(...allTimes.map(t => t.getTime())) : 1
   const minT    = rawMinT - 1800_000  // -30 min so first bar gets its left padding
-  const maxT    = rawMaxT + 3600_000  // +1 h so last bar doesn't clip at edge
+  const maxT    = rawMaxT             // bars shift 30 min left, providing natural right margin
   const span = maxT - minT || 1
   const scale = (t) => LEFT + ((new Date(t).getTime() - minT) / span) * (W - LEFT - RIGHT)
 
@@ -301,23 +311,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
 
   const [plotDays,     setPlotDays]     = useState(() => { try { return Number(localStorage.getItem('plotDays')) || 5 } catch { return 5 } })
   const [showYesterday, setShowYesterday] = useState(() => { try { return localStorage.getItem('showYesterday') === 'true' } catch { return false } })
-
-  // Auto-select best point on initial load
-  const initialSelected = useRef(false)
-  useEffect(() => {
-    if (initialSelected.current || !displayForecast || !points.length) return
-    initialSelected.current = true
-    const dayPf = displayForecast[dateIdx] || []
-    let bestQuality = -1
-    dayPf.forEach(pf => { const q = pf.good_hours + pf.gusty_hours; if (q > bestQuality) bestQuality = q })
-    let best = 0, bestFly = -1
-    dayPf.forEach((pf, pi) => {
-      const q = pf.good_hours + pf.gusty_hours
-      const f = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
-      if (q === bestQuality && f > bestFly) { bestFly = f; best = pi }
-    })
-    data.setPtIdx(best)
-  }, [displayForecast, points, dateIdx])
+  const [ganttMode, setGanttMode] = useState(() => { try { return localStorage.getItem('ganttMode') || 'locations' } catch { return 'locations' } })
 
   const mapRef     = useRef(null)
   const leafletRef = useRef(null)
@@ -328,8 +322,8 @@ export default function MapForecast({ data, onNavigateToPoint }) {
 
   // Smaller markers on narrow screens to reduce overlap in clusters
   const isMobile   = typeof window !== 'undefined' && window.innerWidth < 500
-  const baseRadius = isMobile ? 4 : 6
-  const selRadius  = isMobile ? 7 : 9
+  const baseRadius = isMobile ? 3 : 5
+  const selRadius  = isMobile ? 5 : 7
 
   // Compute bounds from points so the map auto-fits any country
   const pointsBounds = useMemo(() => {
@@ -374,14 +368,22 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     const map   = leafletRef.current
     const dayPf = displayForecast[dateIdx] || []
     const maxMag = Math.max(1, ...dayPf.map(pf => Math.max(...(pf.wind_pizza || [0]))))
+    // First pass: add wind-slice polygons (below markers)
+    const markersByPi = []
+    const pendingMarkers = []
     dayPf.forEach((pf, pi) => {
       const point = points[pi]
       if (!point) return
       windPolygons(point, pf, maxMag).forEach(poly => {
-        layersRef.current.push(
-          L.polygon(poly.coords, { color: poly.color, weight: 2, fillColor: poly.color, fillOpacity: 0.7 }).addTo(map)
-        )
+        const polygon = L.polygon(poly.coords, { color: poly.color, weight: 2, fillColor: poly.color, fillOpacity: 0.7 })
+        polygon.on('click', () => { data.setPtIdx(pi); markersByPi[pi]?.openPopup() })
+        polygon.addTo(map)
+        layersRef.current.push(polygon)
       })
+      pendingMarkers.push({ pf, pi, point })
+    })
+    // Second pass: add circle markers on top of polygons
+    pendingMarkers.forEach(({ pf, pi, point }) => {
       const color = markerColor(pf)
       const spotLink = point.link
         ? `<br/><a href="${point.link}" target="_blank" rel="noopener noreferrer" style="color:#5578e8;font-size:12px;text-decoration:none;display:inline-block;margin-top:2px;">Spot information</a>`
@@ -396,6 +398,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         )
       marker.on('click', () => { data.setPtIdx(pi) })
       marker.addTo(map)
+      markersByPi[pi] = marker
       markersRef.current.push({ marker, color })
       layersRef.current.push(marker)
     })
@@ -422,8 +425,8 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     })
   }, [ptIdx, baseRadius, selRadius])
 
-  const { barData, ganttRows, weatherRows, certByDay, weatherByDay, bestPtByDi } = useMemo(() => {
-    if (!displayForecast || !points.length) return { barData: [], ganttRows: [], weatherRows: [], certByDay: {}, weatherByDay: {} }
+  const { barData, ganttRows, weatherRows, locGanttRows, locWeatherRows, locCertByDay, locDays, locPtMap, certByDay, weatherByDay } = useMemo(() => {
+    if (!displayForecast || !points.length) return { barData: [], ganttRows: [], weatherRows: [], locGanttRows: [], locWeatherRows: [], locCertByDay: {}, locDays: [], locPtMap: [], certByDay: {}, weatherByDay: {} }
     // Clamp a gantt entry to the availability window; returns null if fully outside
     const clampToWindow = (g) => {
       const sDate = g.start.slice(0, 10) // "YYYY-MM-DD"
@@ -431,14 +434,14 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       const winEnd   = timeEnd !== '23:59'  ? new Date(`${sDate}T${timeEnd}`).getTime()   :  Infinity
       const gStart = new Date(g.start).getTime()
       const gEnd   = new Date(g.end).getTime() || gStart // handle single-point
-      if (gEnd <= winStart || gStart >= winEnd) return null
+      if (gEnd <= winStart || gStart > winEnd) return null
       return {
         ...g,
-        start: gStart < winStart ? new Date(winStart).toISOString() : g.start,
-        end:   gEnd > winEnd     ? new Date(winEnd).toISOString()   : g.end,
+        start: gStart < winStart          ? new Date(winStart).toISOString()              : g.start,
+        end:   gEnd > winEnd + 3600_000   ? new Date(winEnd + 3600_000).toISOString()     : g.end,
       }
     }
-    const bar = [], gantt = [], weather = [], certByDayMap = {}, weatherByDayMap = {}, bestPtByDiMap = {}
+    const bar = [], gantt = [], weather = [], certByDayMap = {}, weatherByDayMap = {}
     // di=0 is Yesterday, di=1 is Today; plotDays counts forward from Today
     const maxDi = plotDays  // Today=1 … Today+plotDays-1 = plotDays
     displayForecast.forEach((dayPf, di) => {
@@ -453,7 +456,6 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         if (q === bestQuality && f > bestFly) { bestFly = f; best = pi }
       })
       const bpf = dayPf[best], bpt = points[best]
-      bestPtByDiMap[di] = best
       bar.push({
         day: shortenDay(days[di] || `Day ${di}`),
         fullDay: days[di] || `Day ${di}`,
@@ -479,9 +481,43 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         if (c) weather.push(c)
       })
     })
-    return { barData: bar, ganttRows: gantt, weatherRows: weather, certByDay: certByDayMap, weatherByDay: weatherByDayMap, bestPtByDi: bestPtByDiMap }
-  }, [displayForecast, points, days, certainty, plotDays, showYesterday, timeStart, timeEnd])
-  const selectDay = (di) => { setDateIdx(di); if (bestPtByDi[di] != null) data.setPtIdx(bestPtByDi[di]) }
+
+    // ── Locations mode: top 5 flyable locations for selected date ──────────
+    const locGantt = [], locWeather = [], locCertMap = {}, locDays = [], locPtMap = []
+    const dayPf = displayForecast[dateIdx] || []
+    const certDay = certainty?.[dateIdx]
+    // Score each point: flyable total > 0, then rank by confidence desc, good_hours desc, total flyable desc
+    const scored = dayPf.map((pf, pi) => {
+      const fly = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
+      const agree = certDay?.by_point?.[pi] ?? certDay?.agree ?? 0
+      return { pi, pf, fly, good: pf.good_hours, agree }
+    }).filter(s => s.fly > 0)
+    scored.sort((a, b) => b.agree - a.agree || b.good - a.good || b.fly - a.fly)
+    const top = scored.slice(0, 5)
+    top.forEach(({ pi, pf, agree }) => {
+      const pt = points[pi]
+      if (!pt) return
+      const ptName = pt.name || `Point ${pi}`
+      locDays.push(ptName)
+      locPtMap.push(pi)
+      if (certDay) locCertMap[ptName] = { agree, total: certDay.total }
+      if (pf.gantt) pf.gantt.forEach(g => {
+        const c = clampToWindow({ day: ptName, point: '', type: g.type, start: g.start, end: g.end })
+        if (c) locGantt.push(c)
+      })
+      if (pf.fog_gantt) pf.fog_gantt.forEach(g => {
+        const c = clampToWindow({ day: ptName, type: g.type, start: g.start, end: g.end })
+        if (c) locWeather.push(c)
+      })
+      if (pf.rain_gantt) pf.rain_gantt.forEach(g => {
+        const c = clampToWindow({ day: ptName, type: g.type, start: g.start, end: g.end })
+        if (c) locWeather.push(c)
+      })
+    })
+
+    return { barData: bar, ganttRows: gantt, weatherRows: weather, locGanttRows: locGantt, locWeatherRows: locWeather, locCertByDay: locCertMap, locDays, locPtMap, certByDay: certByDayMap, weatherByDay: weatherByDayMap }
+  }, [displayForecast, points, days, certainty, plotDays, showYesterday, timeStart, timeEnd, dateIdx])
+  const selectDay = (di) => { setDateIdx(di) }
 
   const TOOLTIP_STYLE = {
     contentStyle: { background: T.card, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: fs(12), fontFamily: T.font },
@@ -592,7 +628,23 @@ export default function MapForecast({ data, onNavigateToPoint }) {
 
       {/* Gantt */}
       <div data-tutorial="gantt" style={{ background: T.card, borderRadius: 8, padding: '12px 4px', border: `1px solid ${T.borderDim}`, overflowX: 'auto', marginTop: 8 }}>
-        <GanttChart ganttRows={ganttRows} weatherRows={weatherRows} days={days} certByDay={certByDay} onDayClick={selectDay} dateIdx={dateIdx} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 12px 6px' }}>
+          <label style={{ fontSize: fs(12), color: T.text2 }}>View</label>
+          <select
+            value={ganttMode}
+            onChange={e => { const v = e.target.value; setGanttMode(v); try { localStorage.setItem('ganttMode', v) } catch {} }}
+            style={{ background: T.raised, color: T.text, border: `1px solid ${T.borderEm}`, borderRadius: 5, padding: '3px 7px', fontSize: fs(12), cursor: 'pointer', fontFamily: T.font }}
+          >
+            <option value="locations">Locations</option>
+            <option value="date">Date</option>
+          </select>
+        </div>
+        {ganttMode === 'locations'
+          ? <GanttChart ganttRows={locGanttRows} weatherRows={locWeatherRows} days={locDays} certByDay={locCertByDay} isLocations
+              onDayClick={(idx) => { if (locPtMap[idx] != null) data.setPtIdx(locPtMap[idx]) }}
+              dateIdx={locPtMap.indexOf(ptIdx)} />
+          : <GanttChart ganttRows={ganttRows} weatherRows={weatherRows} days={days} certByDay={certByDay} onDayClick={selectDay} dateIdx={dateIdx} />
+        }
         <div style={{ padding: '6px 12px 0' }}>
           <Legendsmall_ items={[
             { color: C.good, name: 'Good wind' }, { color: C.cross, name: 'Crosswind' },

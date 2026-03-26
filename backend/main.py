@@ -47,11 +47,11 @@ MEASURE_TTL  = 900    # 15 minutes
 def _load_country(country: str):
     """Load config files for a single country."""
     c = {}
-    with open(CONFIG_DIR / f"soar_points_{country}.json") as f:
+    with open(CONFIG_DIR / f"soar_points_{country}.json", encoding="utf-8") as f:
         c["soar_points"] = load(f)
-    with open(CONFIG_DIR / f"models_{country}.json") as f:
+    with open(CONFIG_DIR / f"models_{country}.json", encoding="utf-8") as f:
         c["models"] = load(f)
-    with open(CONFIG_DIR / f"stations_{country}.json") as f:
+    with open(CONFIG_DIR / f"stations_{country}.json", encoding="utf-8") as f:
         c["stations"] = load(f)
 
     # Restore cached forecast
@@ -86,9 +86,9 @@ def _load_country(country: str):
 def _load_mode(mode: str):
     """Load config files for a single mode."""
     m = {}
-    with open(CONFIG_DIR / f"wings_{mode}.json") as f:
+    with open(CONFIG_DIR / f"wings_{mode}.json", encoding="utf-8") as f:
         m["wings"] = load(f)
-    with open(CONFIG_DIR / f"ranges_{mode}.json") as f:
+    with open(CONFIG_DIR / f"ranges_{mode}.json", encoding="utf-8") as f:
         m["ranges"] = load(f)
     state["m"][mode] = m
 
@@ -108,9 +108,9 @@ def _enrich(country: str, mode: str):
 async def startup():
     PKL_DIR.mkdir(exist_ok=True)
 
-    with open(CONFIG_DIR / "countries.json") as f:
+    with open(CONFIG_DIR / "countries.json", encoding="utf-8") as f:
         state["countries"] = load(f)
-    with open(CONFIG_DIR / "modes.json") as f:
+    with open(CONFIG_DIR / "modes.json", encoding="utf-8") as f:
         state["modes"] = load(f)
 
     # Load all countries and modes
@@ -467,3 +467,9 @@ def get_days():
     wd   = datetime.today().weekday()
     days = ["Yesterday", "Today", "Tomorrow"] + [week_days[(wd + 2 + i) % 7] for i in range(5)]
     return {"days": days}
+
+
+@app.get("/api/whatsnew")
+def get_whatsnew():
+    p = Path(__file__).resolve().parent / "config" / "whatsnew.json"
+    return json.loads(p.read_text(encoding="utf-8"))

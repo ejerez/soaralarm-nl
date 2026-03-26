@@ -1,0 +1,13 @@
+{
+    "version": 1.0,
+    "features":[
+        {
+            "feature": "Windspeed Units",
+            "message": "You can now select your preferred speed units: <b>km/h</b>, <b>kt</b> or <b>m/s</b>."
+        },
+        {
+            "feature": "Visibility",
+            "message": "<b>Sunny Mode</b> and <b>Large Font</b> are now available in the Settings, to make it easier to see the app for different people in different conditions."
+        }
+    ]
+}

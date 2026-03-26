@@ -120,12 +120,12 @@ function CustomWindTooltip() {
 }
 
 export default function Settings({ data }) {
-  const { model, setModel, timeStart, setTimeStart, timeEnd, setTimeEnd,
+  const { timeStart, setTimeStart, timeEnd, setTimeEnd,
           selectedWings, setSelectedWings, weight, setWeight,
           customWind, setCustomWind, windMin, setWindMin, windMax, setWindMax,
           speedUnit, setSpeedUnit,
           altFont, setAltFont, largeFont, setLargeFont, outdoorsMode, setOutdoorsMode,
-          wings, models, countries, modes, country, mode, status, refreshForecast, refetchDisplay, switchConfig } = data
+          wings, countries, modes, country, mode, status, refreshForecast, refetchDisplay, switchConfig } = data
 
   const wingKeys = Object.keys(wings)
   const firstKey = wingKeys[0]
@@ -211,14 +211,6 @@ export default function Settings({ data }) {
           </select>
         </div>
 
-        <div data-tutorial="settings-model" style={{ marginBottom: 0 }}>
-          <label style={label_}>Forecast Model {countries?.[country]?.name || ''}</label>
-          <select style={{ ...select_, width: '100%' }} value={model} onChange={e => { setModel(e.target.value); autoApply() }}>
-            {Object.entries(models).map(([key, m]) => (
-              <option key={key} value={key}>{m.display_name}</option>
-            ))}
-          </select>
-        </div>
       </div>
 
       {/* Card 2: Wings, Weight, Custom Wind */}
@@ -325,9 +317,9 @@ export default function Settings({ data }) {
         <div data-tutorial="settings-window">
           <h3 style={{ fontSize: fs(12), color: T.text2, fontWeight: 500, letterSpacing: '0.02em', textTransform: 'uppercase', marginBottom: 8 }}>Availability Window</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <input type="time" style={input_} value={timeStart} onChange={e => { setTimeStart(e.target.value); autoApply() }} />
+            <input type="time" step="3600" style={input_} value={timeStart} onChange={e => { setTimeStart(e.target.value.slice(0, 3) + '00'); autoApply() }} />
             <span style={{ color: T.text3 }}>→</span>
-            <input type="time" style={input_} value={timeEnd} onChange={e => { setTimeEnd(e.target.value); autoApply() }} />
+            <input type="time" step="3600" style={input_} value={timeEnd} onChange={e => { setTimeEnd(e.target.value.slice(0, 3) + '00'); autoApply() }} />
           </div>
           <div style={{ fontSize: fs(11), color: T.text3, marginTop: 5 }}>Flyable hours are calculated within this window.</div>
         </div>

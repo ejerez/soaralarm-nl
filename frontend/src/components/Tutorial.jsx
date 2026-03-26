@@ -50,7 +50,7 @@ const STEPS = [
   {
     tab: 0, selector: '[data-tutorial="gantt"]', position: 'above',
     title: 'Flyable windows',
-    body:  <>Shows when flyable conditions are expected during each day, at the <b style={{ color: T.text }}>best location</b>. Each coloured block is a <b style={{ color: T.text }}>flyable window</b> – tap it to see the wind category and exact time range. Note that, like with the bar chart, <b style={{ color: T.text }}>tapping on a time window</b> will <b style={{ color: T.text }}>automatically select</b> that day and location on both the <b style={{ color: T.text }}>map</b> and on the <b style={{ color: T.text }}>Point tab</b>.</>,
+    body:  <>Shows when flyable conditions are expected. In <b style={{ color: T.text }}>Locations mode</b>, it shows the best estimated locations for the selected day (up to 5). In <b style={{ color: T.text }}>Date mode</b>, it shows the estimated <b style={{ color: T.text }}>best location</b> for each day. Each coloured block is a <b style={{ color: T.text }}>flyable window</b> – tap it to see the wind category and exact time range. Note that, like with the bar chart, <b style={{ color: T.text }}>tapping on a time window</b> will <b style={{ color: T.text }}>automatically select</b> that day and/or location on both the <b style={{ color: T.text }}>map</b> and on the <b style={{ color: T.text }}>Point tab</b>.</>,
   },
   // ── Point tab intro ──
   {
@@ -59,9 +59,14 @@ const STEPS = [
     body:  <>The <b style={{ color: T.text }}>Point tab</b> shows detailed hourly forecasts and live measurements – as well as important information – for the selected spot.</>,
   },
   {
+    tab: 1, selector: '[data-tutorial="pt-header"]', position: 'below',
+    title: 'Date and forecast model',
+    body:  <>At the top of the tab you can select the <b style={{ color: T.text }}>date</b> and <b style={{ color: T.text }}>forecast model</b> used for the displayed forecasts and flyability calculations.</>,
+  },
+  {
     tab: 1, selector: '[data-tutorial="pt-selectors"]', position: 'below',
     title: 'Location, links and site info',
-    body:  <>Choose any <b style={{ color: T.text }}>soaring location</b> from the dropdown. The calculated <b style={{ color: T.text }}>best location</b> for the selected day is set by default. <b style={{ color: T.text }}>Google Maps</b> takes you to the coordinates, and <b style={{ color: T.text }}>Spot information</b> links to a detailed description of the site. At locations with multiple weather stations, <b style={{ color: T.text }}>radio buttons</b> let you choose which station's measurements to overlay.</>,
+    body:  <>Choose any <b style={{ color: T.text }}>soaring location</b> from the dropdown. The calculated <b style={{ color: T.text }}>best location</b> for the selected day is set by default. <b style={{ color: T.text }}>Google Maps</b> takes you to the coordinates, and <b style={{ color: T.text }}>Spot information</b> links to a detailed description of the site.</>,
   },
   {
     tab: 1, selector: '[data-tutorial="pt-symbols"]', position: 'below',
@@ -81,7 +86,7 @@ const STEPS = [
   {
     tab: 1, selector: '[data-tutorial="pt-ranges"]', position: 'above',
     title: 'Windspeed ranges',
-    body:  <>A summary of the <b style={{ color: T.text }}>calculated windspeed ranges</b> for each of <b style={{ color: T.text }}>your configured wings</b> at this location. These are derived from the site's dune geometry and your wing size and weight. If you have enabled <b style={{ color: T.text }}>Custom Wind Range</b> in <b style={{ color: T.text }}>Settings</b>, that overrides these calculations.</>,
+    body:  <>A summary of the <b style={{ color: T.text }}>calculated windspeed ranges</b> for each of <b style={{ color: T.text }}>your configured wings</b> at this location, as well as information about the selected  <b style={{ color: T.text }}>weather station</b>. If you have enabled <b style={{ color: T.text }}>Custom Wind Range</b> in <b style={{ color: T.text }}>Settings</b>, that overrides these calculations.  At locations with  <b style={{ color: T.text }}>multiple weather stations</b>,radio buttons let you choose which station's measurements to overlay.</>,
   },
   // ── Settings tab intro ──
   {
@@ -98,11 +103,6 @@ const STEPS = [
     tab: 2, selector: '[data-tutorial="settings-speed-unit"]', position: 'below',
     title: 'Speed units',
     body:  <>Choose your preferred <b style={{ color: T.text }}>wind speed unit</b>: km/h, knots, or m/s. This applies to all wind speed displays across the app, including the Point tab charts and wind range summaries.</>,
-  },
-  {
-    tab: 2, selector: '[data-tutorial="settings-model"]', position: 'below',
-    title: 'Forecast model',
-    body:  <>Choose which weather model is used by the hourly <b style={{ color: T.text }}>Point tab</b> charts. The Map tab always combines all available models for confidence scoring. The <b style={{ color: T.text }}>default model</b> is generally the <b style={{ color: T.text }}>most accurate</b> for your selected country.</>,
   },
   {
     tab: 2, selector: '[data-tutorial="settings-wings"]', position: 'below',

@@ -30,7 +30,7 @@ function fmtTime(ms) {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
-function buildWindData(dayFc, meas, stationRef, sunrise, sunset, convert) {
+function buildWindData(dayFc, meas, stationRef, timeStart, timeEnd, convert) {
   // stationRef is [api, code] e.g. ["rws", "ijmuiden.havenhoofd.zuid"]
   const fcPoints = dayFc.time.map((t, i) => ({
     ts:            new Date(t).getTime(),
@@ -50,8 +50,8 @@ function buildWindData(dayFc, meas, stationRef, sunrise, sunset, convert) {
     const hi = wind.wind_max[i]
     if (lo == null && hi == null) return
     const t = new Date(ts); if (isNaN(t.getTime())) return
-    if (sunrise && t < new Date(sunrise)) return
-    if (sunset  && t > new Date(sunset))  return
+    if (timeStart && t < new Date(timeStart)) return
+    if (timeEnd   && t > new Date(timeEnd))   return
     measPoints.push({
       ts: t.getTime(),
       meas_wind_min: convert(lo ?? hi),
@@ -77,7 +77,7 @@ function buildWindData(dayFc, meas, stationRef, sunrise, sunset, convert) {
   return [...fcPoints, ...measPoints].sort((a, b) => a.ts - b.ts)
 }
 
-function buildDirData(dayFc, meas, stationRef, sunrise, sunset, heading) {
+function buildDirData(dayFc, meas, stationRef, timeStart, timeEnd, heading) {
   function norm(deg) {
     let d = deg - heading
     if (d >  180) d -= 360
@@ -95,8 +95,8 @@ function buildDirData(dayFc, meas, stationRef, sunrise, sunset, heading) {
     ds.timestamps.forEach((ts, i) => {
       const v = ds.values[i]; if (v==null||!isFinite(v)) return
       const t = new Date(ts); if (isNaN(t.getTime())) return
-      if (sunrise && t < new Date(sunrise)) return
-      if (sunset  && t > new Date(sunset))  return
+      if (timeStart && t < new Date(timeStart)) return
+      if (timeEnd   && t > new Date(timeEnd))   return
       points.push({ ts: t.getTime(), meas_dir: parseFloat(norm(v).toFixed(1)) })
     })
   }
@@ -204,23 +204,6 @@ export default function PointForecast({ data }) {
   const point = points[ptIdx]
   const dayFc = rawForecast?.[dateIdx]?.[ptIdx]
 
-  const prevDateIdxRef = useRef(null)
-  useEffect(() => {
-    if (prevDateIdxRef.current !== null && prevDateIdxRef.current === dateIdx) return  // no change — don't override explicit selection
-    prevDateIdxRef.current = dateIdx
-    if (!displayForecast) return
-    const dayPf = displayForecast[dateIdx] || []
-    let bestQuality = -1
-    dayPf.forEach(pf => { const q = pf.good_hours+pf.gusty_hours; if(q>bestQuality) bestQuality=q })
-    let best=0, bestFly=-1
-    dayPf.forEach((pf,pi) => {
-      const q=pf.good_hours+pf.gusty_hours
-      const f=pf.good_hours+pf.cross_hours+pf.gusty_hours+pf.cross_gusty_hours
-      if(q===bestQuality&&f>bestFly){bestFly=f;best=pi}
-    })
-    setPtIdx(best)
-  }, [dateIdx, displayForecast])
-
   const heading    = point?.heading ?? 0
   const head_range = point?.head_range
   const lowerIdeal = heading + (head_range?.good[0])
@@ -238,9 +221,10 @@ export default function PointForecast({ data }) {
 
   const windData = useMemo(() => {
     if (!dayFc || !point) return []
-    return buildWindData(dayFc, measurements, windStationRef, dayFc.sunrise, dayFc.sunset, toUnit)
+    const fcStart = dayFc.time[0], fcEnd = dayFc.time[dayFc.time.length - 1]
+    return buildWindData(dayFc, measurements, windStationRef, fcStart, fcEnd, toUnit)
   }, [dayFc, measurements, windStationRef, point, speedUnit])
-  const dirData  = useMemo(() => (!dayFc||!point)?[]:buildDirData(dayFc,measurements,headingStationRef,dayFc.sunrise,dayFc.sunset,heading), [dayFc,measurements,headingStationRef,point,heading])
+  const dirData  = useMemo(() => { if (!dayFc||!point) return []; const s=dayFc.time[0],e=dayFc.time[dayFc.time.length-1]; return buildDirData(dayFc,measurements,headingStationRef,s,e,heading) }, [dayFc,measurements,headingStationRef,point,heading])
   const tempData = useMemo(() => (!dayFc||!point)?[]:buildTempData(dayFc), [dayFc,point])
 
   if (!point || !dayFc) return <div style={{ color: T.text2, padding: '40px 0', textAlign: 'center', fontSize: fs(13) }}>No data available for this selection.</div>
@@ -277,34 +261,6 @@ export default function PointForecast({ data }) {
       {/* Site info symbols */}
       <InfoSymbols info={point.info} />
 
-      {/* Station selector (radio-style) for locations with alt_station */}
-      {point.alt_station && (() => {
-        const [priApi, priCode] = point.station
-        const [altApi, altCode] = point.alt_station
-        const priStation = measurements?.[priApi]?.[priCode]
-        const altStation = measurements?.[altApi]?.[altCode]
-        const priLabel = priStation?.name || `${priApi.toUpperCase()} ${priCode}`
-        const altLabel = altStation?.name || `${altApi.toUpperCase()} ${altCode}`
-        const useAltChecked = !!altStationPrefs?.[ptIdx]
-        const radioStyle = { width: 14, height: 14, cursor: 'pointer', accentColor: '#7aaaee', margin: 0 }
-        return (
-          <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: fs(13), color: useAltChecked ? T.text3 : T.text, cursor: 'pointer', userSelect: 'none' }}>
-              <input type="radio" name={`station-${ptIdx}`} checked={!useAltChecked}
-                onChange={() => setAltStationPrefs(prev => ({ ...prev, [ptIdx]: false }))}
-                style={radioStyle} />
-              {priLabel}
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: fs(13), color: useAltChecked ? T.text : T.text3, cursor: 'pointer', userSelect: 'none' }}>
-              <input type="radio" name={`station-${ptIdx}`} checked={useAltChecked}
-                onChange={() => setAltStationPrefs(prev => ({ ...prev, [ptIdx]: true }))}
-                style={radioStyle} />
-              {altLabel}
-            </label>
-          </div>
-        )
-      })()}
-
       {/* Wind Speed */}
       <div data-tutorial="pt-wind" style={card_}>
         <div style={sectionTitle_}>Wind &amp; Gust Speed</div>
@@ -330,7 +286,7 @@ export default function PointForecast({ data }) {
             })}
             <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"    name={`Gusts (${speedUnit})`}        fill="#c07028" stroke="#c07028" fillOpacity={0.25} dot={false} connectNulls />
             <Area yAxisId="wind" type="monotone" dataKey="wind_speed"    name={`Wind Speed (${speedUnit})`}   fill="#7aaaee" stroke="#7aaaee" fillOpacity={0.25} dot={false} connectNulls />
-            <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precipitation (mm)"             fill="#3a6bbf" stroke="#3a6bbf" fillOpacity={0.9}  dot={false} connectNulls />
+            <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precipitation (mm)"             fill="#3a6bbf" stroke="#3a6bbf" fillOpacity={0.8}  dot={false} connectNulls />
             {/* Measurement band — stacked fill-between: min base (transparent) + band on top */}
             <Area yAxisId="wind" type="linear" dataKey="meas_wind_min"  name={`Measured (${speedUnit})`}   stackId="meas" stroke="rgba(255,255,255,0.75)" strokeWidth={1.5} fill="transparent" dot={false} connectNulls />
             <Area yAxisId="wind" type="linear" dataKey="meas_wind_band" name="Measured max"                 stackId="meas" stroke="rgba(255,255,255,0.75)" strokeWidth={1.5} fill="rgba(255,255,255,0.18)" fillOpacity={1} dot={false} connectNulls legendType="none" />
@@ -344,7 +300,7 @@ export default function PointForecast({ data }) {
         <ResponsiveContainer width="100%" height={210}>
           <ComposedChart data={dirData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-            <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin','dataMax']} tickFormatter={fmtTime} tick={TICK} />
+            <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin','dataMax']} ticks={dayFc.time.map(t => new Date(t).getTime())} tickFormatter={fmtTime} tick={TICK} />
             <YAxis tick={TICK} domain={[domainLow, domainHigh]} width={30} allowDataOverflow />
             <Tooltip {...TOOLTIP} />
             <Legend wrapperStyle={{ fontSize:fsc(8, '1.4vw', 12), color: T.text2, fontFamily: T.font }} />
@@ -396,6 +352,34 @@ export default function PointForecast({ data }) {
           })}
         </div>
       )}
+
+      {/* Station selector (radio-style) for locations with alt_station */}
+      {point.alt_station && (() => {
+        const [priApi, priCode] = point.station
+        const [altApi, altCode] = point.alt_station
+        const priStation = measurements?.[priApi]?.[priCode]
+        const altStation = measurements?.[altApi]?.[altCode]
+        const priLabel = priStation?.name || `${priApi.toUpperCase()} ${priCode}`
+        const altLabel = altStation?.name || `${altApi.toUpperCase()} ${altCode}`
+        const useAltChecked = !!altStationPrefs?.[ptIdx]
+        const radioStyle = { width: 14, height: 14, cursor: 'pointer', accentColor: '#7aaaee', margin: 0 }
+        return (
+          <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: fs(13), color: useAltChecked ? T.text3 : T.text, cursor: 'pointer', userSelect: 'none' }}>
+              <input type="radio" name={`station-${ptIdx}`} checked={!useAltChecked}
+                onChange={() => setAltStationPrefs(prev => ({ ...prev, [ptIdx]: false }))}
+                style={radioStyle} />
+              {priLabel}
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: fs(13), color: useAltChecked ? T.text : T.text3, cursor: 'pointer', userSelect: 'none' }}>
+              <input type="radio" name={`station-${ptIdx}`} checked={useAltChecked}
+                onChange={() => setAltStationPrefs(prev => ({ ...prev, [ptIdx]: true }))}
+                style={radioStyle} />
+              {altLabel}
+            </label>
+          </div>
+        )
+      })()}
 
       {/* Station info */}
       <div style={{ fontSize: fs(12), color: T.text2, marginTop: 12, lineHeight: 1.8 }}>

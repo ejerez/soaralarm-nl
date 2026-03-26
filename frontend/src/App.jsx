@@ -6,6 +6,7 @@ import PointForecast from './components/PointForecast.jsx'
 import Settings      from './components/Settings.jsx'
 import Info          from './components/Info.jsx'
 import Tutorial      from './components/Tutorial.jsx'
+import WhatsNew      from './components/WhatsNew.jsx'
 
 // Inject fonts once
 if (typeof document !== 'undefined' && !document.getElementById('soar-fonts')) {
@@ -163,7 +164,7 @@ const s = {
 export default function App() {
   const [activeTab, setActiveTab] = useState(0)
   const data = useSoarData()
-  const { status, days, loading, error, dateIdx, setDateIdx, certainty, model, countries, modes, country, mode, ptIdx, altFont, largeFont, outdoorsMode } = data
+  const { status, days, loading, error, dateIdx, setDateIdx, certainty, model, setModel, models, refetchDisplay, countries, modes, country, mode, ptIdx, altFont, largeFont, outdoorsMode } = data
 
   // Apply preference overrides globally via injected <style>
   useEffect(() => {
@@ -223,6 +224,7 @@ export default function App() {
 
   return (
     <div style={s.app}>
+      <WhatsNew />
       <Tutorial activeTab={activeTab} onSwitchTab={setActiveTab} />
 
       {/* ── Tab bar ── */}
@@ -241,8 +243,7 @@ export default function App() {
 
       {/* ── Date / model bar ── */}
       {activeTab < 2 && (
-        <div style={s.controls}>
-          <span style={s.label}>Date</span>
+        <div data-tutorial="pt-header" style={s.controls}>
           <select
             style={s.select}
             value={dateIdx}
@@ -251,8 +252,18 @@ export default function App() {
             {days.map((d, i) => <option key={d} value={i}>{d}</option>)}
           </select>
 
+          <select
+            style={s.select}
+            value={model}
+            onChange={e => { setModel(e.target.value); refetchDisplay() }}
+          >
+            {Object.entries(models).map(([key, m]) => (
+              <option key={key} value={key}>{m.display_name}</option>
+            ))}
+          </select>
+
           <span style={{ fontSize: fs(11), color: T.text3, paddingLeft: 10 }}>
-            {data.models?.[model]?.display_name ?? model} | {countries?.[country]?.name ?? country} | {modes?.[mode] ?? mode}
+            {countries?.[country]?.name ?? country} | {modes?.[mode] ?? mode}
           </span>
 
           {/* Confidence + weather pills */}

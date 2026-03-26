@@ -438,12 +438,15 @@ class ForecastService:
                         start = t_shifted
                     last_time = t_shifted
 
+                # Use exclusive end (start of next hour) to match mid-loop entries
+                if last_time:
+                    end_exc = (pd.Timestamp(last_time) + timedelta(hours=1)).isoformat()
                 if prev is not None and last_time:
-                    gantt.append({"type": prev, "start": start, "end": last_time})
+                    gantt.append({"type": prev, "start": start, "end": end_exc})
                 if fog_prev is not None and last_time:
-                    fog_gantt.append({"type": fog_prev, "start": fog_start, "end": last_time})
+                    fog_gantt.append({"type": fog_prev, "start": fog_start, "end": end_exc})
                 if rain_prev is not None and last_time:
-                    rain_gantt.append({"type": rain_prev, "start": rain_start, "end": last_time})
+                    rain_gantt.append({"type": rain_prev, "start": rain_start, "end": end_exc})
 
                 day_disp.append({
                     "wind_pizza":    wind_pizza,

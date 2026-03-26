@@ -182,6 +182,25 @@ export function useSoarData() {
   const [dateIdx, setDateIdx]           = useState(1)
   const [ptIdx,   setPtIdx]             = useState(0)
 
+  // Auto-select best point on date change and when forecast first loads.
+  // Ref starts as null so the very first forecast load triggers selection.
+  const prevAutoDateRef = useRef(null)
+  useEffect(() => {
+    if (!displayForecast || !points.length) return
+    if (prevAutoDateRef.current === dateIdx) return
+    prevAutoDateRef.current = dateIdx
+    const dayPf = displayForecast[dateIdx] || []
+    let bestQuality = -1
+    dayPf.forEach(pf => { const q = pf.good_hours + pf.gusty_hours; if (q > bestQuality) bestQuality = q })
+    let best = 0, bestFly = -1
+    dayPf.forEach((pf, pi) => {
+      const q = pf.good_hours + pf.gusty_hours
+      const f = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
+      if (q === bestQuality && f > bestFly) { bestFly = f; best = pi }
+    })
+    setPtIdx(best)
+  }, [dateIdx, displayForecast, points])
+
   // ── Refs ──────────────────────────────────────────────────────────────────
   const settingsRef = useRef(initSettings)
   const isFetchingDisplay = useRef(false)
