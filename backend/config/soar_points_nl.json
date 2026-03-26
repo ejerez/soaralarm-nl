@@ -72,7 +72,7 @@
         "info": [
             ["moderate_dune.png", "<b style={{ color: '#dedede' }}>Moderate dune</b>, around 12m tall."],
             ["regulations.png", "<b style={{ color: '#dedede' }}>Occassionaly closed</b> due to the bird breeding season <b style={{ color: '#dedede' }}>March 15 to August 15</b>. You can then fly at the southern beach. <b style={{ color: '#dedede' }}>Always respect beach closures</b>."],
-            ["turbulence.png", "<b style={{ color: '#dedede' }}>Vey turbulent</b> with strong winds due to the presence of land upwind."]
+            ["turbulence.png", "<b style={{ color: '#dedede' }}>Very turbulent</b> with strong winds due to the presence of land upwind."]
         ],
         "link": "https://wildvliegen.nl/vliegplekken/nederland/rockanje/"
     },
@@ -86,7 +86,7 @@
         "slope": { "steepness": "moderate", "height": 9 },
         "info": [
             ["moderate_dune.png", "<b style={{ color: '#dedede' }}>Moderate dune</b>, around 9m tall."],
-            ["turbulence.png", "<b style={{ color: '#dedede' }}>Vey turbulent</b> with strong winds due to the presence of land upwind."]
+            ["turbulence.png", "<b style={{ color: '#dedede' }}>Very turbulent</b> with strong winds due to the presence of land upwind."]
         ],
         "link": "https://wildvliegen.nl/vliegplekken/nederland/rockanje/"
     },

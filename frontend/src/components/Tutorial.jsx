@@ -85,8 +85,8 @@ const STEPS = [
   },
   {
     tab: 1, selector: '[data-tutorial="pt-ranges"]', position: 'above',
-    title: 'Windspeed ranges',
-    body:  <>A summary of the <b style={{ color: T.text }}>calculated windspeed ranges</b> for each of <b style={{ color: T.text }}>your configured wings</b> at this location, as well as information about the selected  <b style={{ color: T.text }}>weather station</b>. If you have enabled <b style={{ color: T.text }}>Custom Wind Range</b> in <b style={{ color: T.text }}>Settings</b>, that overrides these calculations.  At locations with  <b style={{ color: T.text }}>multiple weather stations</b>,radio buttons let you choose which station's measurements to overlay.</>,
+    title: 'Windspeed ranges and weather station',
+    body:  <>A summary of the <b style={{ color: T.text }}>calculated windspeed ranges</b> for each of <b style={{ color: T.text }}>your configured wings</b> at this location, as well as information about the selected  <b style={{ color: T.text }}>weather station</b>. If you have enabled <b style={{ color: T.text }}>Custom Wind Range</b> in <b style={{ color: T.text }}>Settings</b>, that overrides these calculations.  At locations with  <b style={{ color: T.text }}>multiple weather stations</b>, radio buttons let you choose which station's measurements to overlay.</>,
   },
   // ── Settings tab intro ──
   {
