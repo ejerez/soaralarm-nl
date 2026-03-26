@@ -447,13 +447,17 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     displayForecast.forEach((dayPf, di) => {
       if (di === 0 && !showYesterday) return
       if (di > maxDi) return
-      let bestQuality = -1
-      dayPf.forEach(pf => { const q = pf.good_hours + pf.gusty_hours; if (q > bestQuality) bestQuality = q })
-      let best = 0, bestFly = -1
+      const certDi = certainty?.[di]
+      let best = 0, bestAgree = -1, bestQuality = -1, bestFly = -1
       dayPf.forEach((pf, pi) => {
-        const q = pf.good_hours + pf.gusty_hours
-        const f = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
-        if (q === bestQuality && f > bestFly) { bestFly = f; best = pi }
+        const ag = certDi?.by_point?.[pi] ?? certDi?.agree ?? 0
+        const q  = pf.good_hours + pf.gusty_hours
+        const f  = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
+        if (ag > bestAgree
+            || (ag === bestAgree && q > bestQuality)
+            || (ag === bestAgree && q === bestQuality && f > bestFly)) {
+          bestAgree = ag; bestQuality = q; bestFly = f; best = pi
+        }
       })
       const bpf = dayPf[best], bpt = points[best]
       bar.push({
@@ -486,13 +490,14 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     const locGantt = [], locWeather = [], locCertMap = {}, locDays = [], locPtMap = []
     const dayPf = displayForecast[dateIdx] || []
     const certDay = certainty?.[dateIdx]
-    // Score each point: flyable total > 0, then rank by confidence desc, good_hours desc, total flyable desc
+    // Score each point: flyable total > 0, then rank by confidence desc, quality (good+gusty) desc, total flyable desc
     const scored = dayPf.map((pf, pi) => {
       const fly = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
+      const quality = pf.good_hours + pf.gusty_hours
       const agree = certDay?.by_point?.[pi] ?? certDay?.agree ?? 0
-      return { pi, pf, fly, good: pf.good_hours, agree }
+      return { pi, pf, fly, quality, agree }
     }).filter(s => s.fly > 0)
-    scored.sort((a, b) => b.agree - a.agree || b.good - a.good || b.fly - a.fly)
+    scored.sort((a, b) => b.agree - a.agree || b.quality - a.quality || b.fly - a.fly)
     const top = scored.slice(0, 5)
     top.forEach(({ pi, pf, agree }) => {
       const pt = points[pi]

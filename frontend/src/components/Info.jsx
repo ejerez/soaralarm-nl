@@ -179,8 +179,17 @@ export default function Info({ data }) {
         <div style={{ ...code, display: 'block', padding: '8px 14px', margin: '8px 0 12px' }}>
           half_range = {ranges?.heading_range?.formula || '60 · (height/15) / (sqrt((height/15)^2 + 1))'}
         </div>
+        {ranges?.heading_range?.steepness_offset && (
+          <>
+            <p style={p}><b style={{ color: '#dedede' }}>Steepness offset</b> added to the half-range:</p>
+            <ul style={{ ...p, paddingLeft: 20 }}>
+              {Object.entries(ranges.heading_range.steepness_offset).map(([k, v]) => (
+                <li key={k}><b style={{ color: '#dedede' }}>{k}</b>: {v > 0 ? '+' : ''}{v}°</li>
+              ))}
+            </ul>
+          </>
+        )}
         <p style={p}>
-          Plus a -+5° offset depending on the steepness of the slope. 
           This means taller, steeper slopes accept a wider range of
           wind directions. The <b style={{ color: '#dedede' }}>good heading</b> zone is always a fixed
           fraction ({ranges?.heading_range?.good_fraction != null

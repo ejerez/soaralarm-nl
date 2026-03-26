@@ -190,16 +190,20 @@ export function useSoarData() {
     if (prevAutoDateRef.current === dateIdx) return
     prevAutoDateRef.current = dateIdx
     const dayPf = displayForecast[dateIdx] || []
-    let bestQuality = -1
-    dayPf.forEach(pf => { const q = pf.good_hours + pf.gusty_hours; if (q > bestQuality) bestQuality = q })
-    let best = 0, bestFly = -1
+    const certDi = certainty?.[dateIdx]
+    let best = 0, bestAgree = -1, bestQuality = -1, bestFly = -1
     dayPf.forEach((pf, pi) => {
-      const q = pf.good_hours + pf.gusty_hours
-      const f = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
-      if (q === bestQuality && f > bestFly) { bestFly = f; best = pi }
+      const ag = certDi?.by_point?.[pi] ?? certDi?.agree ?? 0
+      const q  = pf.good_hours + pf.gusty_hours
+      const f  = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
+      if (ag > bestAgree
+          || (ag === bestAgree && q > bestQuality)
+          || (ag === bestAgree && q === bestQuality && f > bestFly)) {
+        bestAgree = ag; bestQuality = q; bestFly = f; best = pi
+      }
     })
     setPtIdx(best)
-  }, [dateIdx, displayForecast, points])
+  }, [dateIdx, displayForecast, certainty, points])
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const settingsRef = useRef(initSettings)
