@@ -70,6 +70,7 @@ def point_ranges(point: Dict, ranges_cfg: Dict) -> Dict:
 
     hcfg      = ranges_cfg["heading_range"]
     calc_half = _eval_formula(hcfg["formula"], {"height": height})
+    calc_half += hcfg.get("steepness_offset", {}).get(steepness, 0)
     good_frac = hcfg["good_fraction"]
     override  = point.get("head_range") or [None, None]
     cross_lo  = float(override[0]) if override[0] is not None else -calc_half

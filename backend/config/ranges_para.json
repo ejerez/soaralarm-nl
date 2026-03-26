@@ -14,7 +14,12 @@
         "formula": "(42.0 - 0.2 * height) / 40.0"
     },
     "heading_range": {
-        "formula": "-3.7922 + 12.8541 * ln(height)",
-        "good_fraction": 0.5
+        "formula": "60*(height/15)/(sqrt((height/15)**2+1))",
+        "good_fraction": 0.5,
+        "steepness_offset": {
+            "flat": -5,
+            "moderate": 0,
+            "steep": 5
+        }
     }
 }

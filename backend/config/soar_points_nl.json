@@ -6,9 +6,9 @@
         "station": [ "rws", "ijmuiden.havenhoofd.zuid" ],
         "alt_station": [ "nkv", "217"],
         "heading": 279,
-        "slope": { "steepness": "steep", "height": 17 },
+        "slope": { "steepness": "steep", "height": 20 },
         "info": [
-            ["steep_dune.png", "<b style={{ color: '#dedede' }}>Steep dune</b>, almost 20m tall. Good lift in light winds, but difficult to climb for launch. It is easier to climb the less steep dunes closer to the entrance to the beach."],
+            ["steep_dune.png", "<b style={{ color: '#dedede' }}>Steep dune</b>, about 20m tall about 1 km North of the main entrance to the beach. Good lift in light winds, but difficult to climb for launch. It is easier to climb the less steep dunes closer to the entrance to the beach."],
             ["wind_gradient.png", "At the steeper dunes, the <b style={{ color: '#dedede' }}>wind gradient</b> can make it so there's very little wind down at the beach."],
             ["crowded.png", "Can get <b style={{ color: '#dedede' }}>crowded on weekends and holidays</b>."],
             ["strandhuisjes.png", "<b style={{ color: '#dedede' }}>Strandhuisjes during Summer</b>. Be prepared to walk quite some distance to reach dunes not blocked by them, avoid flying near them if possible."],
@@ -22,11 +22,13 @@
         "name": "Wijk aan Zee",
         "station": [ "rws", "ijmuiden.havenhoofd.zuid" ],
         "heading": 284,
-        "slope": { "steepness": "moderate", "height": 21 },
+        "slope": { "steepness": "steep", "height": 21 },
         "info": [
-            ["moderate_dune.png", "<b style={{ color: '#dedede' }}>Moderate dune</b>, around 20m tall."],
+            ["steep_dune.png", "<b style={{ color: '#dedede' }}>Steep dune</b>, about 21m tall about 1 km North of the main entrance to the beach. Good lift in light winds, but difficult to climb for launch. It is easier to climb the less steep dunes closer to the entrance to the beach."],
+            ["wind_gradient.png", "At the steeper dunes, the <b style={{ color: '#dedede' }}>wind gradient</b> can make it so there's very little wind down at the beach."],
             ["crowded.png", "Can get <b style={{ color: '#dedede' }}>crowded on weekends and holidays</b>."],
-            ["strandhuisjes.png", "<b style={{ color: '#dedede' }}>Strandhuisjes during Summer</b>. Be prepared to walk quite some distance to reach dunes not blocked by them, avoid flying near them if possible."]
+            ["strandhuisjes.png", "<b style={{ color: '#dedede' }}>Strandhuisjes during Summer</b>. Be prepared to walk quite some distance to reach dunes not blocked by them, avoid flying near them if possible."],
+            ["thorny_bushes.png", "Beware of <b style={{ color: '#dedede' }}>thorny bushes</b> at the top of the steeper dunes."]
         ],
         "link": "https://wildvliegen.nl/vliegplekken/nederland/wijk-aan-zee/"
     },
@@ -69,7 +71,7 @@
         "slope": { "steepness": "moderate", "height": 12 },
         "info": [
             ["moderate_dune.png", "<b style={{ color: '#dedede' }}>Moderate dune</b>, around 12m tall."],
-            ["regulations.png", "<b style={{ color: '#dedede' }}>Occassionaly closed</b> due to the bird breeding season between <b style={{ color: '#dedede' }}>March 15 to August 15</b>. You can then fly at the southern beach. <b style={{ color: '#dedede' }}>Always respect beach closures</b>."],
+            ["regulations.png", "<b style={{ color: '#dedede' }}>Occassionaly closed</b> due to the bird breeding season <b style={{ color: '#dedede' }}>March 15 to August 15</b>. You can then fly at the southern beach. <b style={{ color: '#dedede' }}>Always respect beach closures</b>."],
             ["turbulence.png", "Can be <b style={{ color: '#dedede' }}>turbulent</b> with strong winds due to the presence of land upwind."]
         ],
         "link": "https://wildvliegen.nl/vliegplekken/nederland/rockanje/"
@@ -157,11 +159,11 @@
         "name": "Westenschouwen",
         "station": [ "rws", "oosterschelde.4" ],
         "heading": 214,
-        "head_range": [-20, null],
+        "head_range": [-24, null],
         "slope": { "steepness": "moderate", "height": 17 },
         "info": [
             ["moderate_dune.png", "<b style={{ color: '#dedede' }}>Moderate dune</b>, almost 20m tall."],
-            ["extreme_turbulence.png", "<b style={{ color: '#dedede' }}>Very turbulent</b> with more than around 15° left crosswind, due to the presence of wind turbines upwind."],
+            ["extreme_turbulence.png", "<b style={{ color: '#dedede' }}>Extremely turbulent</b> with more than around 20° left crosswind, due to the presence of wind turbines upwind."],
             ["extreme_crowded.png", "<b style={{ color: '#dedede' }}>Very small site</b> that can get very crowded. If possible, <b style={{ color: '#dedede' }}>avoid on weekends and holidays</b>."]
         ],
         "link": "https://wildvliegen.nl/vliegplekken/nederland/westenschouwen/"
