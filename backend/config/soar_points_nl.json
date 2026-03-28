@@ -174,9 +174,9 @@
         "name": "Zoutelande",
         "station": [ "rws", "vlaktevanderaan" ],
         "heading": 235,
-        "slope": { "steepness": "steep", "height": 45 },
+        "slope": { "steepness": "moderate", "height": 45 },
         "info": [
-            ["steep_dune.png", "<b style={{ color: '#dedede' }}>Steep dune</b>, about 45m tall, good lift in light winds. Takeoff only possible from the top of the dune."],
+            ["moderate_dune.png", "<b style={{ color: '#dedede' }}>Moderately steep</b>, <b style={{ color: '#dedede' }}>tall dune</b>, about 45m, good lift in light winds because of the large wind gradient. Takeoff only possible from the top."],
             ["regulations.png", "<b style={{ color: '#dedede' }}>Flying forbidden 10:00-18:00</b> in the period of <b style={{ color: '#dedede' }}>June 15th to September 1st</b> due to crowds at the beach. Pay attention to the rules on where you can land. Violations often result in fines."],
             ["extreme_wind_gradient.png", "Due to the steepness and height of the dune, there is an <b style={{ color: '#dedede' }}>extreme wind gradient</b> at Zoutelande. The wind will be <b style={{ color: '#dedede' }}>much stronger</b> than forecasted at the top of the dune, and there may be no wind at all at the beach. Only attempt to fly in strong winds if you are an <b style={{ color: '#dedede' }}>experienced pilot</b> and very confident in your groundhandling. In light winds, try to lose as little altitude as possible on launch, and stay close to the terrain."],
             ["crowded_takeoff.png", "No takeoff from the bottom. <b style={{ color: '#dedede' }}>Small and crowded takeoff</b> at the top, only really suitable for experienced pilots with <b style={{ color: '#dedede' }}>good ground handling</b>."],
