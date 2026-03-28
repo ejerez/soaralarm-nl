@@ -317,6 +317,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
   const leafletRef = useRef(null)
   const layersRef  = useRef([])
   const markersRef = useRef([])
+  const radarRef   = useRef(null)
   const ptIdxRef   = useRef(ptIdx)
   ptIdxRef.current = ptIdx
 
@@ -359,6 +360,34 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       leafletRef.current.fitBounds(pointsBounds, { animate: true })
     }
   }, [pointsBounds])
+
+  // ── Rain radar overlay (from server-cached measurements, Today only) ────
+  const isToday = days[dateIdx] === 'Today'
+  const rainTiles = data.measurements?.rain_tiles
+
+  useEffect(() => {
+    const map = leafletRef.current
+    if (!map) return
+
+    if (radarRef.current) { radarRef.current.remove(); radarRef.current = null }
+    if (!isToday || !rainTiles?.image) return
+
+    if (!map.getPane('radarPane')) {
+      map.createPane('radarPane')
+      map.getPane('radarPane').style.zIndex = 250
+    }
+
+    const overlay = L.imageOverlay(rainTiles.image, rainTiles.bounds, {
+      opacity: 0.55,
+      pane: 'radarPane',
+    })
+    overlay.addTo(map)
+    radarRef.current = overlay
+
+    return () => {
+      if (radarRef.current) { radarRef.current.remove(); radarRef.current = null }
+    }
+  }, [isToday, rainTiles])
 
   useEffect(() => {
     if (!leafletRef.current || !displayForecast || !points.length) return

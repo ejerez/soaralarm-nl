@@ -1,71 +1,62 @@
 """
-MeasurementService – orchestrates fetching from multiple measurement APIs.
+MeasurementService – orchestrates fetching from country-level measurement modules.
 
-Reads stations_{country}.json to know which APIs and station codes to query,
-then delegates to the appropriate meas_fetch_*.py module for each API.
-All fetch modules return the same standardised format per station:
-    {name, lat, lon,
-     wind: {timestamps, wind_min, wind_max} | None,
-     heading: {timestamps, values} | None}
+Each country has a single meas_fetch_{country}.py module that fetches all
+measurement data for that country (wind stations, rain tiles, nowcast, etc.).
+The module must expose a fetch(stations_config, soar_points) function that
+returns a dict with at least the per-API station data, plus optional keys
+like "rain_tiles" and "short_term_precipitation".
 """
 
 import asyncio
 import importlib
-from typing import Any, Dict
+from typing import Any, Dict, List
 
-# Auto-discovered fetch modules: keyed by API name (must match keys in stations_*.json).
-# Each module must be named meas_fetch_{api}.py and expose a fetch(station_codes) function.
+# Lazily imported fetch modules, keyed by country code.
 _fetch_cache: Dict[str, Any] = {}
 
 
-def _get_fetch_fn(api_name: str):
-    """Lazily import meas_fetch_{api} and return its fetch function."""
-    if api_name not in _fetch_cache:
+def _get_fetch_fn(country: str):
+    """Lazily import meas_fetch_{country} and return its fetch function."""
+    if country not in _fetch_cache:
         try:
-            mod = importlib.import_module(f"meas_fetch_{api_name}")
-            _fetch_cache[api_name] = mod.fetch
+            mod = importlib.import_module(f"meas_fetch_{country}")
+            _fetch_cache[country] = mod.fetch
         except (ImportError, AttributeError) as exc:
-            print(f"[measurements] WARNING: could not load meas_fetch_{api_name}: {exc}")
-            _fetch_cache[api_name] = None
-    return _fetch_cache[api_name]
+            print(f"[measurements] WARNING: could not load meas_fetch_{country}: {exc}")
+            _fetch_cache[country] = None
+    return _fetch_cache[country]
 
 
 class MeasurementService:
-    def __init__(self, stations_config: Dict):
+    def __init__(self, country: str, stations_config: Dict, soar_points: List):
         """
-        stations_config: contents of stations_{country}.json, e.g.
-            {"rws": ["station1", ...], "nkv": ["213", ...]}
+        Parameters
+        ----------
+        country : country code, e.g. "nl"
+        stations_config : contents of stations_{country}.json,
+            e.g. {"rws": ["station1", ...], "nkv": ["213", ...]}
+        soar_points : contents of soar_points_{country}.json
         """
+        self.country = country
         self.stations_config = stations_config
+        self.soar_points = soar_points
 
     async def fetch(self) -> Dict:
-        """Fetch measurements from all configured APIs in parallel."""
+        """Fetch measurements by delegating to the country's fetch module."""
         loop = asyncio.get_event_loop()
-
-        # Build list of (api_name, future) pairs
-        tasks = {}
-        for api_name, station_codes in self.stations_config.items():
-            fetch_fn = _get_fetch_fn(api_name)
-            if not fetch_fn:
-                continue
-            tasks[api_name] = loop.run_in_executor(None, fetch_fn, station_codes)
-
-        result = {}
-        for api_name, future in tasks.items():
-            try:
-                result[api_name] = await future
-            except Exception as exc:
-                print(f"[measurements] ERROR fetching {api_name}: {exc}")
-                result[api_name] = {}
-
-        return result
+        fetch_fn = _get_fetch_fn(self.country)
+        if not fetch_fn:
+            return {}
+        return await loop.run_in_executor(
+            None, fetch_fn, self.stations_config, self.soar_points,
+        )
 
     @staticmethod
     def serialize(raw: Dict) -> Dict:
         """
-        Convert the raw measurement data to JSON-serialisable format.
-        The fetch modules already return serialisable dicts, so this mainly
-        strips the internal 'time' key and passes through.
+        Convert raw measurement data to JSON-serialisable format.
+        Strips the internal 'time' key (cache metadata) and passes through.
         """
         if not raw:
             return {}

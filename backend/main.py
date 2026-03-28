@@ -1,7 +1,7 @@
 import asyncio
 import json
 import pickle
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 from json import load
 from pathlib import Path
 from typing import List, Optional
@@ -154,7 +154,6 @@ def _measure_age(country: str) -> Optional[float]:
 def _in_daylight_window(country: str) -> bool:
     """Return True if now is within 90 minutes of today's sunrise/sunset."""
     try:
-        from datetime import timezone
         c = state["c"].get(country)
         if not c:
             return True
@@ -228,7 +227,7 @@ async def _refresh_measurements(country: str):
         return
     c["updating_measurements"] = True
     try:
-        svc = MeasurementService(c["stations"])
+        svc = MeasurementService(country, c["stations"], c["soar_points"])
         data = await svc.fetch()
         data["time"] = datetime.now()
         c["measurements"] = data

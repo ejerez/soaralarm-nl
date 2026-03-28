@@ -122,6 +122,16 @@ function WindTooltip({ active, payload, label, unit = 'km/h' }) {
     </div>
   )
 
+  // If this is a short-term-precip-only point (no wind forecast data), show just rain
+  if (d.wind_speed == null && d.meas_wind_min == null && d.short_term_precip != null) {
+    return box(
+      <div style={{ color: T.text2 }}>
+        <span style={{ color: '#1b8fe2' }}>Rain nowcast:</span>{' '}
+        <span style={{ color: T.text }}>{d.short_term_precip} mm/hr</span>
+      </div>
+    )
+  }
+
   // If measurement data exists at this point, show that instead of forecast
   if (d.meas_wind_min != null) {
     return box(
@@ -129,6 +139,9 @@ function WindTooltip({ active, payload, label, unit = 'km/h' }) {
         <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: 3 }}>Measured</div>
         <div>max: <span style={{ color: T.text }}>{d.meas_wind_max} {unit}</span></div>
         <div>min: <span style={{ color: T.text }}>{d.meas_wind_min} {unit}</span></div>
+        {d.short_term_precip != null && (
+          <div style={{ marginTop: 3 }}><span style={{ color: '#1b8fe2' }}>Rain nowcast:</span>{' '}<span style={{ color: T.text }}>{d.short_term_precip} mm/hr</span></div>
+        )}
       </div>
     )
   }
@@ -140,6 +153,7 @@ function WindTooltip({ active, payload, label, unit = 'km/h' }) {
     if (p.dataKey === 'wind_gusts')    items.push({ name: 'Gusts',         value: p.value, color: p.color, unit })
     if (p.dataKey === 'wind_speed')    items.push({ name: 'Wind Speed',    value: p.value, color: p.color, unit })
     if (p.dataKey === 'precipitation') items.push({ name: 'Precipitation', value: p.value, color: p.color, unit: 'mm' })
+    if (p.dataKey === 'short_term_precip' && p.value != null) items.push({ name: 'Rain nowcast', value: p.value, color: '#1b8fe2', unit: 'mm/hr' })
   })
   return box(items.map(it => (
     <div key={it.name} style={{ color: T.text2, marginBottom: 2 }}>
@@ -219,11 +233,53 @@ export default function PointForecast({ data }) {
   // Heading always comes from the primary station
   const headingStationRef = point?.station
 
+  // ── Short-term precipitation from measurements (server-cached nowcast) ───
+  const shortTermPrecip = measurements?.short_term_precipitation?.[ptIdx]
+
   const windData = useMemo(() => {
     if (!dayFc || !point) return []
     const fcStart = dayFc.time[0], fcEnd = dayFc.time[dayFc.time.length - 1]
     return buildWindData(dayFc, measurements, windStationRef, fcStart, fcEnd, toUnit)
   }, [dayFc, measurements, windStationRef, point, speedUnit])
+
+  // Merge short-term precipitation into wind data, replacing forecast precip
+  // where the nowcast covers
+  const windDataWithPrecip = useMemo(() => {
+    if (!shortTermPrecip?.timestamps?.length || !windData.length) return windData
+
+    // Build a lookup of short-term precip values by timestamp
+    const stpByTs = new Map()
+    shortTermPrecip.timestamps.forEach((t, i) => {
+      const ts = new Date(t).getTime()
+      if (isFinite(ts)) stpByTs.set(ts, shortTermPrecip.values[i])
+    })
+    if (!stpByTs.size) return windData
+
+    const stpMin = Math.min(...stpByTs.keys())
+    const stpMax = Math.max(...stpByTs.keys())
+
+    // Clone wind data and suppress forecast precip where STP covers
+    const byTs = new Map()
+    windData.forEach(d => {
+      const cloned = { ...d }
+      if (cloned.ts >= stpMin && cloned.ts <= stpMax) {
+        cloned.precipitation = null  // hide forecast precip in STP range
+      }
+      byTs.set(cloned.ts, cloned)
+    })
+
+    // Insert short-term precip data points
+    for (const [ts, value] of stpByTs) {
+      const existing = byTs.get(ts)
+      if (existing) {
+        existing.short_term_precip = value
+      } else {
+        byTs.set(ts, { ts, short_term_precip: value })
+      }
+    }
+
+    return Array.from(byTs.values()).sort((a, b) => a.ts - b.ts)
+  }, [windData, shortTermPrecip])
   const dirData  = useMemo(() => { if (!dayFc||!point) return []; const s=dayFc.time[0],e=dayFc.time[dayFc.time.length-1]; return buildDirData(dayFc,measurements,headingStationRef,s,e,heading) }, [dayFc,measurements,headingStationRef,point,heading])
   const tempData = useMemo(() => (!dayFc||!point)?[]:buildTempData(dayFc), [dayFc,point])
 
@@ -265,7 +321,7 @@ export default function PointForecast({ data }) {
       <div data-tutorial="pt-wind" style={card_}>
         <div style={sectionTitle_}>Wind &amp; Gust Speed</div>
         <ResponsiveContainer width="100%" height={250}>
-          <ComposedChart data={windData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+          <ComposedChart data={windDataWithPrecip} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin','dataMax']} ticks={dayFc.time.map(t => new Date(t).getTime())} tickFormatter={fmtTime} tick={TICK} />
             <YAxis yAxisId="wind" tick={TICK} width={30} />
@@ -287,6 +343,9 @@ export default function PointForecast({ data }) {
             <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"    name={`Gusts (${speedUnit})`}        fill="#c07028" stroke="#c07028" fillOpacity={0.25} dot={false} connectNulls />
             <Area yAxisId="wind" type="monotone" dataKey="wind_speed"    name={`Wind Speed (${speedUnit})`}   fill="#7aaaee" stroke="#7aaaee" fillOpacity={0.25} dot={false} connectNulls />
             <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precipitation (mm)"             fill="#3a6bbf" stroke="#3a6bbf" fillOpacity={0.8}  dot={false} connectNulls />
+            {shortTermPrecip?.timestamps?.length > 0 && (
+              <Area yAxisId="rain" type="monotone" dataKey="short_term_precip" name="Rain nowcast (mm/hr)" fill="#1b8fe2" stroke="#1b8fe2" fillOpacity={0.9} dot={false} connectNulls strokeWidth={1.5} />
+            )}
             {/* Measurement band — stacked fill-between: min base (transparent) + band on top */}
             <Area yAxisId="wind" type="linear" dataKey="meas_wind_min"  name={`Measured (${speedUnit})`}   stackId="meas" stroke="rgba(255,255,255,0.75)" strokeWidth={1.5} fill="transparent" dot={false} connectNulls />
             <Area yAxisId="wind" type="linear" dataKey="meas_wind_band" name="Measured max"                 stackId="meas" stroke="rgba(255,255,255,0.75)" strokeWidth={1.5} fill="rgba(255,255,255,0.18)" fillOpacity={1} dot={false} connectNulls legendType="none" />
