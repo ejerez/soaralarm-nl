@@ -1,6 +1,7 @@
 import asyncio
 import json
 import pickle
+import zoneinfo
 from datetime import datetime, time, timedelta, timezone
 from json import load
 from pathlib import Path
@@ -40,8 +41,9 @@ _display_cache: dict = {}
 
 CONFIG_DIR   = Path("config")
 PKL_DIR      = Path("pkl")
-FORECAST_TTL = 7200   # 2 hours
-MEASURE_TTL  = 900    # 15 minutes
+FORECAST_TTL       = 7200   # 2 hours
+MEASURE_TTL_DAY    = 900    # 15 minutes
+MEASURE_TTL_NIGHT  = 3600   # 60 minutes
 
 
 def _load_country(country: str):
@@ -151,30 +153,37 @@ def _measure_age(country: str) -> Optional[float]:
     t = c["measurements"].get("time")
     return (datetime.now() - t).total_seconds() if t else None
 
-def _in_daylight_window(country: str) -> bool:
-    """Return True if now is within 90 minutes of today's sunrise/sunset."""
+def _today_sun(country: str):
+    """Return (sunrise, sunset) as UTC-aware datetimes for today, or (None, None)."""
     try:
         c = state["c"].get(country)
         if not c:
-            return True
+            return None, None
         model_keys = list(c["models"].keys())
         forecast = next((c["forecast"].get(k) for k in model_keys if c["forecast"].get(k)), None)
         if not forecast or len(forecast) < 2:
-            return True
+            return None, None
         today_fc = forecast[1][0] if forecast[1] else None
         if not today_fc or not today_fc.get("sunrise") or not today_fc.get("sunset"):
-            return True
-        now     = datetime.now(timezone.utc)
+            return None, None
         sunrise = datetime.fromisoformat(today_fc["sunrise"])
         sunset  = datetime.fromisoformat(today_fc["sunset"])
         if sunrise.tzinfo is None:
             sunrise = sunrise.replace(tzinfo=timezone.utc)
         if sunset.tzinfo is None:
             sunset  = sunset.replace(tzinfo=timezone.utc)
-        margin = timedelta(minutes=90)
-        return now >= sunrise - margin and now <= sunset + margin
+        return sunrise, sunset
     except Exception:
+        return None, None
+
+def _in_daylight_window(country: str) -> bool:
+    """Return True if now is within 60 minutes of today's sunrise/sunset."""
+    sunrise, sunset = _today_sun(country)
+    if sunrise is None:
         return True
+    now    = datetime.now(timezone.utc)
+    margin = timedelta(minutes=60)
+    return now >= sunrise - margin and now <= sunset + margin
 
 def _clear_display_cache_for_country(country: str):
     """Remove all display cache entries for a given country."""
@@ -249,17 +258,32 @@ def get_status(country: str = Query(...)):
     fa    = _forecast_age(country)
     ma    = _measure_age(country)
     in_dl = _in_daylight_window(country)
+    meas_ttl = MEASURE_TTL_DAY if in_dl else MEASURE_TTL_NIGHT
     model_keys = list(c["models"].keys())
+
+    # Default time window: sunrise-60min to sunset+60min in local time (HH:MM)
+    sunrise, sunset = _today_sun(country)
+    if sunrise is not None:
+        tz_name = state["countries"].get(country, {}).get("timezone", "Europe/Berlin")
+        local_tz = zoneinfo.ZoneInfo(tz_name)
+        default_ts = (sunrise - timedelta(minutes=60)).astimezone(local_tz).strftime("%H:%M")
+        default_te = (sunset  + timedelta(minutes=60)).astimezone(local_tz).strftime("%H:%M")
+    else:
+        default_ts = "07:00"
+        default_te = "21:00"
+
     return {
         "forecast_age_seconds":     fa,
         "measurement_age_seconds":  ma,
         "forecast_stale":           fa is None or fa >= FORECAST_TTL,
-        "measurement_stale":        ma is None or ma >= MEASURE_TTL,
+        "measurement_stale":        ma is None or ma >= meas_ttl,
         "measurement_in_daylight":  in_dl,
         "updating_forecast":        c["updating_forecast"],
         "updating_measurements":    c["updating_measurements"],
         "forecast_available":       bool(model_keys and c["forecast"].get(model_keys[0])),
         "measurements_available":   bool(c["measurements"] and "time" in c["measurements"]),
+        "default_time_start":       default_ts,
+        "default_time_end":         default_te,
     }
 
 

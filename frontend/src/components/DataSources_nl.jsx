@@ -108,8 +108,7 @@ export default function DataSources_nl() {
         <a href="https://github.com/Deltares/ddlpy" target="_blank" rel="noopener noreferrer" style={link}>
           ddlpy
         </a>{' '}
-        library. Some locations also have an <b style={{ color: '#dedede' }}>alternative station</b> from
-        the NKV (Nederlands Kitesurf Vereniging) network, selectable on the Point tab with radio buttons.
+        library.
       </p>
       <p style={p}>
         Measurements include wind speed spreads (min/max) and wind heading, reported every 10 minutes.

@@ -121,6 +121,8 @@ function CustomWindTooltip() {
 
 export default function Settings({ data }) {
   const { timeStart, setTimeStart, timeEnd, setTimeEnd,
+          customTimeWindow, setCustomTimeWindow, effectiveTimeStart, effectiveTimeEnd,
+          defaultTimeStart, defaultTimeEnd,
           selectedWings, setSelectedWings, weight, setWeight,
           customWind, setCustomWind, windMin, setWindMin, windMax, setWindMax,
           speedUnit, setSpeedUnit,
@@ -316,10 +318,24 @@ export default function Settings({ data }) {
 
         <div data-tutorial="settings-window">
           <h3 style={{ fontSize: fs(12), color: T.text2, fontWeight: 500, letterSpacing: '0.02em', textTransform: 'uppercase', marginBottom: 8 }}>Availability Window</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <input type="time" step="3600" style={input_} value={timeStart} onChange={e => { setTimeStart(e.target.value.slice(0, 3) + '00'); autoApply() }} />
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+              <input type="checkbox" checked={customTimeWindow} onChange={e => { setCustomTimeWindow(e.target.checked); autoApply() }}
+                style={{ width: 15, height: 15, cursor: 'pointer', accentColor: T.accent }} />
+              <span style={{ fontSize: fs(13), color: T.text, fontWeight: 500 }}>Custom Time Window</span>
+            </label>
+            <div style={{ fontSize: fs(11), color: T.text3, marginTop: 4, paddingLeft: 23 }}>
+              {customTimeWindow ? 'Using your custom window.' : `Auto: ${defaultTimeStart} → ${defaultTimeEnd} (sunrise/sunset ± 1hr)`}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: customTimeWindow ? 1 : 0.4 }}>
+            <input type="time" step="3600" style={input_} value={customTimeWindow ? timeStart : effectiveTimeStart}
+              disabled={!customTimeWindow}
+              onChange={e => { setTimeStart(e.target.value.slice(0, 3) + '00'); autoApply() }} />
             <span style={{ color: T.text3 }}>→</span>
-            <input type="time" step="3600" style={input_} value={timeEnd} onChange={e => { setTimeEnd(e.target.value.slice(0, 3) + '00'); autoApply() }} />
+            <input type="time" step="3600" style={input_} value={customTimeWindow ? timeEnd : effectiveTimeEnd}
+              disabled={!customTimeWindow}
+              onChange={e => { setTimeEnd(e.target.value.slice(0, 3) + '00'); autoApply() }} />
           </div>
           <div style={{ fontSize: fs(11), color: T.text3, marginTop: 5 }}>Flyable hours are calculated within this window.</div>
         </div>
@@ -346,10 +362,17 @@ export default function Settings({ data }) {
 function StatusRow({ label, age, stale, updating, inDaylight = true }) {
   const ageStr = age != null ? `${Math.round(age/60)} min ago` : '—'
   let dotColor, statusText
-  if (updating)              { dotColor = '#e6a817'; statusText = 'Updating' }
-  else if (stale && !inDaylight) { dotColor = '#555555'; statusText = 'Night' }
-  else if (stale)            { dotColor = '#ef5350'; statusText = 'Stale' }
-  else                       { dotColor = '#1fd100'; statusText = 'Fresh' }
+  if (updating) {
+    dotColor = '#e6a817'; statusText = 'Updating'
+  } else if (!inDaylight) {
+    // Night mode: still show fresh/stale within night TTL
+    if (stale) { dotColor = '#555555'; statusText = 'Night (stale)' }
+    else       { dotColor = '#7a7acc'; statusText = 'Night (fresh)' }
+  } else if (stale) {
+    dotColor = '#ef5350'; statusText = 'Stale'
+  } else {
+    dotColor = '#1fd100'; statusText = 'Fresh'
+  }
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, fontSize: fs(13) }}>
       <span style={{ color: T.text }}>{label}</span>

@@ -15,7 +15,6 @@ soaralarm/
 │   ├── forecast_service.py      # Open-Meteo fetching, raw processing, display logic, point_ranges()
 │   ├── measurement_service.py   # Measurement fetching orchestrator (delegates to meas_fetch_*.py)
 │   ├── meas_fetch_rws.py        # Rijkswaterstaat measurement API (ddlpy)
-│   ├── meas_fetch_nkv.py        # NKV (Nederlands Kitesurf Vereniging) measurement API
 │   ├── config/
 │   │   ├── countries.json       # Available countries (code → {name, timezone})
 │   │   ├── modes.json           # Available flying modes (code → display name)
@@ -164,7 +163,7 @@ KNMI drops out after day 3 because it switches to ECMWF data at ~2.5 days and wo
 
 ### Measurements
 
-`measurement_service.py` orchestrates fetching from multiple measurement APIs using a registry pattern. Each API has its own `meas_fetch_<api>.py` module (e.g. `meas_fetch_rws.py` for Rijkswaterstaat via ddlpy, `meas_fetch_nkv.py` for NKV). The station registry in `stations_{country}.json` maps API names to station codes. Each location in `soar_points` references a primary `station` and optionally an `alt_station` from a different API.
+`measurement_service.py` orchestrates fetching from measurement APIs using a registry pattern. Each API has its own `meas_fetch_<api>.py` module (e.g. `meas_fetch_rws.py` for Rijkswaterstaat via ddlpy). The station registry in `stations_{country}.json` maps API names to station codes. Each location in `soar_points` references a primary `station` and optionally an `alt_station` from a different API.
 
 Measurements are standardised to: `{station_code: {name, lat, lon, wind: {timestamps, wind_min, wind_max}, heading: {timestamps, values} | None}}`.
 

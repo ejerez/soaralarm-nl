@@ -4,7 +4,6 @@
         "lon": 4.608334,
         "name": "Castricum aan Zee",
         "station": [ "rws", "ijmuiden.havenhoofd.zuid" ],
-        "alt_station": [ "nkv", "217"],
         "heading": 279,
         "slope": { "steepness": "steep", "height": 20 },
         "info": [
@@ -37,7 +36,6 @@
         "lon": 4.475574,
         "name": "Langevelderslag",
         "station": [ "rws", "ijmuiden.havenhoofd.zuid" ],
-        "alt_station": [ "nkv", "213" ],
         "heading": 295,
         "slope": { "steepness": "moderate", "height": 20 },
         "info": [
@@ -52,7 +50,6 @@
         "lon": 4.358881,
         "name": "Wassenaar",
         "station": [ "rws", "ijmuiden.havenhoofd.zuid" ],
-        "alt_station": [ "nkv", "213" ],
         "heading": 305,
         "slope": { "steepness": "moderate", "height": 17 },
         "info": [
@@ -66,7 +63,6 @@
         "lon": 4.039474,
         "name": "Rockanje Noord",
         "station": [ "rws", "stellendam.haringvlietsluizen.schuif1" ],
-        "alt_station": [ "nkv", "214" ],
         "heading": 233,
         "slope": { "steepness": "moderate", "height": 12 },
         "info": [
@@ -81,7 +77,6 @@
         "lon": 4.052399,
         "name": "Rockanje Zuid",
         "station": [ "rws", "stellendam.haringvlietsluizen.schuif1" ],
-        "alt_station": [ "nkv", "214" ],
         "heading": 240,
         "slope": { "steepness": "moderate", "height": 9 },
         "info": [

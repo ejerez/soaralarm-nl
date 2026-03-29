@@ -30,7 +30,7 @@ function fmtTime(ms) {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
-function buildWindData(dayFc, meas, stationRef, timeStart, timeEnd, convert) {
+function buildWindData(dayFc, meas, stationRef, convert) {
   // stationRef is [api, code] e.g. ["rws", "ijmuiden.havenhoofd.zuid"]
   const fcPoints = dayFc.time.map((t, i) => ({
     ts:            new Date(t).getTime(),
@@ -44,14 +44,18 @@ function buildWindData(dayFc, meas, stationRef, timeStart, timeEnd, convert) {
   const wind = meas?.[api]?.[code]?.wind
   if (!wind?.timestamps?.length) return fcPoints
 
+  // Bound measurements to the forecast time range
+  const fcMin = fcPoints[0]?.ts
+  const fcMax = fcPoints[fcPoints.length - 1]?.ts
+
   const measPoints = []
   wind.timestamps.forEach((ts, i) => {
     const lo = wind.wind_min[i]
     const hi = wind.wind_max[i]
     if (lo == null && hi == null) return
     const t = new Date(ts); if (isNaN(t.getTime())) return
-    if (timeStart && t < new Date(timeStart)) return
-    if (timeEnd   && t > new Date(timeEnd))   return
+    if (fcMin != null && t.getTime() < fcMin) return
+    if (fcMax != null && t.getTime() > fcMax) return
     measPoints.push({
       ts: t.getTime(),
       meas_wind_min: convert(lo ?? hi),
@@ -77,7 +81,7 @@ function buildWindData(dayFc, meas, stationRef, timeStart, timeEnd, convert) {
   return [...fcPoints, ...measPoints].sort((a, b) => a.ts - b.ts)
 }
 
-function buildDirData(dayFc, meas, stationRef, timeStart, timeEnd, heading) {
+function buildDirData(dayFc, meas, stationRef, heading) {
   function norm(deg) {
     let d = deg - heading
     if (d >  180) d -= 360
@@ -92,11 +96,14 @@ function buildDirData(dayFc, meas, stationRef, timeStart, timeEnd, heading) {
   const [api, code] = stationRef
   const ds = meas?.[api]?.[code]?.heading
   if (ds?.timestamps?.length && ds?.values?.length) {
+    // Bound measurements to the forecast time range
+    const fcMin = points[0]?.ts
+    const fcMax = points[points.length - 1]?.ts
     ds.timestamps.forEach((ts, i) => {
       const v = ds.values[i]; if (v==null||!isFinite(v)) return
       const t = new Date(ts); if (isNaN(t.getTime())) return
-      if (timeStart && t < new Date(timeStart)) return
-      if (timeEnd   && t > new Date(timeEnd))   return
+      if (fcMin != null && t.getTime() < fcMin) return
+      if (fcMax != null && t.getTime() > fcMax) return
       points.push({ ts: t.getTime(), meas_dir: parseFloat(norm(v).toFixed(1)) })
     })
   }
@@ -122,16 +129,6 @@ function WindTooltip({ active, payload, label, unit = 'km/h' }) {
     </div>
   )
 
-  // If this is a short-term-precip-only point (no wind forecast data), show just rain
-  if (d.wind_speed == null && d.meas_wind_min == null && d.short_term_precip != null) {
-    return box(
-      <div style={{ color: T.text2 }}>
-        <span style={{ color: '#1b8fe2' }}>Rain nowcast:</span>{' '}
-        <span style={{ color: T.text }}>{d.short_term_precip} mm/hr</span>
-      </div>
-    )
-  }
-
   // If measurement data exists at this point, show that instead of forecast
   if (d.meas_wind_min != null) {
     return box(
@@ -140,7 +137,7 @@ function WindTooltip({ active, payload, label, unit = 'km/h' }) {
         <div>max: <span style={{ color: T.text }}>{d.meas_wind_max} {unit}</span></div>
         <div>min: <span style={{ color: T.text }}>{d.meas_wind_min} {unit}</span></div>
         {d.short_term_precip != null && (
-          <div style={{ marginTop: 3 }}><span style={{ color: '#1b8fe2' }}>Rain nowcast:</span>{' '}<span style={{ color: T.text }}>{d.short_term_precip} mm/hr</span></div>
+          <div style={{ marginTop: 3 }}><span style={{ color: '#1b8fe2' }}>Short term precip.:</span>{' '}<span style={{ color: T.text }}>{d.short_term_precip} mm/hr</span></div>
         )}
       </div>
     )
@@ -153,7 +150,7 @@ function WindTooltip({ active, payload, label, unit = 'km/h' }) {
     if (p.dataKey === 'wind_gusts')    items.push({ name: 'Gusts',         value: p.value, color: p.color, unit })
     if (p.dataKey === 'wind_speed')    items.push({ name: 'Wind Speed',    value: p.value, color: p.color, unit })
     if (p.dataKey === 'precipitation') items.push({ name: 'Precipitation', value: p.value, color: p.color, unit: 'mm' })
-    if (p.dataKey === 'short_term_precip' && p.value != null) items.push({ name: 'Rain nowcast', value: p.value, color: '#1b8fe2', unit: 'mm/hr' })
+    if (p.dataKey === 'short_term_precip' && p.value != null) items.push({ name: 'Short term precip.', value: p.value, color: '#1b8fe2', unit: 'mm/hr' })
   })
   return box(items.map(it => (
     <div key={it.name} style={{ color: T.text2, marginBottom: 2 }}>
@@ -212,7 +209,8 @@ function InfoSymbols({ info }) {
 }
 
 export default function PointForecast({ data }) {
-  const { rawForecast, displayForecast, points, measurements, wings, dateIdx, ptIdx, setPtIdx, speedUnit = 'km/h', altStationPrefs, setAltStationPrefs } = data
+  const { rawForecast, displayForecast, points, measurements, wings, days, dateIdx, ptIdx, setPtIdx, speedUnit = 'km/h', altStationPrefs, setAltStationPrefs, effectiveTimeStart, effectiveTimeEnd } = data
+  const isToday = days?.[dateIdx] === 'Today'
   const toUnit = (v) => v == null ? null : parseFloat((v * SPEED_FACTOR[speedUnit]).toFixed(1))
 
   const point = points[ptIdx]
@@ -233,55 +231,96 @@ export default function PointForecast({ data }) {
   // Heading always comes from the primary station
   const headingStationRef = point?.station
 
+  // ── Effective time window as epoch ms (anchored to the forecast day) ─────
+  const { winStartMs, winEndMs } = useMemo(() => {
+    if (!dayFc?.time?.length) return { winStartMs: 0, winEndMs: 0 }
+    // Derive the calendar date from the first forecast timestamp
+    const refDate = new Date(dayFc.time[0])
+    const [sh, sm] = (effectiveTimeStart || '00:00').split(':').map(Number)
+    const [eh, em] = (effectiveTimeEnd   || '23:59').split(':').map(Number)
+    const ws = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate(), sh, sm).getTime()
+    let   we = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate(), eh, em).getTime()
+    // 00:00 end means next-day midnight
+    if (eh === 0 && em === 0) we += 24 * 60 * 60 * 1000
+    return { winStartMs: ws, winEndMs: we }
+  }, [dayFc, effectiveTimeStart, effectiveTimeEnd])
+
+  // Filter dayFc to the effective time window
+  const filteredDayFc = useMemo(() => {
+    if (!dayFc?.time?.length) return dayFc
+    const indices = []
+    dayFc.time.forEach((t, i) => {
+      const ms = new Date(t).getTime()
+      if (ms >= winStartMs && ms <= winEndMs) indices.push(i)
+    })
+    if (indices.length === dayFc.time.length) return dayFc  // no filtering needed
+    const pick = (arr) => indices.map(i => arr[i])
+    return {
+      ...dayFc,
+      time:           pick(dayFc.time),
+      temperature:    pick(dayFc.temperature),
+      visibility:     pick(dayFc.visibility),
+      precipitation:  pick(dayFc.precipitation),
+      wind_speed:     pick(dayFc.wind_speed),
+      wind_direction: pick(dayFc.wind_direction),
+      wind_gusts:     pick(dayFc.wind_gusts),
+    }
+  }, [dayFc, winStartMs, winEndMs])
+
   // ── Short-term precipitation from measurements (server-cached nowcast) ───
-  const shortTermPrecip = measurements?.short_term_precipitation?.[ptIdx]
+  // Only show on "Today" and filter to the effective time window
+  const shortTermPrecipRaw = isToday ? measurements?.short_term_precipitation?.[ptIdx] : null
+  const shortTermPrecip = useMemo(() => {
+    if (!shortTermPrecipRaw?.timestamps?.length) return null
+    const ts = [], vs = []
+    shortTermPrecipRaw.timestamps.forEach((t, i) => {
+      const ms = new Date(t).getTime()
+      if (ms >= winStartMs && ms <= winEndMs) { ts.push(t); vs.push(shortTermPrecipRaw.values[i]) }
+    })
+    return ts.length ? { timestamps: ts, values: vs } : null
+  }, [shortTermPrecipRaw, winStartMs, winEndMs])
 
+  // Use filteredDayFc for chart data — measurements also bounded by the window
   const windData = useMemo(() => {
-    if (!dayFc || !point) return []
-    const fcStart = dayFc.time[0], fcEnd = dayFc.time[dayFc.time.length - 1]
-    return buildWindData(dayFc, measurements, windStationRef, fcStart, fcEnd, toUnit)
-  }, [dayFc, measurements, windStationRef, point, speedUnit])
+    if (!filteredDayFc || !point) return []
+    return buildWindData(filteredDayFc, measurements, windStationRef, toUnit)
+  }, [filteredDayFc, measurements, windStationRef, point, speedUnit])
 
-  // Merge short-term precipitation into wind data, replacing forecast precip
-  // where the nowcast covers
-  const windDataWithPrecip = useMemo(() => {
+  // Merge short-term precip into wind data at existing timestamps so that
+  // the chart stays on a single dataset (fixes tooltip) and wind Areas keep
+  // rendering (no STP-only null-wind rows that break Recharts Area).
+  const windDataForChart = useMemo(() => {
     if (!shortTermPrecip?.timestamps?.length || !windData.length) return windData
 
-    // Build a lookup of short-term precip values by timestamp
+    // Build STP lookup by timestamp (skip null values)
     const stpByTs = new Map()
     shortTermPrecip.timestamps.forEach((t, i) => {
-      const ts = new Date(t).getTime()
-      if (isFinite(ts)) stpByTs.set(ts, shortTermPrecip.values[i])
+      const ms = new Date(t).getTime()
+      if (isFinite(ms) && shortTermPrecip.values[i] != null) stpByTs.set(ms, shortTermPrecip.values[i])
     })
     if (!stpByTs.size) return windData
 
     const stpMin = Math.min(...stpByTs.keys())
     const stpMax = Math.max(...stpByTs.keys())
+    const THRESHOLD = 30 * 60 * 1000  // match nearest STP within ±30 min
 
-    // Clone wind data and suppress forecast precip where STP covers
-    const byTs = new Map()
-    windData.forEach(d => {
-      const cloned = { ...d }
-      if (cloned.ts >= stpMin && cloned.ts <= stpMax) {
-        cloned.precipitation = null  // hide forecast precip in STP range
+    return windData.map(d => {
+      if (d.ts < stpMin - THRESHOLD || d.ts > stpMax + THRESHOLD) return d
+
+      // Null out forecast precip in STP range + attach nearest STP value
+      const cloned = { ...d, precipitation: null }
+      let best = null, bestDist = Infinity
+      for (const [ms, val] of stpByTs) {
+        const dist = Math.abs(ms - d.ts)
+        if (dist < bestDist) { bestDist = dist; best = val }
       }
-      byTs.set(cloned.ts, cloned)
+      if (bestDist <= THRESHOLD) cloned.short_term_precip = best
+      return cloned
     })
-
-    // Insert short-term precip data points
-    for (const [ts, value] of stpByTs) {
-      const existing = byTs.get(ts)
-      if (existing) {
-        existing.short_term_precip = value
-      } else {
-        byTs.set(ts, { ts, short_term_precip: value })
-      }
-    }
-
-    return Array.from(byTs.values()).sort((a, b) => a.ts - b.ts)
   }, [windData, shortTermPrecip])
-  const dirData  = useMemo(() => { if (!dayFc||!point) return []; const s=dayFc.time[0],e=dayFc.time[dayFc.time.length-1]; return buildDirData(dayFc,measurements,headingStationRef,s,e,heading) }, [dayFc,measurements,headingStationRef,point,heading])
-  const tempData = useMemo(() => (!dayFc||!point)?[]:buildTempData(dayFc), [dayFc,point])
+
+  const dirData  = useMemo(() => { if (!filteredDayFc||!point) return []; return buildDirData(filteredDayFc,measurements,headingStationRef,heading) }, [filteredDayFc,measurements,headingStationRef,point,heading])
+  const tempData = useMemo(() => (!filteredDayFc||!point)?[]:buildTempData(filteredDayFc), [filteredDayFc,point])
 
   if (!point || !dayFc) return <div style={{ color: T.text2, padding: '40px 0', textAlign: 'center', fontSize: fs(13) }}>No data available for this selection.</div>
 
@@ -321,9 +360,9 @@ export default function PointForecast({ data }) {
       <div data-tutorial="pt-wind" style={card_}>
         <div style={sectionTitle_}>Wind &amp; Gust Speed</div>
         <ResponsiveContainer width="100%" height={250}>
-          <ComposedChart data={windDataWithPrecip} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+          <ComposedChart data={windDataForChart} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-            <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin','dataMax']} ticks={dayFc.time.map(t => new Date(t).getTime())} tickFormatter={fmtTime} tick={TICK} />
+            <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin','dataMax']} ticks={filteredDayFc.time.map(t => new Date(t).getTime())} tickFormatter={fmtTime} tick={TICK} />
             <YAxis yAxisId="wind" tick={TICK} width={30} />
             <YAxis yAxisId="rain" orientation="right" tick={false} width={1} />
             <Tooltip content={<WindTooltip unit={speedUnit} />} />
@@ -344,7 +383,7 @@ export default function PointForecast({ data }) {
             <Area yAxisId="wind" type="monotone" dataKey="wind_speed"    name={`Wind Speed (${speedUnit})`}   fill="#7aaaee" stroke="#7aaaee" fillOpacity={0.25} dot={false} connectNulls />
             <Area yAxisId="rain" type="monotone" dataKey="precipitation" name="Precipitation (mm)"             fill="#3a6bbf" stroke="#3a6bbf" fillOpacity={0.8}  dot={false} connectNulls />
             {shortTermPrecip?.timestamps?.length > 0 && (
-              <Area yAxisId="rain" type="monotone" dataKey="short_term_precip" name="Rain nowcast (mm/hr)" fill="#1b8fe2" stroke="#1b8fe2" fillOpacity={0.9} dot={false} connectNulls strokeWidth={1.5} />
+              <Area yAxisId="rain" type="monotone" dataKey="short_term_precip" name="Short Term Precip. (mm/hr)" fill="#1b8fe2" stroke="#1b8fe2" fillOpacity={0.9} dot={false} connectNulls strokeWidth={1.5} />
             )}
             {/* Measurement band — stacked fill-between: min base (transparent) + band on top */}
             <Area yAxisId="wind" type="linear" dataKey="meas_wind_min"  name={`Measured (${speedUnit})`}   stackId="meas" stroke="rgba(255,255,255,0.75)" strokeWidth={1.5} fill="transparent" dot={false} connectNulls />
@@ -359,7 +398,7 @@ export default function PointForecast({ data }) {
         <ResponsiveContainer width="100%" height={210}>
           <ComposedChart data={dirData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-            <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin','dataMax']} ticks={dayFc.time.map(t => new Date(t).getTime())} tickFormatter={fmtTime} tick={TICK} />
+            <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin','dataMax']} ticks={filteredDayFc.time.map(t => new Date(t).getTime())} tickFormatter={fmtTime} tick={TICK} />
             <YAxis tick={TICK} domain={[domainLow, domainHigh]} width={30} allowDataOverflow />
             <Tooltip {...TOOLTIP} />
             <Legend wrapperStyle={{ fontSize:fsc(8, '1.4vw', 12), color: T.text2, fontFamily: T.font }} />

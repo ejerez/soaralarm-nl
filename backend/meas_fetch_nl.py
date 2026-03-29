@@ -1,13 +1,12 @@
 """
 Netherlands measurement fetch module.
 
-Consolidates RWS wind, NKV wind, KNMI radar rain tiles, and KNMI nowcast
+Consolidates RWS wind, KNMI radar rain tiles, and KNMI nowcast
 short-term precipitation into a single country-level fetch.
 
 Returns the standardised measurement format:
     {
         "rws":  {station_code: {name, lat, lon, wind, heading}},
-        "nkv":  {station_code: {name, lat, lon, wind, heading}},
         "rain_tiles": {image, bounds, time} | None,
         "short_term_precipitation": [{timestamps, values} | None, ...],
     }
@@ -106,115 +105,6 @@ def _fetch_rws(station_codes: List[str]) -> Dict[str, Dict]:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  NKV (weather2kite.nl) wind data
-# ═════════════════════════════════════════════════════════════════════════════
-
-_NKV_BASE_URL = "https://weather2kite.nl/sc/plotPerLocAndUnitReact.php"
-_NKV_MARKERS_URL = "https://weather2kite.nl/sc/getTableDump.php"
-_nkv_markers_cache: Optional[Dict] = None
-
-
-def _get_nkv_markers() -> Dict:
-    """Fetch station metadata (name, lat, lon) from the NKV markers endpoint."""
-    global _nkv_markers_cache
-    if _nkv_markers_cache is not None:
-        return _nkv_markers_cache
-    try:
-        resp = requests.get(
-            _NKV_MARKERS_URL,
-            params={"table": "mv_measurement_location_markers", "has_harmonie": "true"},
-            timeout=10,
-        )
-        resp.raise_for_status()
-        markers = resp.json()
-        _nkv_markers_cache = {
-            str(m["location_id"]): {
-                "name": m.get("location_name", f"NKV {m['location_id']}"),
-                "lat": float(m["n"]) if "n" in m else None,
-                "lon": float(m["e"]) if "e" in m else None,
-            }
-            for m in markers
-            if "location_id" in m
-        }
-    except Exception:
-        _nkv_markers_cache = {}
-    return _nkv_markers_cache
-
-
-def _fetch_nkv_station(station_code: str) -> Dict:
-    """Fetch wind speed + gust for a single NKV station, yesterday + today."""
-    all_speed = []
-    all_gust = []
-
-    for day in ["yesterday", "today"]:
-        resp = requests.get(_NKV_BASE_URL, params={
-            "json": "", "jsonOnly": "", "unit": "m/s",
-            "location": station_code, "day": day,
-        }, timeout=15)
-        resp.raise_for_status()
-        payload = resp.json()
-
-        datasets = payload.get("data", {}).get("datasets", [])
-        for ds in datasets:
-            label = ds.get("label", "")
-            points = ds.get("data", [])
-            if "voorspelling" in label.lower():
-                continue
-            if "windsnelheid" in label.lower():
-                for pt in points:
-                    all_speed.append((pt["x"], pt["y"]))
-            elif "windvlaag" in label.lower() or "windstoot" in label.lower():
-                for pt in points:
-                    all_gust.append((pt["x"], pt["y"]))
-
-    markers = _get_nkv_markers()
-    meta = markers.get(str(station_code), {"name": f"NKV {station_code}", "lat": None, "lon": None})
-    entry = {"name": meta["name"], "lat": meta["lat"], "lon": meta["lon"]}
-
-    if all_speed or all_gust:
-        speed_by_ts = {t: v * 3.6 for t, v in all_speed}  # m/s → km/h
-        gust_by_ts = {t: v * 3.6 for t, v in all_gust}
-        all_ts = sorted(set(speed_by_ts.keys()) | set(gust_by_ts.keys()))
-
-        timestamps, wind_min, wind_max = [], [], []
-        for ts in all_ts:
-            spd = speed_by_ts.get(ts)
-            gst = gust_by_ts.get(ts)
-            if spd is None and gst is None:
-                continue
-            lo = spd if spd is not None else gst
-            hi = gst if gst is not None else spd
-            timestamps.append(datetime.fromtimestamp(ts / 1000).isoformat())
-            wind_min.append(round(lo, 1))
-            wind_max.append(round(hi, 1))
-
-        entry["wind"] = {
-            "timestamps": timestamps,
-            "wind_min": wind_min,
-            "wind_max": wind_max,
-        }
-    else:
-        entry["wind"] = None
-
-    entry["heading"] = None
-    return entry
-
-
-def _fetch_nkv(station_codes: List[str]) -> Dict[str, Dict]:
-    """Fetch wind measurements from NKV for the given station codes."""
-    global _nkv_markers_cache
-    _nkv_markers_cache = None  # reset cache each fetch cycle
-
-    result = {}
-    for code in station_codes:
-        try:
-            result[code] = _fetch_nkv_station(code)
-        except Exception as exc:
-            print(f"[nl:nkv] ERROR fetching station {code}: {exc}")
-    return result
-
-
-# ═════════════════════════════════════════════════════════════════════════════
 #  KNMI Radar: rain tiles + nowcast precipitation
 # ═════════════════════════════════════════════════════════════════════════════
 
@@ -307,19 +197,20 @@ def _fetch_point_nowcast(lat: float, lon: float, session: requests.Session,
     """
     Fetch nowcast precipitation time series for a single lat/lon.
 
-    Requests the highest available temporal resolution:
-      - Every 5 min for 0–2 h
-      - Every 25 min for 2–5 h
+    Requests every 5 min for the full 0–5 h range.  The KNMI ADAGUC server
+    returns data only for available time steps, giving ~5 min resolution for
+    the 0–2 h radar extrapolation and whatever coarser resolution the NWP
+    blend provides for 2–5 h.
+
     Returns {"timestamps": [...], "values": [...]} or None.
     """
     ref_dt = datetime.fromisoformat(ref_time.replace("Z", "+00:00"))
 
-    # Build explicit time steps
-    times = []
-    for m in range(0, 125, 5):       # 0, 5, 10, …, 120  (25 steps)
-        times.append(ref_dt + timedelta(minutes=m))
-    for m in range(145, 305, 25):     # 145, 170, …, 295  (7 steps)
-        times.append(ref_dt + timedelta(minutes=m))
+    # Request every 5 min for the full forecast horizon.  The server only
+    # returns entries for time steps that have data, so over-requesting is
+    # harmless and maximises the chance of hitting the right offsets for the
+    # coarser 2–5 h blend.
+    times = [ref_dt + timedelta(minutes=m) for m in range(0, 305, 5)]
 
     time_str = ",".join(t.strftime("%Y-%m-%dT%H:%M:%SZ") for t in times)
 
@@ -366,6 +257,13 @@ def _fetch_point_nowcast(lat: float, lon: float, session: requests.Session,
     pairs.sort(key=lambda x: x[0])
     if not pairs:
         return None
+
+    # Log coverage for first-point debugging
+    span_min = (datetime.fromisoformat(pairs[-1][0].replace("Z", "+00:00"))
+                - ref_dt).total_seconds() / 60
+    print(f"[nl:knmi] Nowcast for ({lat:.3f},{lon:.3f}): "
+          f"{len(times)} steps requested, {len(pairs)} returned, "
+          f"span {span_min:.0f} min")
 
     return {
         "timestamps": [p[0] for p in pairs],
@@ -421,7 +319,7 @@ def fetch(stations_config: Dict, soar_points: List[Dict]) -> Dict:
     Parameters
     ----------
     stations_config : contents of stations_nl.json,
-        e.g. {"rws": ["station1", ...], "nkv": ["213", ...]}
+        e.g. {"rws": ["station1", ...]}
     soar_points : contents of soar_points_nl.json (list of point dicts
         with at least "lat" and "lon" keys)
 
@@ -429,15 +327,13 @@ def fetch(stations_config: Dict, soar_points: List[Dict]) -> Dict:
     -------
     dict with keys:
         "rws"   — per-station wind + heading from Rijkswaterstaat
-        "nkv"   — per-station wind from NKV
         "rain_tiles" — Leaflet-ready radar image {image, bounds, time}
         "short_term_precipitation" — per-point nowcast [{timestamps, values}, ...]
     """
     result: Dict = {}
 
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    with ThreadPoolExecutor(max_workers=2) as pool:
         rws_future = pool.submit(_fetch_rws, stations_config.get("rws", []))
-        nkv_future = pool.submit(_fetch_nkv, stations_config.get("nkv", []))
         knmi_future = pool.submit(_fetch_knmi_all, soar_points)
 
         try:
@@ -445,12 +341,6 @@ def fetch(stations_config: Dict, soar_points: List[Dict]) -> Dict:
         except Exception as exc:
             print(f"[nl] RWS fetch error: {exc}")
             result["rws"] = {}
-
-        try:
-            result["nkv"] = nkv_future.result()
-        except Exception as exc:
-            print(f"[nl] NKV fetch error: {exc}")
-            result["nkv"] = {}
 
         try:
             knmi = knmi_future.result()

@@ -102,6 +102,7 @@ function readSettingsFromStorage() {
     timeEnd:       localStorage.getItem('timeEnd')      || '23:59',
     selectedWings: loadSelectedWings(),
     weight:        parseFloat(localStorage.getItem('weight')  ?? '70'),
+    customTimeWindow: localStorage.getItem('customTimeWindow') === 'true',
     customWind:    localStorage.getItem('customWind') === 'true',
     windMin:       parseFloat(localStorage.getItem('windMin') ?? '15'),
     windMax:       parseFloat(localStorage.getItem('windMax') ?? '60'),
@@ -172,6 +173,7 @@ export function useSoarData() {
   const [timeEnd, setTimeEnd]           = useState(initSettings.timeEnd)
   const [selectedWings, setSelectedWings] = useState(initSettings.selectedWings)
   const [weight, setWeight]             = useState(initSettings.weight)
+  const [customTimeWindow, setCustomTimeWindow] = useState(initSettings.customTimeWindow)
   const [customWind, setCustomWind]     = useState(initSettings.customWind)
   const [windMin, setWindMin]           = useState(initSettings.windMin)
   const [windMax, setWindMax]           = useState(initSettings.windMax)
@@ -216,10 +218,17 @@ export function useSoarData() {
   const prevFcUpdatingRef  = useRef(false)
   const prevMsUpdatingRef  = useRef(false)
 
+  // ── Effective time window ────────────────────────────────────────────────
+  // When custom is off, use server-provided sunrise-based defaults
+  const defaultTimeStart = status?.default_time_start ?? '07:00'
+  const defaultTimeEnd   = status?.default_time_end   ?? '21:00'
+  const effectiveTimeStart = customTimeWindow ? timeStart : defaultTimeStart
+  const effectiveTimeEnd   = customTimeWindow ? timeEnd   : defaultTimeEnd
+
   // ── Keep refs in sync with state ─────────────────────────────────────────
   useEffect(() => {
-    settingsRef.current = { model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax }
-  }, [model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax])
+    settingsRef.current = { model, timeStart: effectiveTimeStart, timeEnd: effectiveTimeEnd, selectedWings, weight, customWind, windMin, windMax }
+  }, [model, effectiveTimeStart, effectiveTimeEnd, selectedWings, weight, customWind, windMin, windMax])
 
   useEffect(() => { rawForecastRef.current = rawForecast }, [rawForecast])
 
@@ -229,6 +238,7 @@ export function useSoarData() {
   useEffect(() => { localStorage.setItem('timeEnd',       timeEnd) },      [timeEnd])
   useEffect(() => { localStorage.setItem('selectedWings', JSON.stringify(selectedWings)) }, [selectedWings])
   useEffect(() => { localStorage.setItem('weight',        weight) },       [weight])
+  useEffect(() => { localStorage.setItem('customTimeWindow', customTimeWindow) }, [customTimeWindow])
   useEffect(() => { localStorage.setItem('customWind',    customWind) },   [customWind])
   useEffect(() => { localStorage.setItem('windMin',       windMin) },      [windMin])
   useEffect(() => { localStorage.setItem('windMax',       windMax) },      [windMax])
@@ -342,7 +352,7 @@ export function useSoarData() {
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return }
     fetchDisplay()
-  }, [model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax, fetchDisplay])
+  }, [model, effectiveTimeStart, effectiveTimeEnd, selectedWings, weight, customWind, windMin, windMax, fetchDisplay])
 
   // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -395,7 +405,7 @@ export function useSoarData() {
           }
 
           if (st.forecast_stale && !st.updating_forecast) api.refreshForecast()
-          if (st.measurement_stale && !st.updating_measurements && (st.measurement_in_daylight ?? true)) api.refreshMeasure()
+          if (st.measurement_stale && !st.updating_measurements) api.refreshMeasure()
 
           prevFcUpdatingRef.current = st.updating_forecast
           prevMsUpdatingRef.current = st.updating_measurements
@@ -427,7 +437,7 @@ export function useSoarData() {
         setStatus(st)
 
         if (st.forecast_stale && !st.updating_forecast) api.refreshForecast()
-        if (st.measurement_stale && !st.updating_measurements && (st.measurement_in_daylight ?? true)) {
+        if (st.measurement_stale && !st.updating_measurements) {
           api.refreshMeasure()
         }
 
@@ -496,6 +506,9 @@ export function useSoarData() {
     model, setModel,
     timeStart, setTimeStart,
     timeEnd, setTimeEnd,
+    customTimeWindow, setCustomTimeWindow,
+    effectiveTimeStart, effectiveTimeEnd,
+    defaultTimeStart, defaultTimeEnd,
     selectedWings, setSelectedWings,
     weight, setWeight,
     customWind, setCustomWind,

@@ -223,11 +223,12 @@ class ForecastService:
             for pt_idx, pt_raw in enumerate(raw):
                 sr = daily_info[pt_idx]["sunrise"]
                 ss = daily_info[pt_idx]["sunset"]
-                window_start = sr - timedelta(hours=1)
-                window_end   = ss + timedelta(hours=1)
 
+                # Include all hours for the calendar date (no sunrise/sunset filtering)
+                day_start = sr.normalize()                        # midnight local
+                day_end   = day_start + pd.Timedelta(days=1)
                 times = [pd.Timestamp(t) for t in pt_raw["hourly"]["date"]]
-                mask  = [(window_start <= t <= window_end) for t in times]
+                mask  = [(day_start <= t < day_end) for t in times]
 
                 def _filter(key):
                     return [pt_raw["hourly"][key][i] for i, ok in enumerate(mask) if ok]
@@ -348,13 +349,15 @@ class ForecastService:
                     t = pd.Timestamp(iso_time)
                     t_local = t.tz_convert("Europe/Amsterdam") if t.tzinfo else t
 
-                    in_window = (
-                        t_local.replace(hour=t_start.hour, minute=t_start.minute,
-                                        second=0, microsecond=0)
-                        <= t_local <=
-                        t_local.replace(hour=t_end.hour, minute=t_end.minute,
-                                        second=0, microsecond=0)
-                    )
+                    win_start = t_local.replace(hour=t_start.hour, minute=t_start.minute,
+                                                second=0, microsecond=0)
+                    # 00:00 end means next-day midnight
+                    if t_end.hour == 0 and t_end.minute == 0:
+                        win_end = t_local.normalize() + pd.Timedelta(days=1)
+                    else:
+                        win_end = t_local.replace(hour=t_end.hour, minute=t_end.minute,
+                                                  second=0, microsecond=0)
+                    in_window = win_start <= t_local <= win_end
 
                     if custom_mode:
                         wind_flyable = (

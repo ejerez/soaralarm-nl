@@ -35,7 +35,7 @@ class MeasurementService:
         ----------
         country : country code, e.g. "nl"
         stations_config : contents of stations_{country}.json,
-            e.g. {"rws": ["station1", ...], "nkv": ["213", ...]}
+            e.g. {"rws": ["station1", ...]}
         soar_points : contents of soar_points_{country}.json
         """
         self.country = country
