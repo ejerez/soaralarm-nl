@@ -286,39 +286,6 @@ export default function PointForecast({ data }) {
     return buildWindData(filteredDayFc, measurements, windStationRef, toUnit)
   }, [filteredDayFc, measurements, windStationRef, point, speedUnit])
 
-  // Merge short-term precip into wind data at existing timestamps so that
-  // the chart stays on a single dataset (fixes tooltip) and wind Areas keep
-  // rendering (no STP-only null-wind rows that break Recharts Area).
-  const windDataForChart = useMemo(() => {
-    if (!shortTermPrecip?.timestamps?.length || !windData.length) return windData
-
-    // Build STP lookup by timestamp (skip null values)
-    const stpByTs = new Map()
-    shortTermPrecip.timestamps.forEach((t, i) => {
-      const ms = new Date(t).getTime()
-      if (isFinite(ms) && shortTermPrecip.values[i] != null) stpByTs.set(ms, shortTermPrecip.values[i])
-    })
-    if (!stpByTs.size) return windData
-
-    const stpMin = Math.min(...stpByTs.keys())
-    const stpMax = Math.max(...stpByTs.keys())
-    const THRESHOLD = 30 * 60 * 1000  // match nearest STP within ±30 min
-
-    return windData.map(d => {
-      if (d.ts < stpMin - THRESHOLD || d.ts > stpMax + THRESHOLD) return d
-
-      // Null out forecast precip in STP range + attach nearest STP value
-      const cloned = { ...d, precipitation: null }
-      let best = null, bestDist = Infinity
-      for (const [ms, val] of stpByTs) {
-        const dist = Math.abs(ms - d.ts)
-        if (dist < bestDist) { bestDist = dist; best = val }
-      }
-      if (bestDist <= THRESHOLD) cloned.short_term_precip = best
-      return cloned
-    })
-  }, [windData, shortTermPrecip])
-
   const dirData  = useMemo(() => { if (!filteredDayFc||!point) return []; return buildDirData(filteredDayFc,measurements,headingStationRef,heading) }, [filteredDayFc,measurements,headingStationRef,point,heading])
   const tempData = useMemo(() => (!filteredDayFc||!point)?[]:buildTempData(filteredDayFc), [filteredDayFc,point])
 
@@ -360,7 +327,7 @@ export default function PointForecast({ data }) {
       <div data-tutorial="pt-wind" style={card_}>
         <div style={sectionTitle_}>Wind &amp; Gust Speed</div>
         <ResponsiveContainer width="100%" height={250}>
-          <ComposedChart data={windDataForChart} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+          <ComposedChart data={windData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin','dataMax']} ticks={filteredDayFc.time.map(t => new Date(t).getTime())} tickFormatter={fmtTime} tick={TICK} />
             <YAxis yAxisId="wind" tick={TICK} width={30} />
