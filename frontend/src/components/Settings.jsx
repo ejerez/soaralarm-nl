@@ -346,6 +346,10 @@ export default function Settings({ data }) {
         <div style={{ fontSize: fs(13), fontWeight: 600, color: T.text, marginBottom: 14 }}>Data Status</div>
         <StatusRow label="Forecast"     age={status?.forecast_age_seconds}    stale={status?.forecast_stale}    updating={status?.updating_forecast} />
         <StatusRow label="Measurements" age={status?.measurement_age_seconds} stale={status?.measurement_stale} updating={status?.updating_measurements} inDaylight={status?.measurement_in_daylight ?? true} />
+        <RainTilesStatusRow 
+          tilesInfo={status?.rain_tiles_info} 
+          updating={status?.updating_measurements} 
+        />
         <button
           onClick={() => { refreshForecast(); refetchDisplay() }}
           disabled={status?.updating_forecast || (status?.forecast_age_seconds != null && status.forecast_age_seconds < 7200)}
@@ -376,6 +380,43 @@ function StatusRow({ label, age, stale, updating, inDaylight = true }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, fontSize: fs(13) }}>
       <span style={{ color: T.text }}>{label}</span>
+      <span style={{ color: T.text2, fontSize: fs(12) }}>{ageStr}</span>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 500, fontSize: fs(12), color: dotColor }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, display: 'inline-block' }} />
+        {statusText}
+      </span>
+    </div>
+  )
+}
+
+function RainTilesStatusRow({ tilesInfo, updating }) {
+  // tilesInfo should be an array of tile ages in minutes, sorted oldest to newest
+  const tileCount = tilesInfo?.length || 0
+  
+  // Create age string showing all tile ages
+  const ageStr = tileCount > 0 
+    ? tilesInfo.map(age => age + 'min').join('/') + ' ago'
+    : '—'
+  
+  // Determine color and status based on tile count
+  let dotColor, statusText
+  if (updating) {
+    dotColor = '#e6a817'; statusText = 'Updating'
+  } else if (tileCount === 4) {
+    dotColor = '#1fd100'; statusText = 'Full (4 tiles)'  // Green for 4 tiles
+  } else if (tileCount === 3) {
+    dotColor = '#e6a817'; statusText = 'Good (3 tiles)'   // Yellow for 3 tiles
+  } else if (tileCount === 2) {
+    dotColor = '#ff9800'; statusText = 'Partial (2 tiles)' // Orange for 2 tiles
+  } else if (tileCount === 1) {
+    dotColor = '#ef5350'; statusText = 'Limited (1 tile)'  // Red for 1 tile
+  } else {
+    dotColor = '#666666'; statusText = 'None available'   // Gray for 0 tiles
+  }
+  
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, fontSize: fs(13) }}>
+      <span style={{ color: T.text }}>Radar Tiles</span>
       <span style={{ color: T.text2, fontSize: fs(12) }}>{ageStr}</span>
       <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 500, fontSize: fs(12), color: dotColor }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, display: 'inline-block' }} />

@@ -40,7 +40,7 @@ state = {
 _display_cache: dict = {}
 
 CONFIG_DIR   = Path("config")
-PKL_DIR      = Path("pkl")
+CACHE_DIR    = Path(".cache")
 FORECAST_TTL       = 7200   # 2 hours
 MEASURE_TTL_DAY    = 900    # 15 minutes
 MEASURE_TTL_NIGHT  = 3600   # 60 minutes
@@ -58,7 +58,7 @@ def _load_country(country: str):
 
     # Restore cached forecast
     c["forecast"] = {}
-    forecast_pkl = PKL_DIR / f"forecast_{country}.pkl"
+    forecast_pkl = CACHE_DIR / f"forecast_{country}.pkl"
     if forecast_pkl.exists():
         try:
             with open(forecast_pkl, "rb") as f:
@@ -71,7 +71,7 @@ def _load_country(country: str):
 
     # Restore cached measurements
     c["measurements"] = {}
-    measure_pkl = PKL_DIR / f"measurements_{country}.pkl"
+    measure_pkl = CACHE_DIR / f"measurements_{country}.pkl"
     if measure_pkl.exists():
         try:
             with open(measure_pkl, "rb") as f:
@@ -108,7 +108,7 @@ def _enrich(country: str, mode: str):
 # ── Startup ──────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
-    PKL_DIR.mkdir(exist_ok=True)
+    CACHE_DIR.mkdir(exist_ok=True)
 
     with open(CONFIG_DIR / "countries.json", encoding="utf-8") as f:
         state["countries"] = load(f)
@@ -222,7 +222,7 @@ async def _refresh_forecast(country: str):
             c["forecast"][name] = svc.process(raws[name])
         c["forecast"]["time"] = datetime.now()
         _clear_display_cache_for_country(country)
-        with open(PKL_DIR / f"forecast_{country}.pkl", "wb") as f:
+        with open(CACHE_DIR / f"forecast_{country}.pkl", "wb") as f:
             pickle.dump(c["forecast"], f, protocol=pickle.HIGHEST_PROTOCOL)
     except Exception as exc:
         print(f"[forecast:{country}] ERROR: {exc}")
@@ -240,7 +240,7 @@ async def _refresh_measurements(country: str):
         data = await svc.fetch()
         data["time"] = datetime.now()
         c["measurements"] = data
-        with open(PKL_DIR / f"measurements_{country}.pkl", "wb") as f:
+        with open(CACHE_DIR / f"measurements_{country}.pkl", "wb") as f:
             pickle.dump(c["measurements"], f, protocol=pickle.HIGHEST_PROTOCOL)
     except Exception as exc:
         print(f"[measurements:{country}] ERROR: {exc}")
@@ -272,6 +272,26 @@ def get_status(country: str = Query(...)):
         default_ts = "07:00"
         default_te = "21:00"
 
+    # Get rain tile information
+    rain_tile_count = 0
+    rain_tile_age_seconds = None
+    rain_tiles_info = None
+    if c["measurements"] and c["measurements"].get("rain_tiles"):
+        rain_tiles = c["measurements"]["rain_tiles"]
+        rain_tile_count = len(rain_tiles)
+        if rain_tile_count > 0:
+            # Create detailed tile info array with ages of all tiles (oldest to newest)
+            tiles_info = []
+            for tile in rain_tiles:
+                if tile.get("age_minutes") is not None:
+                    tiles_info.append(tile["age_minutes"])
+            rain_tiles_info = tiles_info
+            
+            # Use the age of the most recent tile (current tile) for backward compatibility
+            most_recent_tile = rain_tiles[-1]  # Last tile is most recent
+            if most_recent_tile.get("age_minutes") is not None:
+                rain_tile_age_seconds = most_recent_tile["age_minutes"] * 60
+
     return {
         "forecast_age_seconds":     fa,
         "measurement_age_seconds":  ma,
@@ -282,6 +302,9 @@ def get_status(country: str = Query(...)):
         "updating_measurements":    c["updating_measurements"],
         "forecast_available":       bool(model_keys and c["forecast"].get(model_keys[0])),
         "measurements_available":   bool(c["measurements"] and "time" in c["measurements"]),
+        "rain_tile_count":          rain_tile_count,
+        "rain_tile_age_seconds":    rain_tile_age_seconds,
+        "rain_tiles_info":          rain_tiles_info,
         "default_time_start":       default_ts,
         "default_time_end":         default_te,
     }

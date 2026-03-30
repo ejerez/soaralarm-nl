@@ -30,11 +30,46 @@ function fmtTime(ms) {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
-// Linear interpolation function with rounding
+// Linear interpolation function with rounding (fallback)
 function interpolateLinear(x1, y1, x2, y2, x) {
   if (x1 === x2) return y1 // Avoid division by zero
   const t = (x - x1) / (x2 - x1)
   const result = y1 + t * (y2 - y1)
+  return Math.round(result * 10) / 10 // Round to 1 decimal place
+}
+
+// Cubic spline interpolation for smoother transitions
+function interpolateCubic(x0, y0, x1, y1, x2, y2, x3, y3, x) {
+  // Calculate t parameter (normalized position between x1 and x2)
+  const t = (x - x1) / (x2 - x1)
+  
+  // Calculate differences
+  const h1 = x1 - x0
+  const h2 = x2 - x1
+  const h3 = x3 - x2
+  
+  // Avoid division by zero
+  if (h1 === 0 || h2 === 0 || h3 === 0) {
+    return interpolateLinear(x1, y1, x2, y2, x)
+  }
+  
+  // Calculate slopes (using finite differences)
+  const m1 = (y1 - y0) / h1
+  const m2 = (y2 - y1) / h2
+  const m3 = (y3 - y2) / h3
+  
+  // Calculate second derivatives (simplified Catmull-Rom approach)
+  const d1 = (m2 - m1) / (h2 + h1)
+  const d2 = (m3 - m2) / (h3 + h2)
+  
+  // Cubic interpolation formula
+  const a = 2 * (y1 - y2) + d1 + d2
+  const b = -3 * (y1 - y2) - 2 * d1 - d2
+  const c = d1
+  const d = y1
+  
+  // Evaluate cubic polynomial
+  const result = a * t * t * t + b * t * t + c * t + d
   return Math.round(result * 10) / 10 // Round to 1 decimal place
 }
 
@@ -107,22 +142,50 @@ function buildWindData(dayFc, meas, stationRef, convert, shortTermPrecip = null)
         const fp2 = sortedFcPoints[j + 1]
         
         if (t >= fp1.ts && t <= fp2.ts) {
-          // Interpolate wind speed using linear interpolation
+          // Use cubic spline interpolation for smoother transitions when we have enough points
+          const fp0 = j > 0 ? sortedFcPoints[j - 1] : null
+          const fp3 = j < sortedFcPoints.length - 2 ? sortedFcPoints[j + 2] : null
+          
+          // Interpolate wind speed
           if (fp1.wind_speed != null && fp2.wind_speed != null) {
-            interpolatedWindSpeed = interpolateLinear(
-              fp1.ts, fp1.wind_speed,
-              fp2.ts, fp2.wind_speed,
-              t
-            )
+            if (fp0 && fp3 && fp0.wind_speed != null && fp3.wind_speed != null) {
+              // Use cubic spline interpolation for smoother transitions
+              interpolatedWindSpeed = interpolateCubic(
+                fp0.ts, fp0.wind_speed,
+                fp1.ts, fp1.wind_speed,
+                fp2.ts, fp2.wind_speed,
+                fp3.ts, fp3.wind_speed,
+                t
+              )
+            } else {
+              // Fallback to linear interpolation
+              interpolatedWindSpeed = interpolateLinear(
+                fp1.ts, fp1.wind_speed,
+                fp2.ts, fp2.wind_speed,
+                t
+              )
+            }
           }
           
-          // Interpolate wind gusts using linear interpolation
+          // Interpolate wind gusts
           if (fp1.wind_gusts != null && fp2.wind_gusts != null) {
-            interpolatedWindGusts = interpolateLinear(
-              fp1.ts, fp1.wind_gusts,
-              fp2.ts, fp2.wind_gusts,
-              t
-            )
+            if (fp0 && fp3 && fp0.wind_gusts != null && fp3.wind_gusts != null) {
+              // Use cubic spline interpolation for smoother transitions
+              interpolatedWindGusts = interpolateCubic(
+                fp0.ts, fp0.wind_gusts,
+                fp1.ts, fp1.wind_gusts,
+                fp2.ts, fp2.wind_gusts,
+                fp3.ts, fp3.wind_gusts,
+                t
+              )
+            } else {
+              // Fallback to linear interpolation
+              interpolatedWindGusts = interpolateLinear(
+                fp1.ts, fp1.wind_gusts,
+                fp2.ts, fp2.wind_gusts,
+                t
+              )
+            }
           }
           
           break

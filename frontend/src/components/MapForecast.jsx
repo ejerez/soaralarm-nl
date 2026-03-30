@@ -361,33 +361,131 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     }
   }, [pointsBounds])
 
-  // ── Rain radar overlay (from server-cached measurements, Today only) ────
+  // ── Rain radar overlay with animation (from server-cached measurements, Today only) ────
   const isToday = days[dateIdx] === 'Today'
   const rainTiles = data.measurements?.rain_tiles
+  const [animateRadar, setAnimateRadar] = useState(true)
+  const [currentTileIndex, setCurrentTileIndex] = useState(0)
+  const sortedTilesRef = useRef([])
+  
+  // Debug: Log rain tiles data
+  useEffect(() => {
+    if (rainTiles) {
+      console.log('Rain tiles received:', rainTiles.length, 'tiles')
+      rainTiles.forEach((tile, i) => {
+        console.log(`Tile ${i}: age=${tile.age_minutes}min, has_image=${!!tile.image}`)
+      })
+    }
+  }, [rainTiles])
 
+  // Animation effect
   useEffect(() => {
     const map = leafletRef.current
-    if (!map) return
+    if (!map || !isToday || !rainTiles?.length) return
 
-    if (radarRef.current) { radarRef.current.remove(); radarRef.current = null }
-    if (!isToday || !rainTiles?.image) return
-
+    // Create radar pane if it doesn't exist
     if (!map.getPane('radarPane')) {
       map.createPane('radarPane')
       map.getPane('radarPane').style.zIndex = 250
     }
 
-    const overlay = L.imageOverlay(rainTiles.image, rainTiles.bounds, {
-      opacity: 0.55,
-      pane: 'radarPane',
-    })
-    overlay.addTo(map)
-    radarRef.current = overlay
+    // Clean up existing overlay
+    if (radarRef.current) { radarRef.current.remove(); radarRef.current = null }
 
+    // If animation is disabled or only one tile, show current tile
+    if (!animateRadar || rainTiles.length <= 1) {
+      const currentTile = rainTiles.find(tile => tile.age_minutes === 0) || rainTiles[rainTiles.length - 1]
+      if (currentTile?.image && currentTile?.bounds) {
+        const overlay = L.imageOverlay(currentTile.image, currentTile.bounds, {
+          opacity: 0.55,
+          pane: 'radarPane',
+        })
+        overlay.addTo(map)
+        radarRef.current = overlay
+        console.log('Displaying single tile:', currentTile)
+      } else {
+        console.warn('No valid tile to display:', currentTile)
+      }
+      return
+    }
+
+    // Sort tiles by age_minutes (newest to oldest) for correct animation order
+    console.log('Before sorting:', rainTiles.map(tile => `age=${tile.age_minutes}min`))
+    const sortedTiles = [...rainTiles].sort((a, b) => b.age_minutes - a.age_minutes)
+    
+    // Debug: Log sorted tiles to verify order
+    console.log('After sorting:', sortedTiles.map(tile => `age=${tile.age_minutes}min`))
+    
+    // Calculate dynamic age and timestamp for each tile based on current time
+    const now = Date.now()
+    const tilesWithDynamicAge = sortedTiles.map(tile => {
+      // Calculate timestamp if it's missing
+      const timestamp = tile.timestamp || (now - (tile.age_minutes * 60000))
+      return {
+        ...tile,
+        timestamp, // Ensure timestamp is always available
+        dynamicAge: Math.floor((now - timestamp) / 60000) // age in minutes
+      }
+    })
+    
+    // Store the sorted tiles in a ref for use in the overlay effect
+    sortedTilesRef.current = tilesWithDynamicAge
+    
+    // Animation logic with variable timing using setTimeout
+    const sequence = tilesWithDynamicAge.map((_, index) => index)
+    const timings = sequence.map((_, index) => index < sequence.length - 1 ? 500 : 3000)
+    
+    let timeoutId = null
+    let sequenceIndex = 0
+    
+    const runAnimationStep = () => {
+      setCurrentTileIndex(sequence[sequenceIndex])
+      
+      const nextIndex = (sequenceIndex + 1) % sequence.length
+      timeoutId = setTimeout(runAnimationStep, timings[sequenceIndex])
+      sequenceIndex = nextIndex
+    }
+    
+    // Start animation
+    timeoutId = setTimeout(runAnimationStep, timings[0])
+    
     return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
       if (radarRef.current) { radarRef.current.remove(); radarRef.current = null }
     }
-  }, [isToday, rainTiles])
+  }, [isToday, rainTiles, animateRadar])
+
+  // Update overlay when tile index changes
+  useEffect(() => {
+    const map = leafletRef.current
+    if (!map || !isToday || !rainTiles?.length || rainTiles.length <= 1) return
+
+    console.log(`Animation: Showing tile ${currentTileIndex} of ${rainTiles.length}`)
+    
+    if (radarRef.current) { radarRef.current.remove(); radarRef.current = null }
+
+    // Use the sorted tiles from the ref to ensure consistency with the animation effect
+    const tilesWithDynamicAge = sortedTilesRef.current
+    
+    const tile = tilesWithDynamicAge[currentTileIndex]
+    if (tile?.image && tile?.bounds) {
+      // Calculate timing for debug (don't need actual timings array here)
+      const isLastTile = currentTileIndex === tilesWithDynamicAge.length - 1
+      const displayTime = isLastTile ? 3000 : 500
+      console.log(`Tile ${currentTileIndex}: timestamp=${tile.timestamp}, dynamicAge=${tile.dynamicAge}min, showing for ${displayTime}ms`)
+      
+      const overlay = L.imageOverlay(tile.image, tile.bounds, {
+        opacity: 0.55,
+        pane: 'radarPane',
+      })
+      overlay.addTo(map)
+      radarRef.current = overlay
+    } else {
+      console.warn(`Tile ${currentTileIndex} has no image or bounds!`, tile)
+    }
+  }, [isToday, rainTiles, currentTileIndex])
 
   useEffect(() => {
     if (!leafletRef.current || !displayForecast || !points.length) return
@@ -589,6 +687,22 @@ export default function MapForecast({ data, onNavigateToPoint }) {
           />
           Show yesterday
         </label>
+        {isToday && rainTiles?.length > 1 && (
+          <label style={{ fontSize: fs(12), color: T.text2, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none', marginLeft: 12, backgroundColor: '#333', padding: '2px 6px', borderRadius: 4 }}>
+            <input
+              type="checkbox"
+              checked={animateRadar}
+              onChange={e => setAnimateRadar(e.target.checked)}
+              style={{ accentColor: T.accent, width: 13, height: 13, cursor: 'pointer' }}
+            />
+            Animate radar (45/30/15/min ago)
+          </label>
+        )}
+        {isToday && rainTiles?.length <= 1 && (
+          <div style={{ fontSize: fs(12), color: T.text3, marginLeft: 12 }}>
+            Animation unavailable
+          </div>
+        )}
       </div>
 
       {/* Bar chart */}

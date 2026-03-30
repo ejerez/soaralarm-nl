@@ -15,6 +15,8 @@ Returns the standardised measurement format:
 import base64
 import datetime as dt
 import math
+import os
+import pickle
 import re
 import time as time_mod
 from collections import defaultdict
@@ -102,6 +104,161 @@ def _fetch_rws(station_codes: List[str]) -> Dict[str, Dict]:
         result[station_code] = entry
 
     return result
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  Scheduled radar tile cache for consistent animation
+# ═════════════════════════════════════════════════════════════════════════════
+
+CACHE_DIR = ".cache"
+os.makedirs(CACHE_DIR, exist_ok=True)
+CACHE_FILE = os.path.join(CACHE_DIR, "radar_tiles_scheduled.pkl")
+SCHEDULE_FILE = os.path.join(CACHE_DIR, "radar_schedule_state.pkl")
+
+def _load_scheduled_cache():
+    """Load scheduled radar tile cache."""
+    try:
+        if os.path.exists(CACHE_FILE):
+            with open(CACHE_FILE, "rb") as f:
+                return pickle.load(f)
+    except Exception:
+        pass
+    return {"tiles": [], "last_update": None}
+
+def _save_scheduled_cache(cache):
+    """Save scheduled radar tiles to cache."""
+    try:
+        with open(CACHE_FILE, "wb") as f:
+            pickle.dump(cache, f)
+    except Exception as exc:
+        print(f"[nl:knmi] Scheduled cache save error: {exc}")
+
+def _load_schedule_state():
+    """Load schedule state."""
+    try:
+        if os.path.exists(SCHEDULE_FILE):
+            with open(SCHEDULE_FILE, "rb") as f:
+                return pickle.load(f)
+    except Exception:
+        pass
+    return {"last_run": None}
+
+def _save_schedule_state(state):
+    """Save schedule state."""
+    try:
+        with open(SCHEDULE_FILE, "wb") as f:
+            pickle.dump(state, f)
+    except Exception as exc:
+        print(f"[nl:knmi] Schedule state save error: {exc}")
+
+def _should_update_scheduled_tiles():
+    """Check if we should update scheduled tiles (every 15 minutes)."""
+    now = datetime.now(timezone.utc)
+    state = _load_schedule_state()
+    
+    # If never run before, run immediately
+    if state.get("last_run") is None:
+        return True
+    
+    # Check if 15 minutes have passed since last update
+    time_since_last = (now - state["last_run"]).total_seconds()
+    if time_since_last >= 15 * 60:
+        return True
+    
+    # Also check if we're at a 15-minute boundary (:00, :15, :30, :45)
+    if now.minute % 15 == 0 and now.second < 10:
+        # If we're close to a boundary and it's been >14 minutes, update
+        if time_since_last >= 14 * 60:
+            return True
+    
+    return False
+
+def _update_scheduled_tiles(soar_points: List[Dict]):
+    """
+    Update scheduled radar tiles every 15 minutes.
+    This ensures we have consistent historical data for animation.
+    """
+    if not _should_update_scheduled_tiles():
+        return
+    
+    try:
+        session = requests.Session()
+        ref_time = _get_reference_time(session)
+        
+        if not ref_time:
+            print("[nl:knmi] No reference time available for scheduled update")
+            return
+        
+        # Fetch current tile
+        current_tile = _fetch_rain_tile(soar_points, session, ref_time)
+        
+        if not current_tile:
+            print("[nl:knmi] Failed to fetch tile for scheduled update")
+            return
+        
+        # Load existing cache
+        cache = _load_scheduled_cache()
+        now = datetime.now(timezone.utc)
+        
+        # Add current tile with timestamp
+        cache_entry = {
+            "tile": current_tile,
+            "timestamp": now,
+            "reference_time": ref_time
+        }
+        
+        # Keep tiles for the last 60 minutes (5 updates to ensure we have 45min tile)
+        recent_tiles = [entry for entry in cache.get("tiles", []) 
+                       if (now - entry["timestamp"]).total_seconds() < 3900]
+        recent_tiles.append(cache_entry)
+        
+        cache["tiles"] = recent_tiles
+        cache["last_update"] = now
+        _save_scheduled_cache(cache)
+        
+        # Update schedule state
+        state = _load_schedule_state()
+        state["last_run"] = now
+        _save_schedule_state(state)
+        
+        print(f"[nl:knmi] Scheduled tile update completed at {now}")
+        print(f"[nl:knmi] Cache now contains {len(recent_tiles)} tiles (target: 4 for 45/30/15/0 min animation)")
+        
+    except Exception as exc:
+        print(f"[nl:knmi] Scheduled tile update error: {exc}")
+
+def _get_animation_tiles(soar_points: List[Dict]) -> List[Dict]:
+    """
+    Get tiles for animation from scheduled cache.
+    Returns list of tiles with age_minutes for animation.
+    """
+    # First try to update scheduled tiles
+    _update_scheduled_tiles(soar_points)
+    
+    # Load cache
+    cache = _load_scheduled_cache()
+    now = datetime.now(timezone.utc)
+    
+    # Create animation tiles
+    animation_tiles = []
+    
+    for entry in cache.get("tiles", []):
+        minutes_ago = int((now - entry["timestamp"]).total_seconds() / 60)
+        
+        # We want tiles at approximately 0, 15, 30, and 45 minutes ago
+        if minutes_ago <= 45:  # Keep tiles up to 45 minutes old
+            animation_tiles.append({
+                "image": entry["tile"]["image"],
+                "bounds": entry["tile"]["bounds"],
+                "time": entry["reference_time"],
+                "age_minutes": minutes_ago,
+                "timestamp": int(entry["timestamp"].timestamp() * 1000)  # Convert to milliseconds
+            })
+    
+    # Sort by age (oldest first)
+    animation_tiles.sort(key=lambda x: x["age_minutes"])
+    
+    return animation_tiles
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -277,17 +434,65 @@ def _fetch_point_nowcast(lat: float, lon: float, session: requests.Session,
 
 
 def _fetch_knmi_all(soar_points: List[Dict]) -> Dict:
-    """Fetch rain tile image + per-point nowcast precipitation from KNMI."""
+    """Fetch rain tile images (current + historical) + per-point nowcast precipitation from KNMI."""
     session = requests.Session()
     ref_time = _get_reference_time(session)
 
-    # ── Rain tile ────────────────────────────────────────────────────────────
-    rain_tiles = None
+    # ── Rain tiles (current + historical for animation) ─────────────────────
+    rain_tiles_list = []
+    
+    # Fetch current tile
+    current_tile = None
     try:
-        rain_tiles = _fetch_rain_tile(soar_points, session, ref_time)
+        current_tile = _fetch_rain_tile(soar_points, session, ref_time)
+        if current_tile:
+            rain_tiles_list.append({
+                "image": current_tile["image"],
+                "bounds": current_tile["bounds"],
+                "time": current_tile["time"],
+                "age_minutes": 0  # Current tile
+            })
     except Exception as exc:
-        print(f"[nl:knmi] Rain tile error: {exc}")
+        print(f"[nl:knmi] Current rain tile error: {exc}")
 
+    # Use scheduled tile updates for consistent animation
+    # This ensures we have fresh tiles every 15 minutes regardless of user activity
+    try:
+        scheduled_tiles = _get_animation_tiles(soar_points)
+        
+        if scheduled_tiles:
+            # Use scheduled tiles (already include current tile)
+            rain_tiles_list = scheduled_tiles
+            print(f"[nl:knmi] Using {len(scheduled_tiles)} scheduled tiles for animation")
+        else:
+            # Fallback to current tile only
+            if current_tile:
+                rain_tiles_list.append({
+                    "image": current_tile["image"],
+                    "bounds": current_tile["bounds"],
+                    "time": current_tile["time"],
+                    "age_minutes": 0
+                })
+                print("[nl:knmi] Using current tile only (scheduled tiles not yet available)")
+    except Exception as exc:
+        print(f"[nl:knmi] Scheduled tiles error: {exc}")
+        # Fallback to current tile
+        if current_tile:
+            rain_tiles_list.append({
+                "image": current_tile["image"],
+                "bounds": current_tile["bounds"],
+                "time": current_tile["time"],
+                "age_minutes": 0
+            })
+    
+    # Sort by age (oldest first) for animation
+    rain_tiles_list.sort(key=lambda x: x["age_minutes"])
+    
+    # Debug output
+    print(f"[nl:knmi] Prepared {len(rain_tiles_list)} rain tiles for delivery:")
+    for i, tile in enumerate(rain_tiles_list):
+        print(f"[nl:knmi]   Tile {i}: age={tile['age_minutes']}min, has_image={bool(tile.get('image'))}")
+    
     # ── Nowcast per point (batched to respect rate limits) ───────────────────
     short_term: List[Optional[Dict]] = [None] * len(soar_points)
     if ref_time:
@@ -310,7 +515,7 @@ def _fetch_knmi_all(soar_points: List[Dict]) -> Dict:
             if batch_end < len(soar_points):
                 time_mod.sleep(KNMI_BATCH_DELAY)
 
-    return {"rain_tiles": rain_tiles, "short_term_precipitation": short_term}
+    return {"rain_tiles": rain_tiles_list, "short_term_precipitation": short_term}
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -332,7 +537,7 @@ def fetch(stations_config: Dict, soar_points: List[Dict]) -> Dict:
     -------
     dict with keys:
         "rws"   — per-station wind + heading from Rijkswaterstaat
-        "rain_tiles" — Leaflet-ready radar image {image, bounds, time}
+        "rain_tiles" — List of radar images for animation [{image, bounds, time, age_minutes}, ...]
         "short_term_precipitation" — per-point nowcast [{timestamps, values}, ...]
     """
     result: Dict = {}
