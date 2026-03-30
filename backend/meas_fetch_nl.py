@@ -108,7 +108,7 @@ def _fetch_rws(station_codes: List[str]) -> Dict[str, Dict]:
 #  KNMI Radar: rain tiles + nowcast precipitation
 # ═════════════════════════════════════════════════════════════════════════════
 
-def _compute_bounds(soar_points: List[Dict], margin_km: float = 50.0):
+def _compute_bounds(soar_points: List[Dict], margin_km: float = 100.0):
     """Compute bounding box from soar points + margin in km."""
     lats = [pt["lat"] for pt in soar_points]
     lons = [pt["lon"] for pt in soar_points]
@@ -153,7 +153,7 @@ def _fetch_rain_tile(soar_points: List[Dict], session: requests.Session,
          "bounds": [[south, west], [north, east]],
          "time": "<reference_time>"}
     """
-    south, west, north, east = _compute_bounds(soar_points)
+    south, west, north, east = _compute_bounds(soar_points, margin_km=100.0)
 
     # Compute proportional image dimensions
     lat_range = north - south
@@ -169,7 +169,7 @@ def _fetch_rain_tile(soar_points: List[Dict], session: requests.Session,
         KNMI_WMS_BASE
         + "&REQUEST=GetMap"
         + "&LAYERS=precipitation_nowcast"
-        + "&STYLES=rainrate-blue-to-purple/nearest"
+        + "&STYLES=rainrate-grey/linear"
         + "&FORMAT=image/png&TRANSPARENT=true"
         + f"&CRS=EPSG:4326&BBOX={bbox}"
         + f"&WIDTH={width}&HEIGHT={height}"
@@ -230,6 +230,8 @@ def _fetch_point_nowcast(lat: float, lon: float, session: requests.Session,
         "INFO_FORMAT":        "application/json",
         "TIME":               time_str,
         "DIM_reference_time": ref_time,
+        # Try different styles to get actual precipitation values
+        "STYLES":             "rainrate-blue-to-purple/nearest",
     }
     url = KNMI_WMS_BASE + "&" + "&".join(f"{k}={v}" for k, v in params.items())
 
@@ -241,30 +243,33 @@ def _fetch_point_nowcast(lat: float, lon: float, session: requests.Session,
         print(f"[nl:knmi] Nowcast error for ({lat:.3f},{lon:.3f}): {exc}")
         return None
 
-    if not result or not isinstance(result, list) or not result[0].get("data"):
+    if not result or not isinstance(result, list):
+        print(f"[nl:knmi] Invalid response format for ({lat:.3f},{lon:.3f}): {result}")
         return None
-
-    # Parse ADAGUC response: {reference_time: {time: value, ...}}
+    
+    if not result[0].get("data"):
+        print(f"[nl:knmi] No data field in response for ({lat:.3f},{lon:.3f}). Full response: {result}")
+        return None
+    
+    # Debug: log the structure of the data
     data = result[0]["data"]
+    # Parse ADAGUC response: {reference_time: {time: value, ...}}
     pairs = []
     for _ref, steps in data.items():
         for t, val in steps.items():
             try:
+                # Convert to float and round to 2 decimal places
                 pairs.append((t, round(float(val), 2)))
             except (ValueError, TypeError):
-                pairs.append((t, None))
+                # Skip invalid values
+                continue
 
-    pairs.sort(key=lambda x: x[0])
     if not pairs:
         return None
 
-    # Log coverage for first-point debugging
-    span_min = (datetime.fromisoformat(pairs[-1][0].replace("Z", "+00:00"))
-                - ref_dt).total_seconds() / 60
-    print(f"[nl:knmi] Nowcast for ({lat:.3f},{lon:.3f}): "
-          f"{len(times)} steps requested, {len(pairs)} returned, "
-          f"span {span_min:.0f} min")
-
+    # Sort by timestamp
+    pairs.sort(key=lambda x: x[0])
+    
     return {
         "timestamps": [p[0] for p in pairs],
         "values": [p[1] for p in pairs],

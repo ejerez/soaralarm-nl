@@ -30,7 +30,15 @@ function fmtTime(ms) {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
-function buildWindData(dayFc, meas, stationRef, convert) {
+// Linear interpolation function with rounding
+function interpolateLinear(x1, y1, x2, y2, x) {
+  if (x1 === x2) return y1 // Avoid division by zero
+  const t = (x - x1) / (x2 - x1)
+  const result = y1 + t * (y2 - y1)
+  return Math.round(result * 10) / 10 // Round to 1 decimal place
+}
+
+function buildWindData(dayFc, meas, stationRef, convert, shortTermPrecip = null) {
   // stationRef is [api, code] e.g. ["rws", "ijmuiden.havenhoofd.zuid"]
   const fcPoints = dayFc.time.map((t, i) => ({
     ts:            new Date(t).getTime(),
@@ -77,8 +85,100 @@ function buildWindData(dayFc, meas, stationRef, convert) {
     }
   })
 
-  // Combine and sort; measurement-only points (between forecast hours) keep null forecast fields
-  return [...fcPoints, ...measPoints].sort((a, b) => a.ts - b.ts)
+  // Add short-term precipitation data as separate points (like measurements)
+  const precipPoints = []
+  if (shortTermPrecip?.timestamps?.length) {
+    // Sort forecast points by timestamp for interpolation
+    const sortedFcPoints = [...fcPoints].sort((a, b) => a.ts - b.ts)
+    
+    shortTermPrecip.timestamps.forEach((ts, i) => {
+      const t = new Date(ts).getTime()
+      if (t < fcMin || t > fcMax) return
+      const val = shortTermPrecip.values[i]
+      if (val == null) return
+      
+      // Use linear interpolation to get wind/gust values at this timestamp
+      let interpolatedWindSpeed = null
+      let interpolatedWindGusts = null
+      
+      // Find the segment where this timestamp falls
+      for (let j = 0; j < sortedFcPoints.length - 1; j++) {
+        const fp1 = sortedFcPoints[j]
+        const fp2 = sortedFcPoints[j + 1]
+        
+        if (t >= fp1.ts && t <= fp2.ts) {
+          // Interpolate wind speed using linear interpolation
+          if (fp1.wind_speed != null && fp2.wind_speed != null) {
+            interpolatedWindSpeed = interpolateLinear(
+              fp1.ts, fp1.wind_speed,
+              fp2.ts, fp2.wind_speed,
+              t
+            )
+          }
+          
+          // Interpolate wind gusts using linear interpolation
+          if (fp1.wind_gusts != null && fp2.wind_gusts != null) {
+            interpolatedWindGusts = interpolateLinear(
+              fp1.ts, fp1.wind_gusts,
+              fp2.ts, fp2.wind_gusts,
+              t
+            )
+          }
+          
+          break
+        }
+      }
+      
+      // Fallback to nearest point if interpolation failed
+      if (interpolatedWindSpeed == null || interpolatedWindGusts == null) {
+        let nearestForecast = null
+        let minDiff = Infinity
+        sortedFcPoints.forEach(fp => {
+          const diff = Math.abs(fp.ts - t)
+          if (diff < minDiff) {
+            minDiff = diff
+            nearestForecast = fp
+          }
+        })
+        interpolatedWindSpeed = interpolatedWindSpeed ?? nearestForecast?.wind_speed
+        interpolatedWindGusts = interpolatedWindGusts ?? nearestForecast?.wind_gusts
+      }
+      
+      precipPoints.push({
+        ts: t,
+        short_term_precip: val,  // Keep original value from backend
+        precipitation: 0,         // Explicitly set forecast precipitation to 0 to prevent interpolation
+        // Attach interpolated wind/gust data for tooltip use
+        wind_speed: interpolatedWindSpeed,
+        wind_gusts: interpolatedWindGusts,
+      })
+    })
+  }
+
+  // Set forecast precipitation to 0 between the first and last short-term precipitation timestamps
+  if (shortTermPrecip?.timestamps?.length > 0) {
+    const firstShortTermTime = new Date(shortTermPrecip.timestamps[0]).getTime()
+    const lastShortTermTime = new Date(shortTermPrecip.timestamps[shortTermPrecip.timestamps.length - 1]).getTime()
+    
+    fcPoints.forEach(fp => {
+      if (fp.ts >= firstShortTermTime && fp.ts <= lastShortTermTime) {
+        fp.precipitation = 0  // Zero out forecast precipitation between first and last short-term precip timestamps
+      }
+    })
+  }
+
+  // Remove forecast points that have exact timestamp matches with short-term precip points
+  // This prevents duplicate tooltips at the same timestamp
+  if (precipPoints.length > 0) {
+    const precipTimestamps = new Set(precipPoints.map(p => p.ts))
+    // Filter out forecast points that have exact timestamp matches with precip points
+    const filteredFcPoints = fcPoints.filter(fp => !precipTimestamps.has(fp.ts))
+    // Combine: filtered forecast points + measurements + precip points
+    return [...filteredFcPoints, ...measPoints, ...precipPoints].sort((a, b) => a.ts - b.ts)
+  }
+
+  // No short-term precip points, use original combination
+  return [...fcPoints, ...measPoints, ...precipPoints].sort((a, b) => a.ts - b.ts)
 }
 
 function buildDirData(dayFc, meas, stationRef, heading) {
@@ -137,20 +237,83 @@ function WindTooltip({ active, payload, label, unit = 'km/h' }) {
         <div>max: <span style={{ color: T.text }}>{d.meas_wind_max} {unit}</span></div>
         <div>min: <span style={{ color: T.text }}>{d.meas_wind_min} {unit}</span></div>
         {d.short_term_precip != null && (
-          <div style={{ marginTop: 3 }}><span style={{ color: '#1b8fe2' }}>Short term precip.:</span>{' '}<span style={{ color: T.text }}>{d.short_term_precip} mm/hr</span></div>
+          <div style={{ marginTop: 3 }}><span style={{ color: '#1b8fe2' }}>Radar precip.:</span>{' '}<span style={{ color: T.text }}>{d.short_term_precip} mm</span></div>
         )}
       </div>
     )
   }
 
-  // No measurement — show forecast
+  // Determine short-term precipitation period (earliest to latest timestamp)
+  let shortTermPeriod = null
+  payload.forEach(p => {
+    if (p.dataKey === 'short_term_precip' && p.value != null) {
+      const precipPoint = p.payload
+      if (precipPoint.ts != null) {
+        if (!shortTermPeriod) {
+          shortTermPeriod = { start: precipPoint.ts, end: precipPoint.ts }
+        } else {
+          shortTermPeriod.start = Math.min(shortTermPeriod.start, precipPoint.ts)
+          shortTermPeriod.end = Math.max(shortTermPeriod.end, precipPoint.ts)
+        }
+      }
+    }
+  })
+
+  const isInShortTermPeriod = shortTermPeriod && d.ts >= shortTermPeriod.start && d.ts <= shortTermPeriod.end
+  const hasShortTermPrecip = payload.some(p => p.dataKey === 'short_term_precip' && p.value != null)
+  
+  // If we're in short-term precipitation period OR hovering over short-term point, show enhanced tooltip
+  if (isInShortTermPeriod || d.short_term_precip != null) {
+    // For short-term precip points, wind/gust data is pre-attached in buildWindData
+    // For regular forecast points, use their own wind/gust data
+    const windSpeed = d.wind_speed
+    const windGusts = d.wind_gusts
+    
+    // Get the short-term precip value (either from current point or find nearest)
+    let shortTermValue = d.short_term_precip
+    if (shortTermValue == null && hasShortTermPrecip) {
+      let minPrecipDiff = Infinity
+      payload.forEach(p => {
+        if (p.dataKey === 'short_term_precip' && p.value != null) {
+          const precipPoint = p.payload
+          const diff = Math.abs(precipPoint.ts - d.ts)
+          if (diff < minPrecipDiff) {
+            minPrecipDiff = diff
+            shortTermValue = p.value
+          }
+        }
+      })
+    }
+
+    return box(
+      <div style={{ color: T.text2 }}>
+        {(windSpeed != null || windGusts != null) && (
+          <>
+            {windGusts != null && (
+              <div style={{ marginBottom: 2 }}><span style={{ color: '#c07028' }}>Gusts:</span>{' '}<span style={{ color: T.text }}>{windGusts} {unit}</span></div>
+            )}
+            {windSpeed != null && (
+              <div style={{ marginBottom: 2 }}><span style={{ color: '#7aaaee' }}>Wind Speed:</span>{' '}<span style={{ color: T.text }}>{windSpeed} {unit}</span></div>
+            )}
+          </>
+        )}
+        {shortTermValue != null && (
+          <div style={{ marginBottom: 2 }}><span style={{ color: '#1b8fe2' }}>Radar precip.:</span>{' '}<span style={{ color: T.text }}>{shortTermValue} mm</span></div>
+        )}
+      </div>
+    )
+  }
+
+  // No measurement and not in short-term precip period — show regular forecast
   if (d.wind_speed == null) return null
   const items = []
   payload.forEach(p => {
     if (p.dataKey === 'wind_gusts')    items.push({ name: 'Gusts',         value: p.value, color: p.color, unit })
     if (p.dataKey === 'wind_speed')    items.push({ name: 'Wind Speed',    value: p.value, color: p.color, unit })
-    if (p.dataKey === 'precipitation') items.push({ name: 'Precipitation', value: p.value, color: p.color, unit: 'mm' })
-    if (p.dataKey === 'short_term_precip' && p.value != null) items.push({ name: 'Short term precip.', value: p.value, color: '#1b8fe2', unit: 'mm/hr' })
+    // Skip precipitation for short-term precip points to avoid showing 0
+    if (p.dataKey === 'precipitation' && p.value != null && d.short_term_precip == null) {
+      items.push({ name: 'Precipitation', value: p.value, color: p.color, unit: 'mm' })
+    }
   })
   return box(items.map(it => (
     <div key={it.name} style={{ color: T.text2, marginBottom: 2 }}>
@@ -283,8 +446,8 @@ export default function PointForecast({ data }) {
   // Use filteredDayFc for chart data — measurements also bounded by the window
   const windData = useMemo(() => {
     if (!filteredDayFc || !point) return []
-    return buildWindData(filteredDayFc, measurements, windStationRef, toUnit)
-  }, [filteredDayFc, measurements, windStationRef, point, speedUnit])
+    return buildWindData(filteredDayFc, measurements, windStationRef, toUnit, shortTermPrecip)
+  }, [filteredDayFc, measurements, windStationRef, point, speedUnit, shortTermPrecip])
 
   const dirData  = useMemo(() => { if (!filteredDayFc||!point) return []; return buildDirData(filteredDayFc,measurements,headingStationRef,heading) }, [filteredDayFc,measurements,headingStationRef,point,heading])
   const tempData = useMemo(() => (!filteredDayFc||!point)?[]:buildTempData(filteredDayFc), [filteredDayFc,point])
@@ -478,6 +641,11 @@ export default function PointForecast({ data }) {
         {dayFc?.offshore_actual_lat != null
           ? <>Offshore forecast at <b style={{ color: T.text }}>{dayFc.offshore_actual_lat.toFixed(5)}°N, {dayFc.offshore_actual_lon.toFixed(5)}°E</b></>
           : 'Offshore forecast coordinates unavailable'
+        }
+        <br />
+        {shortTermPrecipRaw?.timestamps?.length > 0
+          ? <>Short-term precip. for this location ({shortTermPrecipRaw.timestamps.length} data points from {point.lat.toFixed(5)}°N, {point.lon.toFixed(5)}°E)</>
+          : 'No short-term precipitation data available'
         }
       </div>
       </div>
