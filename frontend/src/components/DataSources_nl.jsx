@@ -98,6 +98,20 @@ export default function DataSources_nl() {
         </table>
       </div>
 
+      <h3 style={h3}>Radar tiles &amp; nowcast short-term precipitation forecast</h3>
+      <p style={p}>
+        Radar tiles and per-location nowcast precipitation data are sourced from the{' '}
+        <a href="https://dataplatform.knmi.nl/dataset/radar-forecast-2-0" target="_blank" rel="noopener noreferrer" style={link}>
+          KNMI radar
+        </a>{' '}
+        via the KNMI ADAGUC WMS server (<b style={{ color: '#dedede' }}>precipitation_nowcast</b> layer).
+        The map overlay is animated with up to 4 tiles cached at 15-minute intervals,
+        covering roughly the last 45–60 minutes of radar observations. The per-location
+        nowcast provides a <b style={{ color: '#dedede' }}>2-hour outlook</b> at 5-minute
+        resolution based on radar extrapolation. Both the animated map and the per-location
+        nowcast charts are only shown for Today.
+      </p>
+
       <h3 style={h3}>Live wind measurements</h3>
       <p style={p}>
         Real-time wind measurements are pulled from multiple station APIs. The primary source is the{' '}

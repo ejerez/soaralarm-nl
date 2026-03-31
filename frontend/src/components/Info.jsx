@@ -327,7 +327,11 @@ export default function Info({ data }) {
           <a href="https://www.anthropic.com/claude" target="_blank" rel="noopener noreferrer" style={link}>
             Claude
           </a>{' '}
-          by Anthropic, which helped in planning the backend architecture{' '}
+          by Anthropic, and{' '}
+          <a href="https://mistral.ai/" target="_blank" rel="noopener noreferrer" style={link}>
+            Vibe
+          </a>{' '}
+          by Mistral, which helped in planning the backend architecture{' '}
           with <b style={{ color: '#dedede' }}>FastAPI</b>, developing most of the frontend with{' '}
           <b style={{ color: '#dedede' }}>React.js</b> and helping add features and solve issues at 
           a much faster rate than I could by hand.
@@ -405,9 +409,6 @@ export default function Info({ data }) {
           Please do understand that this is a hobby project. Major decisions about the way the app works have already 
           been made, and the reasoning behind a lot of them is explained here, on the <b style={{ color: '#dedede' }}>Info tab</b>. Your feedback is 
           greatly appreciated, but bear in mind I probably won't be able to reply to every email.
-        </p>
-        <p style={p}>
-          Recent contributions by [Mistral Vibe](https://mistral.ai/) (Mistral AI) have helped improve the animation logic and fix issues with the tile sorting and rendering.
         </p>
       </div>
 

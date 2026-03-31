@@ -13,8 +13,8 @@ soaralarm/
 ├── backend/
 │   ├── main.py                  # FastAPI app, multi-tenant routes, confidence scoring
 │   ├── forecast_service.py      # Open-Meteo fetching, raw processing, display logic, point_ranges()
-│   ├── measurement_service.py   # Measurement fetching orchestrator (delegates to meas_fetch_*.py)
-│   ├── meas_fetch_rws.py        # Rijkswaterstaat measurement API (ddlpy)
+│   ├── measurement_service.py   # Measurement fetching orchestrator (delegates to meas_fetch_{country}.py)
+│   ├── meas_fetch_nl.py         # NL measurements: RWS wind (ddlpy) + KNMI radar tiles + nowcast
 │   ├── config/
 │   │   ├── countries.json       # Available countries (code → {name, timezone})
 │   │   ├── modes.json           # Available flying modes (code → display name)
@@ -22,8 +22,9 @@ soaralarm/
 │   │   ├── models_nl.json       # NL forecast model definitions (resolution, patches, forecast_days)
 │   │   ├── wings_para.json      # Paragliding wing catalogue (display names, default sizes, tooltips)
 │   │   ├── ranges_para.json     # Paragliding range calibration (formula strings, steepness, wings)
-│   │   └── stations_nl.json     # NL measurement station registry (API → station codes)
-│   ├── pkl/                     # Pickle cache for forecast and measurement data (per country)
+│   │   ├── stations_nl.json     # NL measurement station registry (API → station codes)
+│   │   └── whatsnew.json        # What's new entries shown in the Info tab
+│   ├── .cache/                  # Pickle cache for forecast, measurement, and radar tile data (per country)
 │   └── requirements.txt
 └── frontend/
     ├── src/
@@ -56,7 +57,7 @@ The app is config-driven. To add a new country or mode, add the corresponding co
 2. Create `soar_points_dk.json` — location definitions with coords, heading, slope, info, link
 3. Create `models_dk.json` — forecast model configuration (Open-Meteo model names, resolutions)
 4. Create `stations_dk.json` — measurement station registry
-5. If the country uses a new measurement API, add `meas_fetch_<api>.py`
+5. Create `meas_fetch_dk.py` — country-level measurement module exposing `fetch(stations_config, soar_points)`
 6. Create `DataSources_dk.jsx` in `frontend/src/components/` — country-specific data sources info for the Info tab (auto-discovered via `import.meta.glob`)
 7. Set up subdomain DNS and nginx config (see Deployment section)
 
@@ -163,9 +164,18 @@ KNMI drops out after day 3 because it switches to ECMWF data at ~2.5 days and wo
 
 ### Measurements
 
-`measurement_service.py` orchestrates fetching from measurement APIs using a registry pattern. Each API has its own `meas_fetch_<api>.py` module (e.g. `meas_fetch_rws.py` for Rijkswaterstaat via ddlpy). The station registry in `stations_{country}.json` maps API names to station codes. Each location in `soar_points` references a primary `station` and optionally an `alt_station` from a different API.
+`measurement_service.py` orchestrates fetching via a country-based pattern. Each country has one `meas_fetch_{country}.py` module that handles all of that country's measurement sources. The module must expose a `fetch(stations_config, soar_points)` function. The station registry in `stations_{country}.json` maps API names to station codes.
 
-Measurements are standardised to: `{station_code: {name, lat, lon, wind: {timestamps, wind_min, wind_max}, heading: {timestamps, values} | None}}`.
+The NL module (`meas_fetch_nl.py`) returns:
+```python
+{
+    "rws":  {station_code: {name, lat, lon, wind: {timestamps, wind_min, wind_max}, heading: {timestamps, values} | None}},
+    "rain_tiles": [{image, bounds, time, timestamp}, ...] | None,   # up to 4 tiles, cached at 15-min intervals
+    "short_term_precipitation": [{timestamps, values} | None, ...], # per soar_point, 2 h at 5-min resolution
+}
+```
+
+Each location in `soar_points` references a primary `station` and optionally an `alt_station`.
 
 Data is refreshed every 15 minutes, but only during the daylight window (90 min before sunrise to 90 min after sunset, derived from forecast data). The `/api/status` endpoint reports `measurement_in_daylight` so the frontend can show "Night" status instead of "Stale".
 
@@ -380,7 +390,8 @@ All endpoints that need country or mode context receive them as **query paramete
 | GET | `/api/days` | — | Day labels (Yesterday through +6 days) |
 | GET | `/api/forecast/display` | `?country=&mode=` | Per-day Gantt, hours, certainty — accepts settings params below |
 | GET | `/api/forecast/raw` | `?country=` | Full hourly data per point, for the Point tab charts |
-| GET | `/api/measurements` | `?country=` | Wind speed and direction per station |
+| GET | `/api/measurements` | `?country=` | Wind speed and direction per station, plus radar tiles and nowcast |
+| GET | `/api/whatsnew` | — | What's new entries from `whatsnew.json` |
 | POST | `/api/forecast/refresh` | `?country=` | Kick off a background forecast refresh |
 | POST | `/api/measurements/refresh` | `?country=` | Kick off a background measurement refresh |
 

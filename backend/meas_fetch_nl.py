@@ -403,11 +403,8 @@ def _fetch_point_nowcast(lat: float, lon: float, session: requests.Session,
     """
     ref_dt = datetime.fromisoformat(ref_time.replace("Z", "+00:00"))
 
-    # Request every 5 min for the full forecast horizon.  The server only
-    # returns entries for time steps that have data, so over-requesting is
-    # harmless and maximises the chance of hitting the right offsets for the
-    # coarser 2–5 h blend.
-    times = [ref_dt + timedelta(minutes=m) for m in range(0, 305, 5)]
+    # Request every 5 min for the 2 hours ahead.
+    times = [ref_dt + timedelta(minutes=m) for m in range(0, 125, 5)]
 
     time_str = ",".join(t.strftime("%Y-%m-%dT%H:%M:%SZ") for t in times)
 
