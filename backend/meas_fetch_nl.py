@@ -222,7 +222,8 @@ def _update_scheduled_tiles(soar_points: List[Dict]):
 
         
     except Exception as exc:
-        print(f"[nl:knmi] Scheduled tile update error: {exc}")
+        # Error handling without printing
+        pass
 
 def _get_animation_tiles(soar_points: List[Dict]) -> List[Dict]:
     """
@@ -241,15 +242,8 @@ def _get_animation_tiles(soar_points: List[Dict]) -> List[Dict]:
     # 2. Keep only the 4 most recent tiles from what remains
     animation_tiles = []
     
-    # Debug: Log cache contents before filtering
+    # Get cache tiles
     cache_tiles = cache.get("tiles", [])
-    print(f"[nl:knmi] Cache contains {len(cache_tiles)} tiles")
-    if cache_tiles:
-        cache_ages = []
-        for entry in cache_tiles:
-            minutes_ago = int((now - entry["timestamp"]).total_seconds() / 60)
-            cache_ages.append(minutes_ago)
-        print(f"[nl:knmi] Cache tile ages: {cache_ages}")
     
     for entry in cache_tiles:
         minutes_ago = int((now - entry["timestamp"]).total_seconds() / 60)
@@ -266,36 +260,10 @@ def _get_animation_tiles(soar_points: List[Dict]) -> List[Dict]:
     # Second filter: sort by timestamp (newest first) and keep only the 4 most recent tiles
     animation_tiles.sort(key=lambda x: x["timestamp"], reverse=True)
     
-    # Debug: Log tile selection process
-    print(f"[nl:knmi] Tile filtering: {len(animation_tiles)} tiles after time filter")
-    if animation_tiles:
-        # Calculate ages for debugging only
-        now = datetime.now(timezone.utc)
-        ages = []
-        for tile in animation_tiles:
-            tile_time = datetime.fromtimestamp(tile["timestamp"] / 1000, timezone.utc)
-            minutes_ago = int((now - tile_time).total_seconds() / 60)
-            ages.append(minutes_ago)
-        print(f"[nl:knmi] Tile ages before count filter: {ages}")
-    
     if len(animation_tiles) > 4:
         animation_tiles = animation_tiles[:4]
-        print(f"[nl:knmi] Reduced to 4 most recent tiles")
     
     # Sort by timestamp (oldest first) for animation sequence
-    animation_tiles.sort(key=lambda x: x["timestamp"])
-    
-    if animation_tiles:
-        # Calculate final ages for debugging only
-        now = datetime.now(timezone.utc)
-        final_ages = []
-        for tile in animation_tiles:
-            tile_time = datetime.fromtimestamp(tile["timestamp"] / 1000, timezone.utc)
-            minutes_ago = int((now - tile_time).total_seconds() / 60)
-            final_ages.append(minutes_ago)
-        print(f"[nl:knmi] Final tile ages (oldest to newest): {final_ages}")
-    
-    # Sort by timestamp (oldest first)
     animation_tiles.sort(key=lambda x: x["timestamp"])
     
     return animation_tiles
@@ -385,7 +353,8 @@ def _fetch_rain_tile(soar_points: List[Dict], session: requests.Session,
                 "time": ref_time,
             }
     except Exception as exc:
-        print(f"[nl:knmi] Rain tile fetch error: {exc}")
+        # Error handling without printing
+        pass
     return None
 
 
@@ -489,7 +458,8 @@ def _fetch_knmi_all(soar_points: List[Dict]) -> Dict:
                 "time": current_tile["time"]
             })
     except Exception as exc:
-        print(f"[nl:knmi] Current rain tile error: {exc}")
+        # Error handling without printing
+        pass
 
     # Use scheduled tile updates for consistent animation
     # This ensures we have fresh tiles every 15 minutes regardless of user activity
@@ -510,7 +480,7 @@ def _fetch_knmi_all(soar_points: List[Dict]) -> Dict:
                 })
 
     except Exception as exc:
-        print(f"[nl:knmi] Error getting animation tiles: {exc}")
+        # Error handling without printing
         # Fallback to current tile
         if current_tile:
             rain_tiles_list.append({

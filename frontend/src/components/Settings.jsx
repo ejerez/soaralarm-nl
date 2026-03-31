@@ -217,43 +217,44 @@ export default function Settings({ data }) {
 
       {/* Card 2: Wings, Weight, Custom Wind */}
       <div style={card}>
-        <div style={field}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
-              <input type="checkbox" checked={customWind} onChange={e => { setCustomWind(e.target.checked); autoApply() }}
-                style={{ width: 15, height: 15, cursor: 'pointer', accentColor: T.accent }} />
-              <span style={{ fontSize: fs(13), color: T.text, fontWeight: 500 }}>Custom Wind Range</span>
-            </label>
-            <CustomWindTooltip />
-          </div>
-          {customWind && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', paddingLeft: 23 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: fs(12), color: T.text2 }}>Min. wind</span>
-                <input type="text" inputMode="numeric" pattern="\d*" style={{ ...input_, width: 60 }}
-                  value={windMin}
-                  onChange={e => { if (/^\d*$/.test(e.target.value)) { setWindMin(e.target.value); autoApply() } }}
-                  onBlur={e => { const n = parseInt(e.target.value); setWindMin(isNaN(n) ? 15 : n); autoApply() }}
-                  placeholder="15" />
-                <span style={{ fontSize: fs(12), color: T.text2 }}>km/h</span>
-              </div>
-              <span style={{ color: T.text3 }}>→</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: fs(12), color: T.text2 }}>Max. gusts</span>
-                <input type="text" inputMode="numeric" pattern="\d*" style={{ ...input_, width: 60 }}
-                  value={windMax}
-                  onChange={e => { if (/^\d*$/.test(e.target.value)) { setWindMax(e.target.value); autoApply() } }}
-                  onBlur={e => { const n = parseInt(e.target.value); setWindMax(isNaN(n) ? 60 : n); autoApply() }}
-                  placeholder="60" />
-                <span style={{ fontSize: fs(12), color: T.text2 }}>km/h</span>
-              </div>
+        <div data-tutorial="settings-wings">
+          <div style={field}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+                <input type="checkbox" checked={customWind} onChange={e => { setCustomWind(e.target.checked); autoApply() }}
+                  style={{ width: 15, height: 15, cursor: 'pointer', accentColor: T.accent }} />
+                <span style={{ fontSize: fs(13), color: T.text, fontWeight: 500 }}>Custom Wind Range</span>
+              </label>
+              <CustomWindTooltip />
             </div>
-          )}
-        </div>
+            {customWind && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', paddingLeft: 23 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: fs(12), color: T.text2 }}>Min. wind</span>
+                  <input type="text" inputMode="numeric" pattern="\d*" style={{ ...input_, width: 60 }}
+                    value={windMin}
+                    onChange={e => { if (/^\d*$/.test(e.target.value)) { setWindMin(e.target.value); autoApply() } }}
+                    onBlur={e => { const n = parseInt(e.target.value); setWindMin(isNaN(n) ? 15 : n); autoApply() }}
+                    placeholder="15" />
+                  <span style={{ fontSize: fs(12), color: T.text2 }}>km/h</span>
+                </div>
+                <span style={{ color: T.text3 }}>→</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: fs(12), color: T.text2 }}>Max. gusts</span>
+                  <input type="text" inputMode="numeric" pattern="\d*" style={{ ...input_, width: 60 }}
+                    value={windMax}
+                    onChange={e => { if (/^\d*$/.test(e.target.value)) { setWindMax(e.target.value); autoApply() } }}
+                    onBlur={e => { const n = parseInt(e.target.value); setWindMax(isNaN(n) ? 60 : n); autoApply() }}
+                    placeholder="60" />
+                  <span style={{ fontSize: fs(12), color: T.text2 }}>km/h</span>
+                </div>
+              </div>
+            )}
+          </div>
 
-        <div style={{ opacity: customWind ? 0.4 : 1, pointerEvents: customWind ? 'none' : 'auto', transition: 'opacity 0.2s' }}>
-          <div data-tutorial="settings-wings" style={field}>
-            <label style={label_}>Wings</label>
+          <div style={{ opacity: customWind ? 0.4 : 1, pointerEvents: customWind ? 'none' : 'auto', transition: 'opacity 0.2s' }}>
+            <div style={field}>
+              <label style={label_}>Wings</label>
             {rows.map((entry, i) => (
               <WingRow key={i} entry={entry} wings={wings} isRemovable={i > 0}
                 onChange={v => updateRow(i, v)} onRemove={() => removeRow(i)} />
@@ -282,38 +283,40 @@ export default function Settings({ data }) {
       </div>
 
       {/* Card 3: Preferences */}
-      <div style={card} data-tutorial="settings-preferences">
-        <label style={{ ...label_, marginBottom: 14 }}>Preferences</label>
+      <div style={card}>
+        <div data-tutorial="settings-preferences">
+          <label style={{ ...label_, marginBottom: 14 }}>Preferences</label>
 
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
-              <input type="checkbox" checked={outdoorsMode} onChange={e => setOutdoorsMode(e.target.checked)}
-                style={{ width: 15, height: 15, cursor: 'pointer', accentColor: T.accent }} />
-              <span style={{ fontSize: fs(13), color: T.text, fontWeight: 500 }}>Sunny Mode</span>
-            </label>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+                <input type="checkbox" checked={outdoorsMode} onChange={e => setOutdoorsMode(e.target.checked)}
+                  style={{ width: 15, height: 15, cursor: 'pointer', accentColor: T.accent }} />
+                <span style={{ fontSize: fs(13), color: T.text, fontWeight: 500 }}>Sunny Mode</span>
+              </label>
+            </div>
+            <div style={{ fontSize: fs(11), color: T.text3, marginTop: 4, paddingLeft: 23 }}>High contrast mode for sunny days.</div>
           </div>
-          <div style={{ fontSize: fs(11), color: T.text3, marginTop: 4, paddingLeft: 23 }}>High contrast mode for sunny days.</div>
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
-              <input type="checkbox" checked={largeFont} onChange={e => setLargeFont(e.target.checked)}
-                style={{ width: 15, height: 15, cursor: 'pointer', accentColor: T.accent }} />
-              <span style={{ fontSize: fs(13), color: T.text, fontWeight: 500 }}>Large Font</span>
-            </label>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+                <input type="checkbox" checked={largeFont} onChange={e => setLargeFont(e.target.checked)}
+                  style={{ width: 15, height: 15, cursor: 'pointer', accentColor: T.accent }} />
+                <span style={{ fontSize: fs(13), color: T.text, fontWeight: 500 }}>Large Font</span>
+              </label>
+            </div>
+            <div style={{ fontSize: fs(11), color: T.text3, marginTop: 4, paddingLeft: 23 }}>Increases font size for easier reading.</div>
           </div>
-          <div style={{ fontSize: fs(11), color: T.text3, marginTop: 4, paddingLeft: 23 }}>Increases font size for easier reading.</div>
-        </div>
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
-              <input type="checkbox" checked={altFont} onChange={e => setAltFont(e.target.checked)}
-                style={{ width: 15, height: 15, cursor: 'pointer', accentColor: T.accent }} />
-              <span style={{ fontSize: fs(13), color: T.text, fontWeight: 500 }}>Alternative Font</span>
-            </label>
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+                <input type="checkbox" checked={altFont} onChange={e => setAltFont(e.target.checked)}
+                  style={{ width: 15, height: 15, cursor: 'pointer', accentColor: T.accent }} />
+                <span style={{ fontSize: fs(13), color: T.text, fontWeight: 500 }}>Alternative Font</span>
+              </label>
+            </div>
+            <div style={{ fontSize: fs(11), color: T.text3, marginTop: 4, paddingLeft: 23 }}>Switches to DM Sans.</div>
           </div>
-          <div style={{ fontSize: fs(11), color: T.text3, marginTop: 4, paddingLeft: 23 }}>Switches to DM Sans.</div>
         </div>
 
         <div data-tutorial="settings-window">
@@ -338,6 +341,7 @@ export default function Settings({ data }) {
               onChange={e => { setTimeEnd(e.target.value.slice(0, 3) + '00'); autoApply() }} />
           </div>
           <div style={{ fontSize: fs(11), color: T.text3, marginTop: 5 }}>Flyable hours are calculated within this window.</div>
+        </div>
         </div>
       </div>
 

@@ -30,12 +30,12 @@ const STEPS = [
   {
     tab: 0, selector: '[data-tutorial="map"]', position: 'below',
     title: 'The map',
-    body:  <>Each dot marks a <b style={{ color: T.text }}>soaring location</b>. The <b style={{ color: T.text }}>wind slices</b> show estimated flyable hours for the selected day – a larger slice means more hours. Green indicates a <b style={{ color: '#1dbb02' }}>Good Heading</b> and yellow indicates <b style={{ color: '#ddb60a' }}>Crosswind</b>. Tap any marker to see a summary popup with a <b style={{ color: T.text }}>Spot information</b> link. Tapping a marker also selects that location, so you can switch to the <b style={{ color: T.text }}>Point tab</b> for the detailed forecast.</>,
+    body:  <>Each dot marks a <b style={{ color: T.text }}>soaring location</b>. The <b style={{ color: T.text }}>wind slices</b> show estimated flyable hours for the selected day – a larger slice means more hours. Green indicates a <b style={{ color: '#1dbb02' }}>Good Heading</b> and yellow indicates <b style={{ color: '#ddb60a' }}>Crosswind</b>. Tap any marker to see a summary popup with a <b style={{ color: T.text }}>Spot information</b> link. Tapping a marker also selects that location, so you can switch to the <b style={{ color: T.text }}>Point tab</b> for the detailed forecast. There's also <b style={{ color: T.text }}>precipitation radar animations</b> for the last ~45 min on the map.</>,
   },
   {
     tab: 0, selector: '[data-tutorial="plotcontrols"]', position: 'below',
     title: 'Plot controls',
-    body:  <><b style={{ color: T.text }}>Forecast days</b> limits how many days ahead the flyable hours and windows charts show. Enabling <b style={{ color: T.text }}>Show yesterday</b> adds the previous day to both charts.</>,
+    body:  <><b style={{ color: T.text }}>Forecast days</b> limits how many days ahead the flyable hours and windows charts show. Enabling <b style={{ color: T.text }}>Show yesterday</b> adds the previous day to both charts. You can also <b style={{ color: T.text }}>disable</b> the <b style={{ color: T.text }}>radar animation</b> in the map.</>,
   },
   {
     tab: 0, selector: '[data-tutorial="barchart"]', position: 'above',
@@ -76,7 +76,7 @@ const STEPS = [
   {
     tab: 1, selector: '[data-tutorial="pt-wind"]', position: 'below',
     title: 'Windspeed forecast',
-    body:  <>Hourly <b style={{ color: T.text }}>wind and gust speed</b> for the selected location and day. The white band shows live measurements from the corresponding weather station. Green reference lines mark the <b style={{ color: T.text }}>flyable wind range</b> for each of your configured wings at this location.</>,
+    body:  <>Hourly <b style={{ color: '#7aaaee' }}>wind</b> and <b style={{ color: '#c07028' }}>gust speed</b> for the selected location and day. The white band shows live measurements from the corresponding weather station. Reference lines mark the <b style={{ color: '#1fd100' }}>flyable wind range</b> for each of your configured wings at this location. There's a high resolution <b style={{ color: '#1b8fe2' }}>short-term precipitation forecast</b> as well, based on radar measurements.</>,
   },
   {
     tab: 1, selector: '[data-tutorial="pt-direction"]', position: 'below',
@@ -86,7 +86,7 @@ const STEPS = [
   {
     tab: 1, selector: '[data-tutorial="pt-ranges"]', position: 'above',
     title: 'Windspeed ranges and weather station',
-    body:  <>A summary of the <b style={{ color: T.text }}>calculated windspeed ranges</b> for each of <b style={{ color: T.text }}>your configured wings</b> at this location, as well as information about the selected  <b style={{ color: T.text }}>weather station</b>. If you have enabled <b style={{ color: T.text }}>Custom Wind Range</b> in <b style={{ color: T.text }}>Settings</b>, that overrides these calculations.  At locations with  <b style={{ color: T.text }}>multiple weather stations</b>, radio buttons let you choose which station's measurements to overlay.</>,
+    body:  <>A summary of the <b style={{ color: T.text }}>calculated windspeed ranges</b> for each of <b style={{ color: T.text }}>your configured wings</b> at this location, as well as information about the selected  <b style={{ color: T.text }}>weather station</b>. If you have enabled <b style={{ color: T.text }}>Custom Wind Range</b> in <b style={{ color: T.text }}>Settings</b>, that overrides these calculations. At the bottom you can also see information about the <b style={{ color: T.text }}>short-term precipitation</b> forecast.</>,
   },
   // ── Settings tab intro ──
   {
@@ -122,7 +122,7 @@ const STEPS = [
   {
     tab: 2, selector: '[data-tutorial="settings-window"]', position: 'below',
     title: 'Availability window',
-    body:  <>Restricts the <b style={{ color: T.text }}>flyable hours</b> to those that fall within the times you are <b style={{ color: T.text }}>actually available to fly</b>. If you set 10:00 → 17:00, any flyable forecast hours outside that window are excluded from the flyable hours and flyable windows in the <b style={{ color: T.text }}>Map tab</b>.</>,
+    body:  <>Restricts times used in the <b style={{ color: T.text }}>flyable hours</b> calculations in the <b style={{ color: T.text }}>Map tab</b> and all the plots in the <b style={{ color: T.text }}>Point tab</b>. Defaults to values based on <b style={{ color: T.text }}>sunrise and sunset</b>, but you can also set your own values with <b style={{ color: T.text }}>Custom Time Window</b>.</>,
   },
   // ── Info tab intro ──
   {

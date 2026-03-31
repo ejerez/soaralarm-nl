@@ -411,8 +411,6 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         (tile.timestamp || 0) > (latest.timestamp || 0) ? tile : latest, 
         rainTiles[0]
       ) || rainTiles[rainTiles.length - 1]
-      console.log('Single tile mode - all rainTiles:', rainTiles.map(t => ({timestamp: t.timestamp, time: t.time})))
-      console.log('Selected current tile:', currentTile ? {timestamp: currentTile.timestamp, time: currentTile.time} : null)
       if (currentTile?.image && currentTile?.bounds) {
         const overlay = L.imageOverlay(currentTile.image, currentTile.bounds, {
           opacity: 0.55,
@@ -420,26 +418,12 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         })
         overlay.addTo(map)
         radarRef.current = overlay
-        console.log('Displaying single tile:', currentTile)
-      } else {
-        console.warn('No valid tile to display:', currentTile)
       }
       return
     }
 
     // Sort tiles by timestamp (oldest to newest) for correct animation order
     const sortedTiles = [...rainTiles].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
-    
-    console.log('Raw rainTiles received:', rainTiles.map(t => ({timestamp: t.timestamp, time: t.time})))
-    console.log('Sorted tiles (newest to oldest):', sortedTiles.map(t => ({timestamp: t.timestamp, time: t.time})))
-    
-    // Debug: Check if we have the expected number of tiles
-    const expectedTileCount = 4
-    const actualTileCount = rainTiles.length
-    console.log(`Tile count check: Expected ${expectedTileCount}, Got ${actualTileCount}`)
-    if (actualTileCount < expectedTileCount) {
-      console.warn('WARNING: Fewer tiles than expected for proper animation')
-    }
     
     // Calculate dynamic age and timestamp for each tile based on current time
     const now = Date.now()
@@ -453,8 +437,6 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       }
     })
     
-    console.log('Tiles with dynamic age:', tilesWithDynamicAge.map(t => ({dynamicAge: t.dynamicAge, timestamp: t.timestamp})))
-    
     // Store the sorted tiles in a ref for use in the overlay effect
     sortedTilesRef.current = tilesWithDynamicAge
     
@@ -462,9 +444,6 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     const sequence = tilesWithDynamicAge.map((_, index) => index)
     // Newest/most recent tile (last index) gets 3000ms, older tiles get 500ms
     const timings = sequence.map((_, index) => index === sequence.length - 1 ? 3000 : 500)
-    
-    console.log('Animation sequence:', sequence)
-    console.log('Animation timings:', timings)
     
     let timeoutId = null
     let sequenceIndex = 0
@@ -513,12 +492,8 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       })
       overlay.addTo(map)
       radarRef.current = overlay
-      console.log(`Displaying tile ${currentTileIndex}/${tilesWithDynamicAge.length-1}:`, {
-        dynamicAge: tile.dynamicAge,
-        timestamp: new Date(tile.timestamp).toISOString()
-      })
     } else {
-      console.warn('No valid tile to display at index:', currentTileIndex)
+      // No logging needed for this case
     }
   }, [isToday, rainTiles, currentTileIndex])
 
@@ -569,7 +544,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     markersRef.current.forEach(({ marker, color }, i) => {
       const selected = i === curPt
       marker.setRadius(selected ? selRadius : baseRadius)
-      marker.setStyle({ color: selected ? '#ffffff' : color, weight: selected ? 3 : 2 })
+      marker.setStyle({ color: selected ? '#000000' : color, weight: selected ? 3 : 2 })
       if (selected) marker.bringToFront()
     })
   }, [displayForecast, points, dateIdx])
@@ -580,7 +555,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       const selected = i === ptIdx
       marker.setRadius(selected ? selRadius : baseRadius)
       marker.setStyle({
-        color: selected ? '#ffffff' : color,
+        color: selected ? '#000000' : color,
         weight: selected ? 3 : 2,
       })
       if (selected) marker.bringToFront()

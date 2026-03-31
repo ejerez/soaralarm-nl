@@ -1,25 +1,17 @@
 {
-    "version": 1.0,
+    "version": 1.1,
     "features":[
         {
-            "feature": "Windspeed Units",
-            "message": "You can now select your preferred speed units: <b>km/h</b>, <b>kt</b> or <b>m/s</b>."
+            "feature": "Rain radar",
+            "message": "There's now a live rain <b>radar animation</b> on the <b>Map</b>. Data is from KNMI, for the last 45 minutes, in 15 minute steps."
         },
         {
-            "feature": "Compare soaring spots",
-            "message": "Now the <b>Flyable Windows</b> chart displays the <b>best spots</b> for the selected day by default. A day-to-day comparison is still available by switching the mode to <b>Date</b> mode."
+            "feature": "Short-term Precipitation Forecast",
+            "message": "Forecasts on the <b>Point tab</b> now include short-term, <b>5-minute resolution</b> rain forecasts for the <b>next 2 hours</b>, using radar data from KNMI."
         },
         {
-            "feature": "More intuitive interface",
-            "message": "The map has been tweaked for <b>better clickability</b>. Now selecting a point on the map will make it so that location is selected everywhere else."
-        },
-        {
-            "feature": "Visibility",
-            "message": "<b>Sunny Mode</b> and <b>Large Font</b> are now available in the Settings, to make it easier to see the app for different people in different conditions."
-        },
-        {
-            "feature": "Better heading range estimation",
-            "message": "The function used to compute flyable heading ranges has been updated to an asymptotic function with compensation for dune steepness, for <b>more accurate heading ranges</b> for each location."
+            "feature": "Other",
+            "message": "Several bugs were fixed and some tweaks were done to the UI as well, to improve usability."
         }
     ]
 }
