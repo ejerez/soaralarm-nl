@@ -435,7 +435,7 @@ function InfoSymbols({ info }) {
 }
 
 export default function PointForecast({ data }) {
-  const { rawForecast, displayForecast, points, measurements, wings, days, dateIdx, ptIdx, setPtIdx, speedUnit = 'km/h', altStationPrefs, setAltStationPrefs, effectiveTimeStart, effectiveTimeEnd } = data
+  const { rawForecast, displayForecast, points, measurements, wings, days, dateIdx, ptIdx, setPtIdx, speedUnit = 'km/h', altStationPrefs, setAltStationPrefs, effectiveTimeStart, effectiveTimeEnd, selectedTime, setSelectedTime } = data
   const isToday = days?.[dateIdx] === 'Today'
   const toUnit = (v) => v == null ? null : parseFloat((v * SPEED_FACTOR[speedUnit]).toFixed(1))
 
@@ -506,11 +506,39 @@ export default function PointForecast({ data }) {
     return ts.length ? { timestamps: ts, values: vs } : null
   }, [shortTermPrecipRaw, winStartMs, winEndMs])
 
+  // Handle plot click to set selected time
+  const handlePlotClick = (e) => {
+    if (e && e.activePayload && e.activePayload.length > 0) {
+      const clickedTime = e.activePayload[0].payload.ts
+      setSelectedTime(clickedTime)
+    }
+  }
+
   // Use filteredDayFc for chart data — measurements also bounded by the window
   const windData = useMemo(() => {
     if (!filteredDayFc || !point) return []
     return buildWindData(filteredDayFc, measurements, windStationRef, toUnit, shortTermPrecip)
   }, [filteredDayFc, measurements, windStationRef, point, speedUnit, shortTermPrecip])
+
+  // Set selected time to current time (or closest forecast time) when component mounts
+  useEffect(() => {
+    if (windData.length > 0) {
+      const now = Date.now()
+      // Find the closest time point to now
+      let closestTime = windData[0].ts
+      let minDiff = Math.abs(windData[0].ts - now)
+      
+      windData.forEach(point => {
+        const diff = Math.abs(point.ts - now)
+        if (diff < minDiff) {
+          minDiff = diff
+          closestTime = point.ts
+        }
+      })
+      
+      setSelectedTime(closestTime)
+    }
+  }, [windData, setSelectedTime])
 
   const dirData  = useMemo(() => { if (!filteredDayFc||!point) return []; return buildDirData(filteredDayFc,measurements,headingStationRef,heading) }, [filteredDayFc,measurements,headingStationRef,point,heading])
   const tempData = useMemo(() => (!filteredDayFc||!point)?[]:buildTempData(filteredDayFc), [filteredDayFc,point])
@@ -553,13 +581,16 @@ export default function PointForecast({ data }) {
       <div data-tutorial="pt-wind" style={card_}>
         <div style={sectionTitle_}>Wind &amp; Gust Speed</div>
         <ResponsiveContainer width="100%" height={250}>
-          <ComposedChart data={windData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+          <ComposedChart data={windData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }} onClick={handlePlotClick}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin','dataMax']} ticks={filteredDayFc.time.map(t => new Date(t).getTime())} tickFormatter={fmtTime} tick={TICK} />
             <YAxis yAxisId="wind" tick={TICK} width={30} />
             <YAxis yAxisId="rain" orientation="right" tick={false} width={1} />
             <Tooltip content={<WindTooltip unit={speedUnit} />} />
             <Legend wrapperStyle={{ fontSize:fsc(8, '1.4vw', 12), color: T.text2, fontFamily: T.font }} />
+            {selectedTime && (
+              <ReferenceLine x={selectedTime} yAxisId="wind" stroke="rgba(255,255,255,0.6)" strokeWidth={1} />
+            )}
             {wind_ranges.map((wing, i) => {
               const dash = DASH[i % DASH.length]
               const displayName = wings[wing.key]?.display_name ?? wing.key
@@ -589,18 +620,21 @@ export default function PointForecast({ data }) {
       <div data-tutorial="pt-direction" style={card_}>
         <div style={sectionTitle_}>Wind Heading</div>
         <ResponsiveContainer width="100%" height={210}>
-          <ComposedChart data={dirData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+          <ComposedChart data={dirData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }} onClick={handlePlotClick}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin','dataMax']} ticks={filteredDayFc.time.map(t => new Date(t).getTime())} tickFormatter={fmtTime} tick={TICK} />
-            <YAxis tick={TICK} domain={[domainLow, domainHigh]} width={30} allowDataOverflow />
+            <YAxis yAxisId="left" tick={TICK} domain={[domainLow, domainHigh]} width={30} allowDataOverflow />
             <Tooltip {...TOOLTIP} />
             <Legend wrapperStyle={{ fontSize:fsc(8, '1.4vw', 12), color: T.text2, fontFamily: T.font }} />
-            <ReferenceArea y1={lowerBound} y2={lowerIdeal} fill="#d27a2d" fillOpacity={0.45} />
-            <ReferenceArea y1={lowerIdeal} y2={upperIdeal} fill="#25b863" fillOpacity={0.45} />
-            <ReferenceArea y1={upperIdeal} y2={upperBound} fill="#d27a2d" fillOpacity={0.45} />
-            <ReferenceLine y={heading} stroke={T.text3} strokeDasharray="4 2" label={{ value:`${heading}°`, fill: T.text3, fontSize:fs(11) }} />
-            <Line type="monotone" dataKey="wind_dir" name="Forecast heading (°)" stroke="#aaaacc" dot={false} strokeWidth={2}   connectNulls />
-            <Line type="linear"   dataKey="meas_dir" name="Measured heading (°)" stroke={T.text}    dot={false} strokeWidth={1.5} connectNulls strokeDasharray="5 3" />
+            {selectedTime && (
+              <ReferenceLine x={selectedTime} yAxisId="left" stroke="rgba(255,255,255,0.6)" strokeWidth={1} />
+            )}
+            <ReferenceArea yAxisId="left" y1={lowerBound} y2={lowerIdeal} fill="#d27a2d" fillOpacity={0.45} />
+            <ReferenceArea yAxisId="left" y1={lowerIdeal} y2={upperIdeal} fill="#25b863" fillOpacity={0.45} />
+            <ReferenceArea yAxisId="left" y1={upperIdeal} y2={upperBound} fill="#d27a2d" fillOpacity={0.45} />
+            <ReferenceLine y={heading} yAxisId="left" stroke={T.text3} strokeDasharray="4 2" label={{ value:`${heading}°`, fill: T.text3, fontSize:fs(11) }} />
+            <Line yAxisId="left" type="monotone" dataKey="wind_dir" name="Forecast heading (°)" stroke="#aaaacc" dot={false} strokeWidth={2}   connectNulls />
+            <Line yAxisId="left" type="linear"   dataKey="meas_dir" name="Measured heading (°)" stroke={T.text}    dot={false} strokeWidth={1.5} connectNulls strokeDasharray="5 3" />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -609,13 +643,16 @@ export default function PointForecast({ data }) {
       <div style={card_}>
         <div style={sectionTitle_}>Temperature &amp; Visibility</div>
         <ResponsiveContainer width="100%" height={210}>
-          <ComposedChart data={tempData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+          <ComposedChart data={tempData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }} onClick={handlePlotClick}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
             <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin','dataMax']} tickFormatter={fmtTime} tick={TICK} />
             <YAxis yAxisId="temp" tick={{ ...TICK, fill: '#c09030' }} width={30} />
             <YAxis yAxisId="vis"  orientation="right" tick={TICK} width={24} />
             <Tooltip {...TOOLTIP} />
             <Legend wrapperStyle={{ fontSize:fsc(8, '1.4vw', 12), color: T.text2, fontFamily: T.font }} />
+            {selectedTime && (
+              <ReferenceLine x={selectedTime} yAxisId="temp" stroke="rgba(255,255,255,0.6)" strokeWidth={1} />
+            )}
             <ReferenceLine yAxisId="vis" y={0.1} stroke="#c04040" strokeDasharray="4 2" label={{ value:'Min visibility', fill:'#c12e0d', fontSize:fs(11) }} />
             <Line yAxisId="temp" type="monotone" dataKey="temperature" name="Temp (°C)"       stroke="#c09030" dot={false} strokeWidth={2} />
             <Line yAxisId="vis"  type="monotone" dataKey="visibility"  name="Visibility (km)" stroke={T.text2} dot={false} strokeWidth={2} />

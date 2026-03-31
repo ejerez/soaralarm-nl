@@ -183,6 +183,7 @@ export function useSoarData() {
   const [outdoorsMode, setOutdoorsMode] = useState(initSettings.outdoorsMode)
   const [dateIdx, setDateIdx]           = useState(1)
   const [ptIdx,   setPtIdx]             = useState(0)
+  const [selectedTime, setSelectedTime] = useState(null)
 
   // Auto-select best point on date change and when forecast first loads.
   // Ref starts as null so the very first forecast load triggers selection.
@@ -520,6 +521,7 @@ export function useSoarData() {
     outdoorsMode, setOutdoorsMode,
     dateIdx, setDateIdx,
     ptIdx,   setPtIdx,
+    selectedTime, setSelectedTime,
     refreshForecast: api.refreshForecast,
     refreshMeasure:  api.refreshMeasure,
     refetchDisplay:  fetchDisplay,
