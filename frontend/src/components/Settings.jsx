@@ -354,14 +354,6 @@ export default function Settings({ data }) {
           tilesInfo={status?.rain_tiles_info} 
           updating={status?.updating_measurements} 
         />
-        <button
-          onClick={() => { refreshForecast(); refetchDisplay() }}
-          disabled={status?.updating_forecast || (status?.forecast_age_seconds != null && status.forecast_age_seconds < 7200)}
-          title={status?.forecast_age_seconds != null && status.forecast_age_seconds < 7200 ? `Available in ${Math.ceil((7200-status.forecast_age_seconds)/60)} min` : 'Force refresh forecast'}
-          style={{ ...saveBtn, background: 'transparent', border: `1px solid ${T.borderEm}`, color: T.text2, marginTop: 14, opacity: (status?.updating_forecast || (status?.forecast_age_seconds != null && status.forecast_age_seconds < 7200)) ? 0.4 : 1 }}
-        >
-          ↻ Force Refresh Forecast
-        </button>
       </div>
     </div>
   )
