@@ -23,7 +23,6 @@ const field   = { marginBottom: 22 }
 const label_  = { display: 'block', marginBottom: 6, fontSize: fs(12), color: T.text2, fontWeight: 500, letterSpacing: '0.02em', textTransform: 'uppercase' }
 const select_ = { background: T.raised, color: T.text, border: `1px solid ${T.borderEm}`, borderRadius: 6, padding: '7px 10px', fontSize: fs(13), cursor: 'pointer', fontFamily: T.font }
 const input_  = { background: T.raised, color: T.text, border: `1px solid ${T.borderEm}`, borderRadius: 6, padding: '6px 10px', fontSize: fs(13), width: 85, textAlign: 'right', fontFamily: T.font }
-const saveBtn = { background: T.accent, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 22px', fontSize: fs(13), fontWeight: 600, cursor: 'pointer', fontFamily: T.font }
 
 function Tooltip({ children, width = 280 }) {
   return (
@@ -167,7 +166,7 @@ export default function Settings({ data }) {
       <button
         onClick={() => window.dispatchEvent(new Event('soaralarm:start-tutorial'))}
         style={{
-          background: 'transparent', color: T.text2,
+          background: T.card, color: T.text2,
           border: `1px solid ${T.border}`, borderRadius: 8,
           padding: '9px 22px', fontSize: fs(13), cursor: 'pointer',
           fontFamily: T.font, display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -281,6 +280,7 @@ export default function Settings({ data }) {
           </div>
         </div>
       </div>
+      </div>
 
       {/* Card 3: Preferences */}
       <div style={card}>
@@ -342,7 +342,6 @@ export default function Settings({ data }) {
           </div>
           <div style={{ fontSize: fs(11), color: T.text3, marginTop: 5 }}>Flyable hours are calculated within this window.</div>
         </div>
-        </div>
       </div>
 
       {/* Status panel */}
@@ -389,31 +388,30 @@ function RainTilesStatusRow({ tilesInfo, updating }) {
   // tilesInfo should be an array of tile ages in minutes, sorted oldest to newest
   const tileCount = tilesInfo?.length || 0
   
-  // Create age string showing all tile ages
-  const ageStr = tileCount > 0 
-    ? tilesInfo.map(age => age + 'min').join('/') + ' ago'
-    : '—'
-  
   // Determine color and status based on tile count
   let dotColor, statusText
   if (updating) {
     dotColor = '#e6a817'; statusText = 'Updating'
   } else if (tileCount === 4) {
-    dotColor = '#1fd100'; statusText = 'Full (4 tiles)'  // Green for 4 tiles
+    dotColor = '#1fd100'; statusText = '4 tiles'  // Green for 4 tiles
   } else if (tileCount === 3) {
-    dotColor = '#e6a817'; statusText = 'Good (3 tiles)'   // Yellow for 3 tiles
+    dotColor = '#e6a817'; statusText = '3 tiles'   // Yellow for 3 tiles
   } else if (tileCount === 2) {
-    dotColor = '#ff9800'; statusText = 'Partial (2 tiles)' // Orange for 2 tiles
+    dotColor = '#ff9800'; statusText = '2 tiles' // Orange for 2 tiles
   } else if (tileCount === 1) {
-    dotColor = '#ef5350'; statusText = 'Limited (1 tile)'  // Red for 1 tile
+    dotColor = '#ef5350'; statusText = '1 tile'  // Red for 1 tile
   } else {
-    dotColor = '#666666'; statusText = 'None available'   // Gray for 0 tiles
+    dotColor = '#666666'; statusText = 'No tiles'   // Gray for 0 tiles
   }
   
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, fontSize: fs(13) }}>
       <span style={{ color: T.text }}>Radar Tiles</span>
-      <span style={{ color: T.text2, fontSize: fs(12) }}>{ageStr}</span>
+      <span style={{ color: T.text2, fontSize: fs(12), textAlign: 'right' }}>
+        {tileCount > 0
+          ? tilesInfo.map((age, i) => <span key={i} style={{ display: 'block' }}>{age}min ago</span>)
+          : '—'}
+      </span>
       <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 500, fontSize: fs(12), color: dotColor }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, display: 'inline-block' }} />
         {statusText}
