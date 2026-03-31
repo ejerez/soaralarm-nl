@@ -3,11 +3,11 @@
     "features":[
         {
             "feature": "Rain radar",
-            "message": "There's now a live rain <b>radar animation</b> on the <b>Map</b>. Data is from KNMI, for the last 45 minutes, in 15 minute steps."
+            "message": "There's now a live rain <b>radar animation</b> on the <b>Map</b>, using data from KNMI for the last 45 minutes, in 15 minute steps."
         },
         {
             "feature": "Short-term Precipitation Forecast",
-            "message": "Forecasts on the <b>Point tab</b> now include short-term, <b>5-minute resolution</b> rain forecasts for the <b>next 2 hours</b>, using radar data from KNMI."
+            "message": "Forecasts on the <b>Point tab</b> now include short-term, <b>5 minute resolution</b> rain forecasts for the <b>next 2 hours</b> from the KNMI weathe radar."
         },
         {
             "feature": "Other",
