@@ -698,14 +698,14 @@ export default function MapForecast({ data, onNavigateToPoint }) {
           Show yesterday
         </label>
         {isToday && rainTiles?.length > 1 && (
-          <label style={{ fontSize: fs(12), color: T.text2, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none', marginLeft: 12, backgroundColor: '#333', padding: '2px 6px', borderRadius: 4 }}>
+          <label style={{ fontSize: fs(12), color: T.text2, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
             <input
               type="checkbox"
               checked={animateRadar}
               onChange={e => setAnimateRadar(e.target.checked)}
               style={{ accentColor: T.accent, width: 13, height: 13, cursor: 'pointer' }}
             />
-            Radar animation
+            Enable radar animation
           </label>
         )}
         {isToday && rainTiles?.length <= 1 && (
@@ -715,7 +715,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         )}
         {!isToday && (
           <div style={{ fontSize: fs(12), color: T.text3, marginLeft: 12 }}>
-            Radar only for Today
+            Radar only available for Today
           </div>
         )}
       </div>
