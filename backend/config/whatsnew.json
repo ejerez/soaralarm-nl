@@ -7,7 +7,7 @@
         },
         {
             "feature": "Short-term Precipitation Forecast",
-            "message": "Forecasts on the <b>Point tab</b> now include short-term, <b>5 minute resolution</b> rain forecasts for the <b>next 2 hours</b> from the KNMI weathe radar."
+            "message": "Forecasts on the <b>Point tab</b> now include short-term, <b>5 minute resolution</b> rain forecasts for the <b>next 2 hours</b> from the KNMI weather radar."
         },
         {
             "feature": "Other",
