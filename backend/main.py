@@ -261,13 +261,17 @@ def get_status(country: str = Query(...)):
     meas_ttl = MEASURE_TTL_DAY if in_dl else MEASURE_TTL_NIGHT
     model_keys = list(c["models"].keys())
 
-    # Default time window: sunrise-60min to sunset+60min in local time (HH:MM)
+    # Default time window: truncate sunrise/sunset to hour, add one hour for end time
     sunrise, sunset = _today_sun(country)
     if sunrise is not None:
         tz_name = state["countries"].get(country, {}).get("timezone", "Europe/Berlin")
         local_tz = zoneinfo.ZoneInfo(tz_name)
-        default_ts = (sunrise - timedelta(minutes=60)).astimezone(local_tz).strftime("%H:%M")
-        default_te = (sunset  + timedelta(minutes=60)).astimezone(local_tz).strftime("%H:%M")
+        # Truncate to the hour and add one hour for the end time
+        default_ts = sunrise.astimezone(local_tz).replace(minute=0, second=0, microsecond=0).strftime("%H:%M")
+        default_te = sunset.astimezone(local_tz).replace(minute=0, second=0, microsecond=0).strftime("%H:%M")
+        # Add one hour to end time
+        default_te_h, default_te_m = map(int, default_te.split(':'))
+        default_te = f"{(default_te_h + 1):02d}:{default_te_m:02d}"
     else:
         default_ts = "07:00"
         default_te = "21:00"
@@ -280,17 +284,29 @@ def get_status(country: str = Query(...)):
         rain_tiles = c["measurements"]["rain_tiles"]
         rain_tile_count = len(rain_tiles)
         if rain_tile_count > 0:
-            # Create detailed tile info array with ages of all tiles (oldest to newest)
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc)
+            
+            # Create detailed tile info array with dynamic ages of all tiles (oldest to newest)
             tiles_info = []
             for tile in rain_tiles:
-                if tile.get("age_minutes") is not None:
-                    tiles_info.append(tile["age_minutes"])
+                if tile.get("timestamp"):
+                    tile_time = datetime.fromtimestamp(tile["timestamp"] / 1000, timezone.utc)
+                    age_minutes = int((now - tile_time).total_seconds() / 60)
+                    tiles_info.append(age_minutes)
+                else:
+                    # Current tile without timestamp - age is 0
+                    tiles_info.append(0)
             rain_tiles_info = tiles_info
             
             # Use the age of the most recent tile (current tile) for backward compatibility
             most_recent_tile = rain_tiles[-1]  # Last tile is most recent
-            if most_recent_tile.get("age_minutes") is not None:
-                rain_tile_age_seconds = most_recent_tile["age_minutes"] * 60
+            if most_recent_tile.get("timestamp"):
+                tile_time = datetime.fromtimestamp(most_recent_tile["timestamp"] / 1000, timezone.utc)
+                rain_tile_age_seconds = int((now - tile_time).total_seconds())
+            else:
+                # Current tile without timestamp - age is 0
+                rain_tile_age_seconds = 0
 
     return {
         "forecast_age_seconds":     fa,
@@ -510,7 +526,23 @@ def get_modes():
 @app.get("/api/days")
 def get_days():
     week_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    wd   = datetime.today().weekday()
+    
+    # Get the forecast timestamp to align labels with forecast data
+    # If no forecast is available, use current time
+    c = state.get("c", {}).get("nl")  # Assuming Netherlands as default country
+    forecast_time = c.get("forecast", {}).get("time") if c else None
+    
+    if forecast_time:
+        # Use the forecast's timeline
+        base_date = forecast_time.date()
+    else:
+        # Fallback to current time
+        base_date = datetime.today().date()
+    
+    wd = base_date.weekday()
+    
+    # Generate labels relative to the base date
+    # Yesterday (wd-1), Today (wd), Tomorrow (wd+1), then next 5 days
     days = ["Yesterday", "Today", "Tomorrow"] + [week_days[(wd + 2 + i) % 7] for i in range(5)]
     return {"days": days}
 

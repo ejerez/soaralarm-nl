@@ -406,6 +406,9 @@ export default function Info({ data }) {
           been made, and the reasoning behind a lot of them is explained here, on the <b style={{ color: '#dedede' }}>Info tab</b>. Your feedback is 
           greatly appreciated, but bear in mind I probably won't be able to reply to every email.
         </p>
+        <p style={p}>
+          Recent contributions by [Mistral Vibe](https://mistral.ai/) (Mistral AI) have helped improve the animation logic and fix issues with the tile sorting and rendering.
+        </p>
       </div>
 
       {/* ── GitHub link ── */}

@@ -400,6 +400,6 @@ All endpoints that need country or mode context receive them as **query paramete
 
 ## Credits
 
-Built with the help of awesome Dutch pilots, as well as [Claude](https://www.anthropic.com/claude) (Anthropic), which helped extensively in the design of the web service architecture and frontend development.
+Built with the help of awesome Dutch pilots, as well as [Claude](https://www.anthropic.com/claude) (Anthropic) and [Mistral Vibe](https://mistral.ai/) (Mistral AI), which helped extensively in the design of the web service architecture and frontend development.
 
 Also made possible by [Open-Meteo](https://open-meteo.com/) and the [ddlpy](https://github.com/Deltares/ddlpy) library for RWS data access.

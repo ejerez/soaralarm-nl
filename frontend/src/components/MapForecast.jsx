@@ -112,7 +112,7 @@ function InfoTooltip({ text }) {
   )
 }
 
-function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateIdx, isLocations }) {
+function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateIdx, isLocations, effectiveTimeStart, effectiveTimeEnd }) {
   const COLOR         = { good: C.good, cross: C.cross, good_gusty: C.gusty, cross_gusty: C.crossGusty, no: 'transparent' }
   const WEATHER_COLOR = { fog: C.fog, rain: C.rain }
 
@@ -166,12 +166,31 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
     ))
   }
 
+  // Use effective time window for X-axis range when provided
   const allTimes = [
     ...ganttRows,
     ...(weatherRows || []),
   ].flatMap(r => [new Date(r.start), new Date(r.end)])
-  const rawMinT = allTimes.length ? Math.min(...allTimes.map(t => t.getTime())) : 0
-  const rawMaxT = allTimes.length ? Math.max(...allTimes.map(t => t.getTime())) : 1
+  
+  let rawMinT, rawMaxT
+  if (effectiveTimeStart && effectiveTimeEnd) {
+    // Use effective time window for X-axis range
+    const effectiveStartDate = new Date(ganttRows[0]?.start || new Date())
+    effectiveStartDate.setHours(...effectiveTimeStart.split(':').map(Number))
+    effectiveStartDate.setMinutes(0, 0, 0)
+    
+    const effectiveEndDate = new Date(ganttRows[0]?.start || new Date())
+    effectiveEndDate.setHours(...effectiveTimeEnd.split(':').map(Number))
+    effectiveEndDate.setMinutes(0, 0, 0)
+    
+    rawMinT = effectiveStartDate.getTime()
+    rawMaxT = effectiveEndDate.getTime()
+  } else {
+    // Fallback to data-driven range
+    rawMinT = allTimes.length ? Math.min(...allTimes.map(t => t.getTime())) : 0
+    rawMaxT = allTimes.length ? Math.max(...allTimes.map(t => t.getTime())) : 1
+  }
+  
   const minT    = rawMinT - 1800_000  // -30 min so first bar gets its left padding
   const maxT    = rawMaxT             // bars shift 30 min left, providing natural right margin
   const span = maxT - minT || 1
@@ -307,7 +326,7 @@ const Legendsmall_ = ({ items }) => (
 )
 
 export default function MapForecast({ data, onNavigateToPoint }) {
-  const { displayForecast, certainty, points, days, dateIdx, setDateIdx, ptIdx, timeStart, timeEnd } = data
+  const { displayForecast, certainty, points, days, dateIdx, setDateIdx, ptIdx, timeStart, timeEnd, effectiveTimeStart, effectiveTimeEnd } = data
 
   const [plotDays,     setPlotDays]     = useState(() => { try { return Number(localStorage.getItem('plotDays')) || 5 } catch { return 5 } })
   const [showYesterday, setShowYesterday] = useState(() => { try { return localStorage.getItem('showYesterday') === 'true' } catch { return false } })
@@ -369,14 +388,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
   const sortedTilesRef = useRef([])
   
   // Debug: Log rain tiles data
-  useEffect(() => {
-    if (rainTiles) {
-      console.log('Rain tiles received:', rainTiles.length, 'tiles')
-      rainTiles.forEach((tile, i) => {
-        console.log(`Tile ${i}: age=${tile.age_minutes}min, has_image=${!!tile.image}`)
-      })
-    }
-  }, [rainTiles])
+
 
   // Animation effect
   useEffect(() => {
@@ -394,7 +406,13 @@ export default function MapForecast({ data, onNavigateToPoint }) {
 
     // If animation is disabled or only one tile, show current tile
     if (!animateRadar || rainTiles.length <= 1) {
-      const currentTile = rainTiles.find(tile => tile.age_minutes === 0) || rainTiles[rainTiles.length - 1]
+      // Find the tile with the most recent timestamp (current tile)
+      const currentTile = rainTiles.reduce((latest, tile) => 
+        (tile.timestamp || 0) > (latest.timestamp || 0) ? tile : latest, 
+        rainTiles[0]
+      ) || rainTiles[rainTiles.length - 1]
+      console.log('Single tile mode - all rainTiles:', rainTiles.map(t => ({timestamp: t.timestamp, time: t.time})))
+      console.log('Selected current tile:', currentTile ? {timestamp: currentTile.timestamp, time: currentTile.time} : null)
       if (currentTile?.image && currentTile?.bounds) {
         const overlay = L.imageOverlay(currentTile.image, currentTile.bounds, {
           opacity: 0.55,
@@ -409,18 +427,25 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       return
     }
 
-    // Sort tiles by age_minutes (newest to oldest) for correct animation order
-    console.log('Before sorting:', rainTiles.map(tile => `age=${tile.age_minutes}min`))
-    const sortedTiles = [...rainTiles].sort((a, b) => b.age_minutes - a.age_minutes)
+    // Sort tiles by timestamp (oldest to newest) for correct animation order
+    const sortedTiles = [...rainTiles].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
     
-    // Debug: Log sorted tiles to verify order
-    console.log('After sorting:', sortedTiles.map(tile => `age=${tile.age_minutes}min`))
+    console.log('Raw rainTiles received:', rainTiles.map(t => ({timestamp: t.timestamp, time: t.time})))
+    console.log('Sorted tiles (newest to oldest):', sortedTiles.map(t => ({timestamp: t.timestamp, time: t.time})))
+    
+    // Debug: Check if we have the expected number of tiles
+    const expectedTileCount = 4
+    const actualTileCount = rainTiles.length
+    console.log(`Tile count check: Expected ${expectedTileCount}, Got ${actualTileCount}`)
+    if (actualTileCount < expectedTileCount) {
+      console.warn('WARNING: Fewer tiles than expected for proper animation')
+    }
     
     // Calculate dynamic age and timestamp for each tile based on current time
     const now = Date.now()
     const tilesWithDynamicAge = sortedTiles.map(tile => {
       // Calculate timestamp if it's missing
-      const timestamp = tile.timestamp || (now - (tile.age_minutes * 60000))
+      const timestamp = tile.timestamp || now
       return {
         ...tile,
         timestamp, // Ensure timestamp is always available
@@ -428,12 +453,18 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       }
     })
     
+    console.log('Tiles with dynamic age:', tilesWithDynamicAge.map(t => ({dynamicAge: t.dynamicAge, timestamp: t.timestamp})))
+    
     // Store the sorted tiles in a ref for use in the overlay effect
     sortedTilesRef.current = tilesWithDynamicAge
     
     // Animation logic with variable timing using setTimeout
     const sequence = tilesWithDynamicAge.map((_, index) => index)
-    const timings = sequence.map((_, index) => index < sequence.length - 1 ? 500 : 3000)
+    // Newest/most recent tile (last index) gets 3000ms, older tiles get 500ms
+    const timings = sequence.map((_, index) => index === sequence.length - 1 ? 3000 : 500)
+    
+    console.log('Animation sequence:', sequence)
+    console.log('Animation timings:', timings)
     
     let timeoutId = null
     let sequenceIndex = 0
@@ -462,7 +493,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     const map = leafletRef.current
     if (!map || !isToday || !rainTiles?.length || rainTiles.length <= 1) return
 
-    console.log(`Animation: Showing tile ${currentTileIndex} of ${rainTiles.length}`)
+
     
     if (radarRef.current) { radarRef.current.remove(); radarRef.current = null }
 
@@ -474,7 +505,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       // Calculate timing for debug (don't need actual timings array here)
       const isLastTile = currentTileIndex === tilesWithDynamicAge.length - 1
       const displayTime = isLastTile ? 3000 : 500
-      console.log(`Tile ${currentTileIndex}: timestamp=${tile.timestamp}, dynamicAge=${tile.dynamicAge}min, showing for ${displayTime}ms`)
+
       
       const overlay = L.imageOverlay(tile.image, tile.bounds, {
         opacity: 0.55,
@@ -482,8 +513,12 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       })
       overlay.addTo(map)
       radarRef.current = overlay
+      console.log(`Displaying tile ${currentTileIndex}/${tilesWithDynamicAge.length-1}:`, {
+        dynamicAge: tile.dynamicAge,
+        timestamp: new Date(tile.timestamp).toISOString()
+      })
     } else {
-      console.warn(`Tile ${currentTileIndex} has no image or bounds!`, tile)
+      console.warn('No valid tile to display at index:', currentTileIndex)
     }
   }, [isToday, rainTiles, currentTileIndex])
 
@@ -557,8 +592,8 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     // Clamp a gantt entry to the availability window; returns null if fully outside
     const clampToWindow = (g) => {
       const sDate = g.start.slice(0, 10) // "YYYY-MM-DD"
-      const winStart = timeStart !== '00:00' ? new Date(`${sDate}T${timeStart}`).getTime() : -Infinity
-      const winEnd   = timeEnd !== '23:59'  ? new Date(`${sDate}T${timeEnd}`).getTime()   :  Infinity
+      const winStart = effectiveTimeStart !== '00:00' ? new Date(`${sDate}T${effectiveTimeStart}`).getTime() : -Infinity
+      const winEnd   = effectiveTimeEnd !== '23:59'  ? new Date(`${sDate}T${effectiveTimeEnd}`).getTime()   :  Infinity
       const gStart = new Date(g.start).getTime()
       const gEnd   = new Date(g.end).getTime() || gStart // handle single-point
       if (gEnd <= winStart || gStart > winEnd) return null
@@ -648,7 +683,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     })
 
     return { barData: bar, ganttRows: gantt, weatherRows: weather, locGanttRows: locGantt, locWeatherRows: locWeather, locCertByDay: locCertMap, locDays, locPtMap, certByDay: certByDayMap, weatherByDay: weatherByDayMap }
-  }, [displayForecast, points, days, certainty, plotDays, showYesterday, timeStart, timeEnd, dateIdx])
+  }, [displayForecast, points, days, certainty, plotDays, showYesterday, effectiveTimeStart, effectiveTimeEnd, dateIdx])
   const selectDay = (di) => { setDateIdx(di) }
 
   const TOOLTIP_STYLE = {
@@ -695,12 +730,17 @@ export default function MapForecast({ data, onNavigateToPoint }) {
               onChange={e => setAnimateRadar(e.target.checked)}
               style={{ accentColor: T.accent, width: 13, height: 13, cursor: 'pointer' }}
             />
-            Animate radar (45/30/15/min ago)
+            Radar animation
           </label>
         )}
         {isToday && rainTiles?.length <= 1 && (
           <div style={{ fontSize: fs(12), color: T.text3, marginLeft: 12 }}>
-            Animation unavailable
+            Radar animation unavailable
+          </div>
+        )}
+        {!isToday && (
+          <div style={{ fontSize: fs(12), color: T.text3, marginLeft: 12 }}>
+            Radar only for Today
           </div>
         )}
       </div>
@@ -790,8 +830,9 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         {ganttMode === 'locations'
           ? <GanttChart ganttRows={locGanttRows} weatherRows={locWeatherRows} days={locDays} certByDay={locCertByDay} isLocations
               onDayClick={(idx) => { if (locPtMap[idx] != null) data.setPtIdx(locPtMap[idx]) }}
-              dateIdx={locPtMap.indexOf(ptIdx)} />
-          : <GanttChart ganttRows={ganttRows} weatherRows={weatherRows} days={days} certByDay={certByDay} onDayClick={selectDay} dateIdx={dateIdx} />
+              dateIdx={locPtMap.indexOf(ptIdx)} effectiveTimeStart={effectiveTimeStart} effectiveTimeEnd={effectiveTimeEnd} />
+          : <GanttChart ganttRows={ganttRows} weatherRows={weatherRows} days={days} certByDay={certByDay} onDayClick={selectDay} dateIdx={dateIdx} 
+                      effectiveTimeStart={effectiveTimeStart} effectiveTimeEnd={effectiveTimeEnd} />
         }
         <div style={{ padding: '6px 12px 0' }}>
           <Legendsmall_ items={[
