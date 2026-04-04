@@ -13,6 +13,7 @@
             ["strandhuisjes.png", "<b style={{ color: '#dedede' }}>Strandhuisjes during Summer</b>. Be prepared to walk quite some distance to reach dunes not blocked by them, avoid flying near them if possible."],
             ["thorny_bushes.png", "Beware of <b style={{ color: '#dedede' }}>thorny bushes</b> at the top of the steeper dunes."]
         ],
+        "priority": 0,
         "link": "https://wildvliegen.nl/vliegplekken/nederland/castricum/"
     },
     {
@@ -29,6 +30,7 @@
             ["strandhuisjes.png", "<b style={{ color: '#dedede' }}>Strandhuisjes during Summer</b>. Be prepared to walk quite some distance to reach dunes not blocked by them, avoid flying near them if possible."],
             ["thorny_bushes.png", "Beware of <b style={{ color: '#dedede' }}>thorny bushes</b> at the top of the steeper dunes."]
         ],
+        "priority": 0,
         "link": "https://wildvliegen.nl/vliegplekken/nederland/wijk-aan-zee/"
     },
     {
@@ -43,6 +45,7 @@
             ["crowded.png", "Can get <b style={{ color: '#dedede' }}>crowded on weekends and holidays</b>."],
             ["double_dune.png", "Watch out for rotor and landing hazards due to the <b style={{ color: '#dedede' }}>front dune</b>."]
         ],
+        "priority": 0,
         "link": "https://wildvliegen.nl/vliegplekken/nederland/langevelderslag/"
     },
     {
@@ -56,6 +59,7 @@
             ["moderate_dune.png", "<b style={{ color: '#dedede' }}>Moderate dune</b>, almost 20m tall."],
             ["crowded.png", "Can get <b style={{ color: '#dedede' }}>crowded on weekends and holidays</b>."]
         ],
+        "priority": 0,
         "link": "https://wildvliegen.nl/vliegplekken/nederland/wassenaarseslag/"
     },
     {
@@ -70,6 +74,7 @@
             ["regulations.png", "<b style={{ color: '#dedede' }}>Occassionaly closed</b> due to the bird breeding season <b style={{ color: '#dedede' }}>March 15 to August 15</b>. You can then fly at the southern beach. <b style={{ color: '#dedede' }}>Always respect beach closures</b>."],
             ["turbulence.png", "<b style={{ color: '#dedede' }}>Very turbulent</b> with strong winds due to the presence of land upwind."]
         ],
+        "priority": 0,
         "link": "https://wildvliegen.nl/vliegplekken/nederland/rockanje/"
     },
     {
@@ -83,6 +88,7 @@
             ["moderate_dune.png", "<b style={{ color: '#dedede' }}>Moderate dune</b>, around 9m tall."],
             ["turbulence.png", "<b style={{ color: '#dedede' }}>Very turbulent</b> with strong winds due to the presence of land upwind."]
         ],
+        "priority": 0,
         "link": "https://wildvliegen.nl/vliegplekken/nederland/rockanje/"
     },
     {
@@ -97,6 +103,7 @@
             ["regulations.png", "<b style={{ color: '#dedede' }}>Do not fly before 18:00 in the Summer</b> if the beach is crowded. <b style={{ color: '#dedede' }}>Occassionaly closed during Summer</b> due to the bird breeding season. <b style={{ color: '#dedede' }}>Always respect beach closures</b>."],
             ["extreme_crowded.png", "<b style={{ color: '#dedede' }}>Very small site</b> that can get very crowded. If possible, <b style={{ color: '#dedede' }}>avoid on weekends and holidays</b>."]
         ],
+        "priority": 1,
         "link": "https://wildvliegen.nl/vliegplekken/nederland/ouddorp/"
     },
     {
@@ -113,6 +120,7 @@
             ["wind_gradient.png", "The <b style={{ color: '#dedede' }}>wind gradient</b> due to the steep dunes can make it so there's very little wind down at the beach, but the lift once in the air is better than expected."],
             ["thorny_bushes.png", "Watch out for the <b style={{ color: '#dedede' }}>thorny bushes</b> on the dune."]
         ],
+        "priority": 1,
         "link": "https://wildvliegen.nl/vliegplekken/nederland/ouddorp/"
     },
     {
@@ -129,6 +137,7 @@
             ["wind_gradient.png", "The <b style={{ color: '#dedede' }}>wind gradient</b> due to the steep dunes can make it so there's very little wind down at the beach, but the lift once in the air is better than expected."],
             ["thorny_bushes.png", "Watch out for the <b style={{ color: '#dedede' }}>thorny bushes</b> on the dune."]
         ],
+        "priority": 1,
         "link": "https://wildvliegen.nl/vliegplekken/nederland/ouddorp/"
     },
     {
@@ -146,6 +155,7 @@
             ["takeoff.png", "Few <b style={{ color: '#dedede' }}>launch places</b> made complicated by the prevalent <b style={{ color: '#dedede' }}>thorny bushes</b>. Good groundhandling advised."],
             ["double_dune.png", "Watch out for rotor and landing hazards due to the <b style={{ color: '#dedede' }}>front dune</b>."]
         ],
+        "priority": 1,
         "link": "https://wildvliegen.nl/vliegplekken/nederland/renesse/"
     },
     {
@@ -161,6 +171,7 @@
             ["extreme_turbulence.png", "<b style={{ color: '#dedede' }}>Extremely turbulent</b> with more than around 20° left crosswind, due to the presence of wind turbines upwind."],
             ["extreme_crowded.png", "<b style={{ color: '#dedede' }}>Very small site</b> that can get very crowded. If possible, <b style={{ color: '#dedede' }}>avoid on weekends and holidays</b>."]
         ],
+        "priority": 1,
         "link": "https://wildvliegen.nl/vliegplekken/nederland/westenschouwen/"
     },
     {
@@ -178,6 +189,7 @@
             ["extreme_thorny_bushes.png", "Large <b style={{ color: '#dedede' }}>thorny trees</b> behind the takeoff. Be careful and avoid getting swept behind the dune at all costs."],
             ["double_dune.png", "Watch out for rotor and landing hazards due to the <b style={{ color: '#dedede' }}>front dune</b>."]
         ],
+        "priority": 0,
         "link": "https://wildvliegen.nl/vliegplekken/nederland/zoutelande/"
     }
 ]

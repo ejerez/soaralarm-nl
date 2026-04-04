@@ -3,6 +3,7 @@ import { fs, fsc } from '../fs.js'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, LabelList, ReferenceArea } from 'recharts'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { compareLocations, findBestLocationIndex } from '../locationSort.js'
 
 const DEG = Math.PI / 180
 function toRad(d) { return d * DEG }
@@ -585,17 +586,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       if (di === 0 && !showYesterday) return
       if (di > maxDi) return
       const certDi = certainty?.[di]
-      let best = 0, bestAgree = -1, bestQuality = -1, bestFly = -1
-      dayPf.forEach((pf, pi) => {
-        const ag = certDi?.by_point?.[pi] ?? certDi?.agree ?? 0
-        const q  = pf.good_hours + pf.gusty_hours
-        const f  = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
-        if (ag > bestAgree
-            || (ag === bestAgree && q > bestQuality)
-            || (ag === bestAgree && q === bestQuality && f > bestFly)) {
-          bestAgree = ag; bestQuality = q; bestFly = f; best = pi
-        }
-      })
+      const best = findBestLocationIndex(dayPf, certDi, points)
       const bpf = dayPf[best], bpt = points[best]
       bar.push({
         day: shortenDay(days[di] || `Day ${di}`),
@@ -613,6 +604,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         const c = clampToWindow({ day: dayName, point: bpt?.name||'', type: g.type, start: g.start, end: g.end })
         if (c) gantt.push(c)
       })
+      const bestFly = (bpf?.good_hours||0) + (bpf?.cross_hours||0) + (bpf?.gusty_hours||0) + (bpf?.cross_gusty_hours||0)
       if (bestFly > 0 && bpf?.fog_gantt) bpf.fog_gantt.forEach(g => {
         const c = clampToWindow({ day: dayName, type: g.type, start: g.start, end: g.end })
         if (c) weather.push(c)
@@ -627,14 +619,15 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     const locGantt = [], locWeather = [], locCertMap = {}, locDays = [], locPtMap = []
     const dayPf = displayForecast[dateIdx] || []
     const certDay = certainty?.[dateIdx]
-    // Score each point: flyable total > 0, then rank by confidence desc, quality (good+gusty) desc, total flyable desc
+    // Score each point: flyable total > 0, then rank by confidence desc, priority asc, quality (good+gusty) desc, total flyable desc
     const scored = dayPf.map((pf, pi) => {
       const fly = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
       const quality = pf.good_hours + pf.gusty_hours
       const agree = certDay?.by_point?.[pi] ?? certDay?.agree ?? 0
-      return { pi, pf, fly, quality, agree }
+      const priority = points[pi]?.priority ?? 0
+      return { pi, pf, fly, quality, agree, priority }
     }).filter(s => s.fly > 0)
-    scored.sort((a, b) => b.agree - a.agree || b.quality - a.quality || b.fly - a.fly)
+    scored.sort(compareLocations)
     const top = scored.slice(0, 5)
     top.forEach(({ pi, pf, agree }) => {
       const pt = points[pi]
