@@ -4,27 +4,31 @@
         "display_name": "KNMI HARMONIE",
         "resolution": 2,
         "patch": [],
-        "forecast_days": 3
+        "forecast_days": 3,
+        "default": [2, 3]
     },
     "ecmwf_ifs":
     {
         "display_name": "ECMWF IFS",
         "resolution": 9,
         "patch": [],
-        "forecast_days": 7
+        "forecast_days": 7,
+        "default": [4, 5, 6, 7]
     },
     "icon_seamless":
     {
         "display_name": "ICON D2",
         "resolution": 2,
         "patch": [],
-        "forecast_days": 7
+        "forecast_days": 7,
+        "default": []
     },
     "meteofrance_seamless":
     {
         "display_name": "AROME HD",
         "resolution": 1.5,
         "patch": ["visibility"],
-        "forecast_days": 4
+        "forecast_days": 4,
+        "default": [0, 1]
     }
 }

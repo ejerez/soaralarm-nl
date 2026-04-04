@@ -21,16 +21,21 @@ const STEPS = [
     title: <><img src="/paraglider_small.png" width={22} height={22} style={{ verticalAlign: 'middle', marginRight: 8 }} alt="" />Welcome to Soaralarm</>,
     body:  <>Soaralarm is a <b style={{ color: T.text }}>free and open-source, feature-rich forecasting tool</b> built for pilots soaring in several European countries. This tutorial will show how to use it step by step.</>,
   },
+  {
+    tab: 0, selector: '[data-tutorial="pt-header"]', position: 'below',
+    title: 'Main controls',
+    body:  <>Here you can select the <b style={{ color: T.text }}>forecast day</b>. The <b style={{ color: T.text }}>weather model</b> is automatically chosen for each day based on the best available model – you can disable this in <b style={{ color: T.text }}>Settings</b> to pick manually. The <b style={{ color: T.text }}>confidence score (stars)</b> is used to gauge how confident the forecast is that the selected day and location will be flyable.</>,
+  },
   // ── Map tab intro ──
   {
-    tab: 0, selector: null, position: 'center',
+    tab: 0, selector: '[data-tutorial="tab-map"]', position: 'below',
     title: 'Map tab',
     body:  <>The <b style={{ color: T.text }}>Map tab</b> gives you an overall view of the forecast, to quickly identify <b style={{ color: T.text }}>when and where</b> conditions look best.</>,
   },
   {
     tab: 0, selector: '[data-tutorial="map"]', position: 'below',
     title: 'The map',
-    body:  <>Each dot marks a <b style={{ color: T.text }}>soaring location</b>. The <b style={{ color: T.text }}>wind slices</b> show estimated flyable hours for the selected day – a larger slice means more hours. Green indicates a <b style={{ color: '#1dbb02' }}>Good Heading</b> and yellow indicates <b style={{ color: '#ddb60a' }}>Crosswind</b>. Tap any marker to see a summary popup with a <b style={{ color: T.text }}>Spot information</b> link. Tapping a marker also selects that location, so you can switch to the <b style={{ color: T.text }}>Point tab</b> for the detailed forecast. There's also <b style={{ color: T.text }}>precipitation radar animations</b> for the last ~45 min on the map.</>,
+    body:  <>Each dot marks a <b style={{ color: T.text }}>soaring location</b>. The <b style={{ color: T.text }}>wind slices</b> show estimated flyable hours for the selected day – a larger slice means more hours. Green indicates a <b style={{ color: '#1dbb02' }}>Good Heading</b> and yellow indicates <b style={{ color: '#ddb60a' }}>Crosswind</b>. Tap any marker to see a summary popup with a <b style={{ color: T.text }}>Spot information</b> link. Tapping a marker also selects that location, so you can switch to the <b style={{ color: T.text }}>Point tab</b> for the detailed forecast. There's also <b style={{ color: T.text }}>precipitation radar animations</b> to visualize incoming <b style={{ color: T.text }}>moderate to heavy rain</b>.</>,
   },
   {
     tab: 0, selector: '[data-tutorial="plotcontrols"]', position: 'below',
@@ -54,14 +59,9 @@ const STEPS = [
   },
   // ── Point tab intro ──
   {
-    tab: 1, selector: null, position: 'center',
+    tab: 1, selector: '[data-tutorial="tab-point"]', position: 'below',
     title: 'Point tab',
     body:  <>The <b style={{ color: T.text }}>Point tab</b> shows detailed hourly forecasts and live measurements – as well as important information – for the selected spot.</>,
-  },
-  {
-    tab: 1, selector: '[data-tutorial="pt-header"]', position: 'below',
-    title: 'Date and forecast model',
-    body:  <>At the top of the tab you can select the <b style={{ color: T.text }}>date</b> and <b style={{ color: T.text }}>forecast model</b> used for the displayed forecasts and flyability calculations.</>,
   },
   {
     tab: 1, selector: '[data-tutorial="pt-selectors"]', position: 'below',
@@ -76,7 +76,7 @@ const STEPS = [
   {
     tab: 1, selector: '[data-tutorial="pt-wind"]', position: 'below',
     title: 'Windspeed forecast',
-    body:  <>Hourly <b style={{ color: '#7aaaee' }}>wind</b> and <b style={{ color: '#c07028' }}>gust speed</b> for the selected location and day. The white band shows live measurements from the corresponding weather station. Reference lines mark the <b style={{ color: '#1fd100' }}>flyable wind range</b> for each of your configured wings at this location. There's a high resolution <b style={{ color: '#1b8fe2' }}>short-term precipitation forecast</b> as well, based on radar measurements.</>,
+    body:  <>Hourly <b style={{ color: '#7aaaee' }}>wind</b> and <b style={{ color: '#c07028' }}>gust speed</b> for the selected location and day. The white band shows live measurements from the corresponding weather station. Reference lines mark the <b style={{ color: '#1fd100' }}>flyable wind range</b> for each of your configured wings at this location. There's a high resolution <b style={{ color: '#1b8fe2' }}>short-term precipitation forecast</b> as well, based on radar measurements – but note that <b style={{ color: T.text }}>the radar often misses light or low-altitude rain</b>.</>,
   },
   {
     tab: 1, selector: '[data-tutorial="pt-direction"]', position: 'below',
@@ -90,7 +90,7 @@ const STEPS = [
   },
   // ── Settings tab intro ──
   {
-    tab: 2, selector: null, position: 'center',
+    tab: 2, selector: '[data-tutorial="tab-settings"]', position: 'below',
     title: 'Settings tab',
     body:  <>The <b style={{ color: T.text }}>Settings tab</b> lets you configure the app to your specific setup and preferences. All settings are saved locally in your browser.</>,
   },
@@ -101,8 +101,8 @@ const STEPS = [
   },
   {
     tab: 2, selector: '[data-tutorial="settings-speed-unit"]', position: 'below',
-    title: 'Speed units',
-    body:  <>Choose your preferred <b style={{ color: T.text }}>wind speed unit</b>: km/h, knots, or m/s. This applies to all wind speed displays across the app, including the Point tab charts and wind range summaries.</>,
+    title: 'Speed units and model selection',
+    body:  <>Choose your preferred <b style={{ color: T.text }}>windspeed unit</b>: km/h, knots, or m/s. Automatic Model Selection picks the <b style={{ color: T.text }}>best forecast model for each day</b> by default. You can disable it if you prefer to choose manually.</>,
   },
   {
     tab: 2, selector: '[data-tutorial="settings-wings"]', position: 'below',

@@ -126,6 +126,7 @@ export default function Settings({ data }) {
           customWind, setCustomWind, windMin, setWindMin, windMax, setWindMax,
           speedUnit, setSpeedUnit,
           altFont, setAltFont, largeFont, setLargeFont, outdoorsMode, setOutdoorsMode,
+          autoModelSelection, setAutoModelSelection,
           wings, countries, modes, country, mode, status, refreshForecast, refetchDisplay, switchConfig } = data
 
   const wingKeys = Object.keys(wings)
@@ -203,13 +204,24 @@ export default function Settings({ data }) {
           </div>
         </div>
 
-        <div data-tutorial="settings-speed-unit" style={field}>
+        <div data-tutorial="settings-speed-unit">
+        <div style={field}>
           <label style={label_}>Speed Units</label>
           <select style={{ ...select_, width: '100%' }} value={speedUnit} onChange={e => setSpeedUnit(e.target.value)}>
             <option value="km/h">km/h</option>
             <option value="kt">kt</option>
             <option value="m/s">m/s</option>
           </select>
+        </div>
+
+        <div style={{ marginBottom: 0 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+            <input type="checkbox" checked={autoModelSelection} onChange={e => setAutoModelSelection(e.target.checked)}
+              style={{ width: 15, height: 15, cursor: 'pointer', accentColor: T.accent }} />
+            <span style={{ fontSize: fs(13), color: T.text, fontWeight: 500 }}>Automatic Model Selection</span>
+          </label>
+          <div style={{ fontSize: fs(11), color: T.text3, marginTop: 4, paddingLeft: 23 }}>Uses the best model for each day.</div>
+        </div>
         </div>
 
       </div>

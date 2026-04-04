@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { api, setApiScope } from '../api.js'
 
 const POLL_MS        = 10_000              // poll status every 10 s
@@ -110,7 +110,28 @@ function readSettingsFromStorage() {
     altFont:   localStorage.getItem('altFont') === 'true',
     largeFont: localStorage.getItem('largeFont') === 'true',
     outdoorsMode:  localStorage.getItem('outdoorsMode') === 'true',
+    autoModelSelection: localStorage.getItem('autoModelSelection') !== 'false',
   }
+}
+
+// ── Compute default model per day from model definitions ────────────────
+function computeDefaultModelByDay(models) {
+  const modelKeys = Object.keys(models)
+  if (!modelKeys.length) return []
+  const arr = []
+  for (const [key, m] of Object.entries(models)) {
+    if (m.default) {
+      for (const di of m.default) {
+        arr[di] = key
+      }
+    }
+  }
+  const fallback = modelKeys[0]
+  const maxLen = Math.max(arr.length, 8)
+  for (let i = 0; i < maxLen; i++) {
+    if (!arr[i]) arr[i] = fallback
+  }
+  return arr
 }
 
 // ── Resolve initial country and mode ─────────────────────────────────────
@@ -181,6 +202,7 @@ export function useSoarData() {
   const [altFont, setAltFont]           = useState(initSettings.altFont)
   const [largeFont, setLargeFont]       = useState(initSettings.largeFont)
   const [outdoorsMode, setOutdoorsMode] = useState(initSettings.outdoorsMode)
+  const [autoModelSelection, setAutoModelSelection] = useState(initSettings.autoModelSelection)
   const [dateIdx, setDateIdx]           = useState(1)
   const [ptIdx,   setPtIdx]             = useState(0)
   const [selectedTime, setSelectedTime] = useState(null)
@@ -218,6 +240,7 @@ export function useSoarData() {
   const rawForecastRef     = useRef(initRawCache ?? null)
   const prevFcUpdatingRef  = useRef(false)
   const prevMsUpdatingRef  = useRef(false)
+  const modelsRef          = useRef({})
 
   // ── Effective time window ────────────────────────────────────────────────
   // When custom is off, use server-provided sunrise-based defaults
@@ -228,10 +251,13 @@ export function useSoarData() {
 
   // ── Keep refs in sync with state ─────────────────────────────────────────
   useEffect(() => {
-    settingsRef.current = { model, timeStart: effectiveTimeStart, timeEnd: effectiveTimeEnd, selectedWings, weight, customWind, windMin, windMax }
-  }, [model, effectiveTimeStart, effectiveTimeEnd, selectedWings, weight, customWind, windMin, windMax])
+    settingsRef.current = { model, timeStart: effectiveTimeStart, timeEnd: effectiveTimeEnd, selectedWings, weight, customWind, windMin, windMax, autoModelSelection }
+  }, [model, effectiveTimeStart, effectiveTimeEnd, selectedWings, weight, customWind, windMin, windMax, autoModelSelection])
 
   useEffect(() => { rawForecastRef.current = rawForecast }, [rawForecast])
+  useEffect(() => { modelsRef.current = models }, [models])
+
+  const defaultModelByDay = useMemo(() => computeDefaultModelByDay(models), [models])
 
   // ── Save settings to localStorage ────────────────────────────────────────
   useEffect(() => { localStorage.setItem('model',         model) },        [model])
@@ -247,6 +273,7 @@ export function useSoarData() {
   useEffect(() => { localStorage.setItem('altFont',   altFont) },  [altFont])
   useEffect(() => { localStorage.setItem('largeFont', largeFont) }, [largeFont])
   useEffect(() => { localStorage.setItem('outdoorsMode',  outdoorsMode) }, [outdoorsMode])
+  useEffect(() => { localStorage.setItem('autoModelSelection', autoModelSelection) }, [autoModelSelection])
   useEffect(() => { localStorage.setItem(`altStationPrefs:${cacheScope()}`, JSON.stringify(altStationPrefs)) }, [altStationPrefs])
 
   // ── Fetch display forecast ────────────────────────────────────────────────
@@ -258,31 +285,98 @@ export function useSoarData() {
     isFetchingDisplay.current = true
     pendingFetch.current = false
     try {
-      const { model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax } = settingsRef.current
-      const disp = await api.displayForecast(
-        model, timeStart, timeEnd, selectedWings, weight,
-        customWind ? windMin : undefined,
-        customWind ? windMax : undefined,
-      )
-      if (disp.display) {
-        setDisplay(disp.display)
-        displayRef.current = disp.display
-        const key = displayCacheKey(model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax)
-        saveDisplayCache(key, disp.display, disp.certainty)
-      }
-      if (disp.certainty) setCertainty(disp.certainty)
+      const { model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax, autoModelSelection } = settingsRef.current
+      const wMin = customWind ? windMin : undefined
+      const wMax = customWind ? windMax : undefined
+      const modelByDay = computeDefaultModelByDay(modelsRef.current)
 
-      const [rawResult, measResult] = await Promise.allSettled([
-        api.rawForecast(model),
-        api.measurements(),
-      ])
-      if (rawResult.status === 'fulfilled' && rawResult.value?.forecast) {
-        setRaw(rawResult.value.forecast)
-        saveRawCache(model, rawResult.value.forecast)
-      }
-      if (measResult.status === 'fulfilled' && measResult.value) {
-        setMeasure(measResult.value)
-        saveMeasCache(measResult.value)
+      if (autoModelSelection && modelByDay.length > 0) {
+        // Auto mode: fetch for each unique default model, then compose per-day
+        const uniqueModels = [...new Set(modelByDay.filter(Boolean))]
+
+        const displayResults = {}
+        await Promise.all(uniqueModels.map(async (m) => {
+          const key = displayCacheKey(m, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax)
+          const cached = loadDisplayCache(key)
+          if (cached) {
+            displayResults[m] = cached
+          } else {
+            const disp = await api.displayForecast(m, timeStart, timeEnd, selectedWings, weight, wMin, wMax)
+            if (disp.display) {
+              displayResults[m] = { display: disp.display, certainty: disp.certainty }
+              saveDisplayCache(key, disp.display, disp.certainty)
+            }
+          }
+        }))
+
+        // Compose: for each day, pick from the correct model
+        const maxDays = Math.max(0, ...Object.values(displayResults).map(r => r.display?.length || 0))
+        const combined = []
+        for (let di = 0; di < maxDays; di++) {
+          const m = modelByDay[di] || uniqueModels[0]
+          combined[di] = displayResults[m]?.display?.[di] || null
+        }
+        setDisplay(combined)
+        displayRef.current = combined
+
+        const anyCert = Object.values(displayResults).find(r => r.certainty)?.certainty
+        if (anyCert) setCertainty(anyCert)
+
+        // Fetch raw for each unique model and compose
+        const measPromise = api.measurements()
+        const rawResults = {}
+        await Promise.all(uniqueModels.map(async (m) => {
+          const cached = loadRawCache(m)
+          if (cached) {
+            rawResults[m] = cached
+          } else {
+            const raw = await api.rawForecast(m)
+            if (raw?.forecast) {
+              rawResults[m] = raw.forecast
+              saveRawCache(m, raw.forecast)
+            }
+          }
+        }))
+
+        const maxRawDays = Math.max(0, ...Object.values(rawResults).map(r => r?.length || 0))
+        const combinedRaw = []
+        for (let di = 0; di < maxRawDays; di++) {
+          const m = modelByDay[di] || uniqueModels[0]
+          combinedRaw[di] = rawResults[m]?.[di] || null
+        }
+        setRaw(combinedRaw)
+        rawForecastRef.current = combinedRaw
+
+        try {
+          const meas = await measPromise
+          if (meas) { setMeasure(meas); saveMeasCache(meas) }
+        } catch {}
+
+      } else {
+        // Manual mode: single model for all days
+        const disp = await api.displayForecast(
+          model, timeStart, timeEnd, selectedWings, weight, wMin, wMax,
+        )
+        if (disp.display) {
+          setDisplay(disp.display)
+          displayRef.current = disp.display
+          const key = displayCacheKey(model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax)
+          saveDisplayCache(key, disp.display, disp.certainty)
+        }
+        if (disp.certainty) setCertainty(disp.certainty)
+
+        const [rawResult, measResult] = await Promise.allSettled([
+          api.rawForecast(model),
+          api.measurements(),
+        ])
+        if (rawResult.status === 'fulfilled' && rawResult.value?.forecast) {
+          setRaw(rawResult.value.forecast)
+          saveRawCache(model, rawResult.value.forecast)
+        }
+        if (measResult.status === 'fulfilled' && measResult.value) {
+          setMeasure(measResult.value)
+          saveMeasCache(measResult.value)
+        }
       }
     } catch (e) {
       console.error('fetchDisplay', e)
@@ -312,6 +406,7 @@ export function useSoarData() {
       setStatus(st)
       setWings(wgs)
       setModels(mods)
+      modelsRef.current = mods
       setRanges(rng)
 
       const modelKeys = Object.keys(mods)
@@ -353,7 +448,7 @@ export function useSoarData() {
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return }
     fetchDisplay()
-  }, [model, effectiveTimeStart, effectiveTimeEnd, selectedWings, weight, customWind, windMin, windMax, fetchDisplay])
+  }, [model, effectiveTimeStart, effectiveTimeEnd, selectedWings, weight, customWind, windMin, windMax, autoModelSelection, fetchDisplay])
 
   // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -371,6 +466,7 @@ export function useSoarData() {
           setStatus(st)
           setWings(wgs)
           setModels(mods)
+          modelsRef.current = mods
           setRanges(rng)
           setCountries(ctrs)
           setModes(mds)
@@ -519,6 +615,8 @@ export function useSoarData() {
     altFont, setAltFont,
     largeFont, setLargeFont,
     outdoorsMode, setOutdoorsMode,
+    autoModelSelection, setAutoModelSelection,
+    defaultModelByDay,
     dateIdx, setDateIdx,
     ptIdx,   setPtIdx,
     selectedTime, setSelectedTime,

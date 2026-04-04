@@ -44,6 +44,29 @@ export default function DataSources_nl() {
         Forecasts are refreshed every 2 hours.
       </p>
 
+      <h3 style={h3}>Automatic model selection</h3>
+      <p style={p}>
+        The best model for each day is <b style={{ color: '#dedede' }}>selected empirically</b>, based on experience. It seems that, for the
+        Netherlands, the best model in the very short range is Arome HD, while KNMI HARMONIE remains arguably the
+        most accurate option for the next few days. From the 3rd day into the future, ECMWF IFS is perhaps most
+        suitable, given its focus on medium-range forecasts. Thus the default models used when Automatic Model
+        Selection is enabled are as follows:
+      </p>
+      <ul style={{ ...p, paddingLeft: 20 }}>
+        <li>
+          <b style={{ color: '#dedede' }}>Days 0-1</b>: AROME HD
+        </li>
+        <li>
+          <b style={{ color: '#dedede' }}>Days 2-3</b>: KNMI HARMONIE
+        </li>
+        <li>
+          <b style={{ color: '#dedede' }}>Days 4-7</b> ECMWF IFS
+        </li>
+      </ul>
+      <p style={p}>
+        Where index 0 corresponds to "Yesterday" and index 1 to "Today".
+      </p>
+
       <h3 style={h3}>Multi-model confidence scores</h3>
       <p style={p}>
         For each day, every location is scored by how many of the four models agree there will be flyable

@@ -164,7 +164,7 @@ const s = {
 export default function App() {
   const [activeTab, setActiveTab] = useState(0)
   const data = useSoarData()
-  const { status, days, loading, error, dateIdx, setDateIdx, certainty, model, setModel, models, refetchDisplay, countries, modes, country, mode, ptIdx, altFont, largeFont, outdoorsMode } = data
+  const { status, days, loading, error, dateIdx, setDateIdx, certainty, model, setModel, models, refetchDisplay, countries, modes, country, mode, ptIdx, altFont, largeFont, outdoorsMode, autoModelSelection, defaultModelByDay } = data
 
   // Apply preference overrides globally via injected <style>
   useEffect(() => {
@@ -230,7 +230,7 @@ export default function App() {
       {/* ── Tab bar ── */}
       <nav style={s.tabBar}>
         {TABS.map((t, i) => (
-          <button key={t.label} style={s.tab(activeTab === i)} onClick={() => setActiveTab(i)}>
+          <button key={t.label} data-tutorial={`tab-${t.label.toLowerCase()}`} style={s.tab(activeTab === i)} onClick={() => setActiveTab(i)}>
             <I8
               name={t.icon}
               size={13}
@@ -252,15 +252,21 @@ export default function App() {
             {days.map((d, i) => <option key={d} value={i}>{d}</option>)}
           </select>
 
-          <select
-            style={s.select}
-            value={model}
-            onChange={e => { setModel(e.target.value); refetchDisplay() }}
-          >
-            {Object.entries(models).map(([key, m]) => (
-              <option key={key} value={key}>{m.display_name}</option>
-            ))}
-          </select>
+          {autoModelSelection ? (
+            <span style={{ ...s.select, cursor: 'default', opacity: 0.8 }}>
+              {models[defaultModelByDay[dateIdx]]?.display_name || '—'}
+            </span>
+          ) : (
+            <select
+              style={s.select}
+              value={model}
+              onChange={e => { setModel(e.target.value); refetchDisplay() }}
+            >
+              {Object.entries(models).map(([key, m]) => (
+                <option key={key} value={key}>{m.display_name}</option>
+              ))}
+            </select>
+          )}
 
           <span style={{ fontSize: fs(11), color: T.text3, paddingLeft: 10 }}>
             {countries?.[country]?.name ?? country} | {modes?.[mode] ?? mode}
