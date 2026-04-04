@@ -308,22 +308,43 @@ export default function Info({ data }) {
       )}
       
       <div style={card}>
-        <h2 style={h2}>Credits</h2>
+        <h2 style={h2}>A word from the developer</h2>
+        <p style={p}>
+          Hey there! If you're all the way down here, you must have really wanted to know how{' '} 
+          <b style={{ color: '#dedede' }}>Soaralarm</b> works – hopefully this tab has provided the answers
+          you were looking for.
+        </p>
+        <p style={p}> 
+          My name is <b style={{ color: '#dedede' }}>Eduardo Jerez</b>, and I started working on <b style={{ color: '#dedede' }}>Soaralarm</b> in early
+          2026, not long after starting to soar the Dutch dunes myself. I often found myself rather dissatisfied by
+          the lack of easily available information about when and where to fly – not just in terms of the actual weather
+          forecasts, but even basic facts like the exact location of the flying spots were often unclear to someone unfamiliar
+          with the Dutch soaring scene. 
+        </p>
+        <p style={p}>
+          <b style={{ color: '#dedede' }}>Soaralarm</b> was thus born, not just as a tool for convenience for experienced pilots, but
+          as an attempt to democratize information about soaring the dunes, the idea being that a visiting pilot or newcomer
+          could just check it and get all the information they need to make a good, safe decision at a glance. Not
+          just a "go fly here", but a comprehensive set of information including flyability calculations, general information
+          about the soaring spots, as well as warnings and links to primary sources to help pilots make informed decisions.
+        </p>
         <p style={p}>
           This web app was made possible by the help of some of the awesome pilots who soar the dunes frequently, 
           including <b style={{ color: '#dedede' }}>Simon</b> from{' '}
           <a href="https://paraglidingisfun.com/" target="_blank" rel="noopener noreferrer" style={link}>
             Paragliding is Fun 
-          </a>{' '}
+          </a>,{' '}
+          who helped figure out what is flyable when and where – and helped me become a much better pilot –
           and <b style={{ color: '#dedede' }}>Bryan</b> from{' '}
           <a href="https://www.dune-rider.com/" target="_blank" rel="noopener noreferrer" style={link}>
             Dune Rider 
           </a>,{' '}
-          whose fantastic wings introduced me to the life-changing art of dune soaring.
+          whose fantastic wings introduced me to the life-changing sport of dune soaring.
         </p>
-
         <p style={p}>
-          It was also made possible by{' '}
+          I am not a web developer, but an Aerospace Engineer. While I understand flight dynamics and 
+          scientific programming well, developing such a complex web app
+          wouldn't have been possible without{' '}
           <a href="https://www.anthropic.com/claude" target="_blank" rel="noopener noreferrer" style={link}>
             Claude
           </a>{' '}
@@ -332,8 +353,8 @@ export default function Info({ data }) {
             Vibe
           </a>{' '}
           by Mistral, which helped in planning the backend architecture{' '}
-          with <b style={{ color: '#dedede' }}>FastAPI</b>, developing most of the frontend with{' '}
-          <b style={{ color: '#dedede' }}>React.js</b> and helping add features and solve issues at 
+          with <b style={{ color: '#dedede' }}>FastAPI</b>, developing the frontend with{' '}
+          <b style={{ color: '#dedede' }}>React.js</b>, and adding features/refactoring/bugfixing at 
           a much faster rate than I could by hand.
         </p>
       </div>
@@ -367,7 +388,7 @@ export default function Info({ data }) {
         </p>
 
         <p style={p}>
-          <b style={{ color: '#dedede' }}>For requesting new spots</b>:
+          <b style={{ color: '#dedede' }}>For requesting new spots (including other countries)</b>:
         </p>
 
         <ul style={{ ...p, paddingLeft: 20 }}>
@@ -390,6 +411,9 @@ export default function Info({ data }) {
             The minimum and maximum windspeeds, and minimum and maximum headings/crosswind angles you can fly at the site, as well as your wing model and size, and your weight (including the wing and harness), so I can check that the computed wind and heading ranges are correct.
           </li>
         </ul>
+        <p style={p}>Is your site dependent on sea-breeze that is caused by the sun, or other
+          weather factors that are not well reflected in the forecasted wind? Contact me – I would like to try figuring it out.
+        </p>
         <p style={p}>
           <b style={{ color: '#dedede' }}>Note</b>:
         </p>
@@ -409,6 +433,17 @@ export default function Info({ data }) {
           Please do understand that this is a hobby project. Major decisions about the way the app works have already 
           been made, and the reasoning behind a lot of them is explained here, on the <b style={{ color: '#dedede' }}>Info tab</b>. Your feedback is 
           greatly appreciated, but bear in mind I probably won't be able to reply to every email.
+        </p>
+      </div>
+
+      <div style={card}>
+        <h2 style={h2}>Disclaimer</h2>
+        <p style={p}>
+          This app is provided as-is, and is a free, open-source service intended to facilitate information to experienced paraglider pilots.
+          By using <b style={{ color: '#dedede' }}>Soralarm</b>, you aknowledge that the flyability calculations and forecasts provided by 
+          it are only indicative in nature,
+          and do not, under any circumstance, guarantee that you'll be able to fly safely. The decision to go fly, and any consequences of it,
+          fall entirely within the personal responsibility of the pilot.
         </p>
       </div>
 

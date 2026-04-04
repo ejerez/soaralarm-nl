@@ -302,7 +302,7 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
   )
 }
 
-const FLYABLE_DISCLAIMER = "The calculated flyable hours and windows are only an optimistic estimate based on your indicated wing type and weight, and are in no case a replacement for the pilot's own judgement. Always verify that forecasted conditions are appropriate for your exact wing model, skill level, physical ability and risk tolerance. See the Info tab for details on how flyability is calculated."
+const FLYABLE_DISCLAIMER = "By using soaralarm, you aknowledge that the calculated flyable hours and windows, as well as any other information provided by Soaralarm, are purely indicative in nature, and in no circumstance guarantee that you will be able to fly safely. The pilot is always responsible for the decision to go fly, and Soaralarm is not responsible for such decision or any unintended consequences of it. Always verify that forecasted conditions are appropriate for your exact wing model, skill level, physical ability and risk tolerance. See the Info tab for details on how flyability is calculated."
 
 const Legend_ = ({ items }) => (
   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: fsc(8, '1.4vw', 12), color: T.text2 }}>
