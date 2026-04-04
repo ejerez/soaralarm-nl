@@ -1,17 +1,13 @@
 {
-    "version": 1.1,
+    "version": 1.11,
     "features":[
         {
-            "feature": "Rain radar",
-            "message": "There's now a live rain <b>radar animation</b> on the <b>Map</b>, using data from KNMI for the last 45 minutes, in 15 minute steps."
+            "feature": "Automatic Model Selection",
+            "message": "The weather models are now selected automatically, based on the <b>best model for each day</b>. If desired, you can disable this feature in the <b>Settings</b>."
         },
         {
-            "feature": "Short-term Precipitation Forecast",
-            "message": "Forecasts on the <b>Point tab</b> now include short-term, <b>5 minute resolution</b> rain forecasts for the <b>next 2 hours</b> from the KNMI weather radar."
-        },
-        {
-            "feature": "Other",
-            "message": "Several bugs were fixed and some tweaks were done to the UI as well, to improve usability."
+            "feature": "In case you missed it",
+            "message": "The map now shows animations of the current <b>rain radar</b> from KNMI. A <b>short-term precipitation</b> forecast has also been added to the detailed forecasts, covering the <b>next 2 hours</b>. But beware, <b>the KNMI radar sometimes misses light or low-altitude rain</b>!"
         }
     ]
 }
