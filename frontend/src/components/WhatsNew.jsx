@@ -24,6 +24,11 @@ export default function WhatsNew() {
     api.whatsnew().then(d => {
       const seen = parseFloat(localStorage.getItem(STORAGE_KEY) || '0')
       if (d.version > seen) {
+        // New user (hasn't completed tutorial yet) – silently store version
+        if (!localStorage.getItem('soaralarm_welcomed')) {
+          localStorage.setItem(STORAGE_KEY, String(d.version))
+          return
+        }
         setData(d)
         setOpen(true)
       }

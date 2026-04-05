@@ -7,6 +7,7 @@ import Settings      from './components/Settings.jsx'
 import Info          from './components/Info.jsx'
 import Tutorial      from './components/Tutorial.jsx'
 import WhatsNew      from './components/WhatsNew.jsx'
+import TermsAndConditions from './components/TermsAndConditions.jsx'
 
 // Inject fonts once
 if (typeof document !== 'undefined' && !document.getElementById('soar-fonts')) {
@@ -224,6 +225,7 @@ export default function App() {
 
   return (
     <div style={s.app}>
+      <TermsAndConditions />
       <WhatsNew />
       <Tutorial activeTab={activeTab} onSwitchTab={setActiveTab} />
 

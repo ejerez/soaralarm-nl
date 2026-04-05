@@ -177,9 +177,10 @@ export default function Tutorial({ activeTab, onSwitchTab }) {
   useEffect(() => { stepRef.current = step }, [step])
   useEffect(() => { openRef.current = open }, [open])
 
-  // Auto-start on first visit; listen for manual trigger
+  // Auto-start on first visit (after T&C accepted); listen for manual trigger
   useEffect(() => {
-    if (!localStorage.getItem(STORAGE_KEY)) setOpen(true)
+    // Only auto-start if T&C has been accepted (otherwise T&C will trigger us)
+    if (!localStorage.getItem(STORAGE_KEY) && localStorage.getItem('soar_terms_accepted')) setOpen(true)
     const handler = () => { setStep(0); setOpen(true) }
     window.addEventListener('soaralarm:start-tutorial', handler)
     return () => window.removeEventListener('soaralarm:start-tutorial', handler)
