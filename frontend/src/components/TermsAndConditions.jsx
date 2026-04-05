@@ -80,9 +80,10 @@ export default function TermsAndConditions() {
             <p style={{ fontWeight: 700, marginTop: 0 }}>Important Notice</p>
             <p style={{ margin: '8px 0' }}>
               Soaralarm is provided as a <strong>free service</strong> and all information
-              presented is <strong>for informational and guidance purposes only, and should not be interpreted to be definitive or absolute</strong>. We do our best effort
-              to provide accurate and up-to-date information, but the forecasts, flyability estimations
-              and data provided do not constitute a guarantee that a pilot will be able to fly safely.
+              provided is <strong>for informational and guidance purposes only</strong>. The forecasts, measurements, and flyability 
+              calculations <strong>may not match reality and should under no circumstance be considered infallible</strong>. We do our best effort
+              to provide accurate and up-to-date information, but the forecasts, measurements, flyability estimations
+              and other data provided do not constitute a guarantee that a pilot will be able to fly safely.
             </p>
             <p style={{ margin: '8px 0' }}>
               The <strong>decision to fly lies solely with the pilot</strong>. It is the
