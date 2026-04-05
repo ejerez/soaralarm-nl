@@ -38,7 +38,7 @@ export default function TermsAndConditions() {
 
   function accept() {
     if (!scrolledToEnd) return
-    const isNewUser = !localStorage.getItem(STORAGE_KEY)
+    const isNewUser = !localStorage.getItem('soaralarm_welcomed')
     localStorage.setItem(STORAGE_KEY, String(TERMS_VERSION))
     setOpen(false)
     // New users get the tutorial after accepting T&C
