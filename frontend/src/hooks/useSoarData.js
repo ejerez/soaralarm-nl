@@ -231,6 +231,7 @@ export function useSoarData() {
   const prevFcUpdatingRef  = useRef(false)
   const prevMsUpdatingRef  = useRef(false)
   const modelsRef          = useRef({})
+  const skipCacheRef       = useRef(false)
 
   // ── Effective time window ────────────────────────────────────────────────
   // When custom is off, use server-provided sunrise-based defaults
@@ -274,6 +275,8 @@ export function useSoarData() {
     }
     isFetchingDisplay.current = true
     pendingFetch.current = false
+    const skipCache = skipCacheRef.current
+    skipCacheRef.current = false
     try {
       const { model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax, autoModelSelection } = settingsRef.current
       const wMin = customWind ? windMin : undefined
@@ -287,7 +290,7 @@ export function useSoarData() {
         const displayResults = {}
         await Promise.all(uniqueModels.map(async (m) => {
           const key = displayCacheKey(m, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax)
-          const cached = loadDisplayCache(key)
+          const cached = skipCache ? null : loadDisplayCache(key)
           if (cached) {
             displayResults[m] = cached
           } else {
@@ -316,7 +319,7 @@ export function useSoarData() {
         const measPromise = api.measurements()
         const rawResults = {}
         await Promise.all(uniqueModels.map(async (m) => {
-          const cached = loadRawCache(m)
+          const cached = skipCache ? null : loadRawCache(m)
           if (cached) {
             rawResults[m] = cached
           } else {
@@ -533,7 +536,18 @@ export function useSoarData() {
         prevFcUpdatingRef.current = st.updating_forecast
         prevMsUpdatingRef.current = st.updating_measurements
 
+        // Update age refs before early returns to prevent stale comparisons
+        const prevMeasAge = prevMeasAgeRef.current
+        const currMeasAge = st.measurement_age_seconds
+        prevMeasAgeRef.current = currMeasAge
+
+        const prevForecastAge = prevForecastAgeRef.current
+        const currForecastAge = st.forecast_age_seconds
+        prevForecastAgeRef.current = currForecastAge
+
         if (wasFcUpdating && !st.updating_forecast && st.forecast_available) {
+          skipCacheRef.current = true
+          try { const d = await api.days(); setDays(d.days) } catch {}
           fetchDisplay()
           return
         }
@@ -554,8 +568,6 @@ export function useSoarData() {
           return
         }
 
-        const prevMeasAge = prevMeasAgeRef.current
-        const currMeasAge = st.measurement_age_seconds
         if (prevMeasAge != null && currMeasAge != null && currMeasAge < prevMeasAge - 30) {
           try {
             const meas = await api.measurements()
@@ -563,12 +575,10 @@ export function useSoarData() {
             saveMeasCache(meas)
           } catch (e) { console.error('meas live-update', e) }
         }
-        prevMeasAgeRef.current = currMeasAge
 
-        const prevForecastAge = prevForecastAgeRef.current
-        const currForecastAge = st.forecast_age_seconds
-        prevForecastAgeRef.current = currForecastAge
         if (prevForecastAge != null && currForecastAge != null && currForecastAge < prevForecastAge - 30) {
+          skipCacheRef.current = true
+          try { const d = await api.days(); setDays(d.days) } catch {}
           fetchDisplay()
           return
         }

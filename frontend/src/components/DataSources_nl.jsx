@@ -60,7 +60,7 @@ export default function DataSources_nl() {
           <b style={{ color: '#dedede' }}>Days 2-3</b>: KNMI HARMONIE
         </li>
         <li>
-          <b style={{ color: '#dedede' }}>Days 4-7</b> ECMWF IFS
+          <b style={{ color: '#dedede' }}>Days 4-7</b>: ECMWF IFS
         </li>
       </ul>
       <p style={p}>

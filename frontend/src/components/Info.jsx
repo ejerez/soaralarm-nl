@@ -315,7 +315,7 @@ export default function Info({ data }) {
           you were looking for.
         </p>
         <p style={p}> 
-          My name is <b style={{ color: '#dedede' }}>Eduardo Jerez</b>, and I started working on <b style={{ color: '#dedede' }}>Soaralarm</b> in early
+          My name is <b style={{ color: '#dedede' }}>Eduardo</b>, and I started working on <b style={{ color: '#dedede' }}>Soaralarm</b> in early
           2026, not long after starting to soar the Dutch dunes myself. I often found myself rather dissatisfied by
           the lack of easily available information about when and where to fly – not just in terms of the actual weather
           forecasts, but even basic facts like the exact location of the flying spots were often unclear to someone unfamiliar
@@ -433,17 +433,6 @@ export default function Info({ data }) {
           Please do understand that this is a hobby project. Major decisions about the way the app works have already 
           been made, and the reasoning behind a lot of them is explained here, on the <b style={{ color: '#dedede' }}>Info tab</b>. Your feedback is 
           greatly appreciated, but bear in mind I probably won't be able to reply to every email.
-        </p>
-      </div>
-
-      <div style={card}>
-        <h2 style={h2}>Disclaimer</h2>
-        <p style={p}>
-          This app is provided as-is, and is a free, open-source service intended to facilitate information to experienced paraglider pilots.
-          By using <b style={{ color: '#dedede' }}>Soralarm</b>, you aknowledge that the flyability calculations and forecasts provided by 
-          it are only indicative in nature,
-          and do not, under any circumstance, guarantee that you'll be able to fly safely. The decision to go fly, and any consequences of it,
-          fall entirely within the personal responsibility of the pilot.
         </p>
       </div>
 

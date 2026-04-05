@@ -16,15 +16,17 @@ export function compareLocations(a, b) {
       || (b.fly - a.fly)
 }
 
-/** Return the index of the best location for a day. */
+/** Return the index of the best location for a day (only considers locations with flyable hours). */
 export function findBestLocationIndex(dayPf, certDi, points) {
   let best = 0, bestScore = null
   dayPf.forEach((pf, pi) => {
+    const fly = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
+    if (fly <= 0) return
     const score = {
       agree:    certDi?.by_point?.[pi] ?? certDi?.agree ?? 0,
       priority: points[pi]?.priority ?? 0,
       quality:  pf.good_hours + pf.gusty_hours,
-      fly:      pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours,
+      fly,
     }
     if (!bestScore || compareLocations(score, bestScore) < 0) {
       bestScore = score; best = pi

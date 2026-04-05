@@ -302,7 +302,7 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
   )
 }
 
-const FLYABLE_DISCLAIMER = "By using soaralarm, you aknowledge that the calculated flyable hours and windows, as well as any other information provided by Soaralarm, are purely indicative in nature, and in no circumstance guarantee that you will be able to fly safely. The pilot is always responsible for the decision to go fly, and Soaralarm is not responsible for such decision or any unintended consequences of it. Always verify that forecasted conditions are appropriate for your exact wing model, skill level, physical ability and risk tolerance. See the Info tab for details on how flyability is calculated."
+const FLYABLE_DISCLAIMER = "The forecasts and flyability calculations are not infallible. Always verify that the actual conditions are appropriate for your exact wing model, skill level, physical ability and risk tolerance before attempting to fly. See the Info tab for details on how flyability is calculated."
 
 const Legend_ = ({ items }) => (
   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: fsc(8, '1.4vw', 12), color: T.text2 }}>
@@ -588,6 +588,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       const certDi = certainty?.[di]
       const best = findBestLocationIndex(dayPf, certDi, points)
       const bpf = dayPf[best], bpt = points[best]
+      const bestAgree = certDi?.by_point?.[best] ?? certDi?.agree ?? 0
       bar.push({
         day: shortenDay(days[di] || `Day ${di}`),
         fullDay: days[di] || `Day ${di}`,
@@ -595,10 +596,11 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         good: bpf?.good_hours || 0, cross: bpf?.cross_hours || 0,
         gusty: bpf?.gusty_hours || 0, cross_gusty: bpf?.cross_gusty_hours || 0,
         label: ((bpf?.good_hours||0)+(bpf?.cross_hours||0)+(bpf?.gusty_hours||0)+(bpf?.cross_gusty_hours||0)) > 0 ? (bpt?.name||'') : '',
+        agree: bestAgree, total: certDi?.total ?? 0,
       })
       const dayName  = days[di] || `Day ${di}`
       const shortDay = shortenDay(dayName)  // barData uses short names — key weather map the same way
-      if (certainty?.[di]) certByDayMap[dayName] = certainty[di]
+      if (certDi) certByDayMap[dayName] = { ...certDi, agree: bestAgree }
       weatherByDayMap[shortDay] = { has_fog: dayPf.some(pf => pf.has_fog), has_rain: dayPf.some(pf => pf.has_rain) }
       if (bpf?.gantt) bpf.gantt.forEach(g => {
         const c = clampToWindow({ day: dayName, point: bpt?.name||'', type: g.type, start: g.start, end: g.end })
@@ -759,9 +761,8 @@ export default function MapForecast({ data, onNavigateToPoint }) {
           <div style={{ flex: 1, display: 'flex', paddingRight: 8 }}>
             {barData.map((d, i) => {
               const totalHours = (d.good||0)+(d.cross||0)+(d.gusty||0)+(d.cross_gusty||0)
-              const c = certainty[d.di]
-              if (!c || totalHours === 0) return <div key={i} style={{ flex: 1 }} />
-              const { label, color } = certLabel(c.agree, c.total)
+              if (!d.total || totalHours === 0) return <div key={i} style={{ flex: 1 }} />
+              const { label, color } = certLabel(d.agree, d.total)
               return (
                 <div key={i} style={{ flex: 1, textAlign: 'center' }}>
                   <span style={{ fontSize: fsc(7, '1.4vw', 10), fontWeight: 600, color, background: color+'18', padding: '2px 4px', borderRadius: 3, display: 'inline-block' }}>
