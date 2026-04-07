@@ -98,13 +98,27 @@ def _sanitise(obj):
     return obj
 
 
+class _TimeoutCachedSession(requests_cache.CachedSession):
+    """CachedSession that injects a default per-request timeout.
+
+    Without this, a stalled Open-Meteo connection would block the fetch
+    thread forever — which in turn traps the `updating_forecast` flag in
+    main.py because the surrounding `try/finally` never reaches `finally`.
+    """
+    DEFAULT_TIMEOUT = 30  # seconds per HTTP call
+
+    def request(self, method, url, **kwargs):
+        kwargs.setdefault("timeout", self.DEFAULT_TIMEOUT)
+        return super().request(method, url, **kwargs)
+
+
 class ForecastService:
     BASE_URL = "https://api.open-meteo.com/v1/forecast"
 
     def __init__(self, soar_points: List[Dict], timezone: str = "Europe/Berlin"):
         self.points = soar_points
         self.timezone = timezone
-        cache_session = requests_cache.CachedSession(".cache", expire_after=3600)
+        cache_session = _TimeoutCachedSession(".cache", expire_after=3600)
         retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
         self._client = openmeteo_requests.Client(session=retry_session)
 

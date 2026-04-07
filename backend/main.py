@@ -45,6 +45,11 @@ FORECAST_TTL       = 7200   # 2 hours
 MEASURE_TTL_DAY    = 900    # 15 minutes
 MEASURE_TTL_NIGHT  = 3600   # 60 minutes
 
+# Hard ceiling on a single forecast refresh run. Any longer than this and we
+# assume something went wrong (network hang, deadlocked thread, etc.) and
+# release the `updating_forecast` flag so future refreshes can proceed.
+FORECAST_REFRESH_TIMEOUT = 600  # 10 minutes
+
 
 def _load_country(country: str):
     """Load config files for a single country."""
@@ -81,6 +86,7 @@ def _load_country(country: str):
 
     c["updating_forecast"] = False
     c["updating_measurements"] = False
+    c["forecast_refresh_started_at"] = None
 
     state["c"][country] = c
 
@@ -198,6 +204,7 @@ async def _refresh_forecast(country: str):
     if not c:
         return
     c["updating_forecast"] = True
+    c["forecast_refresh_started_at"] = datetime.now()
     try:
         country_cfg = state["countries"].get(country, {})
         timezone    = country_cfg.get("timezone", "Europe/Berlin")
@@ -206,10 +213,15 @@ async def _refresh_forecast(country: str):
         model_keys  = list(models.keys())
         default     = model_keys[0]
 
-        raw_list = await asyncio.gather(*[
-            svc.fetch_raw(name, models[name]["resolution"])
-            for name in model_keys
-        ])
+        # Hard timeout — without this, a hung HTTP call inside the executor
+        # would never return and `updating_forecast` would stay True forever.
+        raw_list = await asyncio.wait_for(
+            asyncio.gather(*[
+                svc.fetch_raw(name, models[name]["resolution"])
+                for name in model_keys
+            ]),
+            timeout=FORECAST_REFRESH_TIMEOUT,
+        )
         raws = dict(zip(model_keys, raw_list))
 
         default_raw = raws[default]
@@ -224,10 +236,13 @@ async def _refresh_forecast(country: str):
         _clear_display_cache_for_country(country)
         with open(CACHE_DIR / f"forecast_{country}.pkl", "wb") as f:
             pickle.dump(c["forecast"], f, protocol=pickle.HIGHEST_PROTOCOL)
+    except asyncio.TimeoutError:
+        print(f"[forecast:{country}] ERROR: refresh timed out after {FORECAST_REFRESH_TIMEOUT}s")
     except Exception as exc:
         print(f"[forecast:{country}] ERROR: {exc}")
     finally:
         c["updating_forecast"] = False
+        c["forecast_refresh_started_at"] = None
 
 
 async def _refresh_measurements(country: str):
@@ -364,10 +379,23 @@ async def refresh_forecast(bg: BackgroundTasks, country: str = Query(...)):
     c = _get_country(country)
     if not c:
         return {"error": f"unknown country: {country}"}
-    if not c["updating_forecast"]:
-        bg.add_task(_refresh_forecast, country)
-        return {"status": "started"}
-    return {"status": "already_running"}
+
+    # Stuck-state recovery: if a previous refresh has been "running" longer
+    # than the watchdog window, the awaited coroutine almost certainly hung
+    # in the network layer (no exception, no finally). Force-clear the flag
+    # so the frontend's normal poll-driven refresh can take over.
+    if c["updating_forecast"]:
+        started = c.get("forecast_refresh_started_at")
+        if started is None or (datetime.now() - started).total_seconds() > FORECAST_REFRESH_TIMEOUT * 1.5:
+            print(f"[forecast:{country}] WARNING: previous refresh appears stuck "
+                  f"(started_at={started}); resetting flag")
+            c["updating_forecast"] = False
+            c["forecast_refresh_started_at"] = None
+        else:
+            return {"status": "already_running"}
+
+    bg.add_task(_refresh_forecast, country)
+    return {"status": "started"}
 
 
 @app.post("/api/measurements/refresh")
