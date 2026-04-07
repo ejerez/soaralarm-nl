@@ -50,6 +50,85 @@ MEASURE_TTL_NIGHT  = 3600   # 60 minutes
 # release the `updating_forecast` flag so future refreshes can proceed.
 FORECAST_REFRESH_TIMEOUT = 600  # 10 minutes
 
+# Display name for the upstream forecast provider — surfaced in /api/status
+# so the frontend can name the affected service in the outage banner.
+FORECAST_PROVIDER = "Open-Meteo"
+
+# Outage backoff: after a refresh fails with an upstream-outage-shaped error,
+# skip subsequent refresh attempts for this many seconds. Without this, the
+# frontend's 10-second status poll would hammer the upstream provider while
+# it's already on fire. Backoff is cleared on the next successful refresh.
+FORECAST_BACKOFF_SECONDS    = 600   # 10 minutes
+MEASUREMENT_BACKOFF_SECONDS = 600   # 10 minutes
+
+
+_CONN_ERROR_NAMES = {
+    "ConnectionError", "ConnectTimeout", "ReadTimeout", "Timeout",
+    "MaxRetryError", "NewConnectionError", "ProtocolError",
+    "SSLError", "ChunkedEncodingError", "RetryError",
+    "ConnectTimeoutError", "ReadTimeoutError", "TimeoutError",
+}
+
+# Substrings that indicate the upstream provider failed (5xx, rate limit,
+# DNS / connection refused / SSL / read timeout). Matched against str(exc)
+# of the *outermost* exception when chain-walking didn't yield a verdict.
+_OUTAGE_TOKENS = (
+    " 500 ", " 502 ", " 503 ", " 504 ",
+    "Bad Gateway", "Gateway Timeout", "Service Unavailable",
+    "Internal Server Error",
+    "Too many concurrent requests", "Too Many Requests",
+    "timed out", "timeout=",
+    "Connection refused", "Connection reset",
+    "Max retries exceeded",
+    "Name or service not known", "getaddrinfo failed",
+    "Temporary failure in name resolution",
+)
+
+
+def _classify_outage(exc: BaseException, provider: str) -> Optional[dict]:
+    """If exc looks like an upstream provider outage, return outage info; else None.
+
+    Many client libraries (e.g. openmeteo_requests) wrap the underlying HTTP /
+    connection error in their own exception class, hiding the .response and
+    the recognisable class name. We walk the __cause__/__context__ chain so
+    the inner ConnectTimeout / HTTPError / MaxRetryError still gets matched.
+    """
+    info = {"provider": provider, "message": str(exc)[:200]}
+
+    chain: list[BaseException] = []
+    seen: set[int] = set()
+    cur: Optional[BaseException] = exc
+    while cur is not None and id(cur) not in seen:
+        chain.append(cur)
+        seen.add(id(cur))
+        cur = cur.__cause__ or cur.__context__
+
+    for e in chain:
+        # 1. requests/niquests HTTPError-style: .response carries the upstream code
+        resp = getattr(e, "response", None)
+        code = getattr(resp, "status_code", None) if resp is not None else None
+        if isinstance(code, int) and 500 <= code < 600:
+            return {**info, "status_code": code}
+
+        # 2. asyncio.wait_for ceiling tripped
+        if isinstance(e, asyncio.TimeoutError):
+            return {**info, "status_code": None}
+
+        # 3. Connection-level failures by class name (covers requests, urllib3,
+        #    niquests, and bare TimeoutError variants)
+        if type(e).__name__ in _CONN_ERROR_NAMES:
+            return {**info, "status_code": None}
+
+    # 4. Last-resort string heuristics on the outermost message — covers
+    #    wrappers that flatten the chain (e.g. rate-limit messages from
+    #    openmeteo_requests, which raises a fresh OpenMeteoRequestsError
+    #    with no __cause__).
+    msg = str(exc)
+    if any(tok in msg for tok in _OUTAGE_TOKENS):
+        return {**info, "status_code": None}
+
+    return None
+
 
 def _load_country(country: str):
     """Load config files for a single country."""
@@ -87,6 +166,10 @@ def _load_country(country: str):
     c["updating_forecast"] = False
     c["updating_measurements"] = False
     c["forecast_refresh_started_at"] = None
+    c["forecast_outage"] = None
+    c["forecast_retry_after"] = None
+    c["measurement_outages"] = []
+    c["measurement_retry_after"] = None
 
     state["c"][country] = c
 
@@ -199,9 +282,18 @@ def _clear_display_cache_for_country(country: str):
 
 
 # ── Background workers ───────────────────────────────────────────────────────
+def _in_backoff(c: dict, key: str) -> bool:
+    """True if c[key] (a datetime) is in the future — i.e. we should skip the
+    refresh because the previous attempt failed with an upstream outage."""
+    until = c.get(key)
+    return until is not None and datetime.now() < until
+
+
 async def _refresh_forecast(country: str):
     c = state["c"].get(country)
     if not c:
+        return
+    if _in_backoff(c, "forecast_retry_after"):
         return
     c["updating_forecast"] = True
     c["forecast_refresh_started_at"] = datetime.now()
@@ -236,10 +328,16 @@ async def _refresh_forecast(country: str):
         _clear_display_cache_for_country(country)
         with open(CACHE_DIR / f"forecast_{country}.pkl", "wb") as f:
             pickle.dump(c["forecast"], f, protocol=pickle.HIGHEST_PROTOCOL)
-    except asyncio.TimeoutError:
+        c["forecast_outage"] = None
+        c["forecast_retry_after"] = None
+    except asyncio.TimeoutError as exc:
         print(f"[forecast:{country}] ERROR: refresh timed out after {FORECAST_REFRESH_TIMEOUT}s")
+        c["forecast_outage"] = _classify_outage(exc, FORECAST_PROVIDER)
+        c["forecast_retry_after"] = datetime.now() + timedelta(seconds=FORECAST_BACKOFF_SECONDS)
     except Exception as exc:
         print(f"[forecast:{country}] ERROR: {exc}")
+        c["forecast_outage"] = _classify_outage(exc, FORECAST_PROVIDER)
+        c["forecast_retry_after"] = datetime.now() + timedelta(seconds=FORECAST_BACKOFF_SECONDS)
     finally:
         c["updating_forecast"] = False
         c["forecast_refresh_started_at"] = None
@@ -249,18 +347,44 @@ async def _refresh_measurements(country: str):
     c = state["c"].get(country)
     if not c:
         return
+    if _in_backoff(c, "measurement_retry_after"):
+        return
     c["updating_measurements"] = True
     try:
         svc = MeasurementService(country, c["stations"], c["soar_points"])
         data = await svc.fetch()
+        # Pull out per-provider errors before persisting — they hold live
+        # exception objects that aren't worth (and aren't safe to) pickle.
+        errors = data.pop("_errors", {}) if isinstance(data, dict) else {}
         data["time"] = datetime.now()
         c["measurements"] = data
         with open(CACHE_DIR / f"measurements_{country}.pkl", "wb") as f:
             pickle.dump(c["measurements"], f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        outages = []
+        for provider_name, exc in errors.items():
+            o = _classify_outage(exc, provider_name)
+            if o is not None:
+                outages.append(o)
+        c["measurement_outages"] = outages
+        c["measurement_retry_after"] = (
+            datetime.now() + timedelta(seconds=MEASUREMENT_BACKOFF_SECONDS)
+            if outages else None
+        )
     except Exception as exc:
         print(f"[measurements:{country}] ERROR: {exc}")
     finally:
         c["updating_measurements"] = False
+
+
+def _build_outages(c: dict) -> list:
+    """Combine forecast + measurement outages into one list for /api/status."""
+    outages = []
+    if c.get("forecast_outage"):
+        outages.append({**c["forecast_outage"], "source": "forecast"})
+    for o in c.get("measurement_outages", []):
+        outages.append({**o, "source": "measurement"})
+    return outages
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────
@@ -333,6 +457,7 @@ def get_status(country: str = Query(...)):
         "updating_measurements":    c["updating_measurements"],
         "forecast_available":       bool(model_keys and c["forecast"].get(model_keys[0])),
         "measurements_available":   bool(c["measurements"] and "time" in c["measurements"]),
+        "outages":                  _build_outages(c),
         "rain_tile_count":          rain_tile_count,
         "rain_tile_age_seconds":    rain_tile_age_seconds,
         "rain_tiles_info":          rain_tiles_info,
@@ -380,6 +505,15 @@ async def refresh_forecast(bg: BackgroundTasks, country: str = Query(...)):
     if not c:
         return {"error": f"unknown country: {country}"}
 
+    # Backoff: if the previous refresh failed with an upstream-outage error,
+    # the frontend's 10-second poll would otherwise hammer the provider while
+    # it's down. Skip until the cooldown expires.
+    if _in_backoff(c, "forecast_retry_after"):
+        return {
+            "status": "backed_off",
+            "retry_after_seconds": (c["forecast_retry_after"] - datetime.now()).total_seconds(),
+        }
+
     # Stuck-state recovery: if a previous refresh has been "running" longer
     # than the watchdog window, the awaited coroutine almost certainly hung
     # in the network layer (no exception, no finally). Force-clear the flag
@@ -403,6 +537,11 @@ async def refresh_measurements(bg: BackgroundTasks, country: str = Query(...)):
     c = _get_country(country)
     if not c:
         return {"error": f"unknown country: {country}"}
+    if _in_backoff(c, "measurement_retry_after"):
+        return {
+            "status": "backed_off",
+            "retry_after_seconds": (c["measurement_retry_after"] - datetime.now()).total_seconds(),
+        }
     if not c["updating_measurements"]:
         bg.add_task(_refresh_measurements, country)
         return {"status": "started"}

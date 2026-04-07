@@ -542,8 +542,12 @@ def fetch(stations_config: Dict, soar_points: List[Dict]) -> Dict:
         "rws"   — per-station wind + heading from Rijkswaterstaat
         "rain_tiles" — List of radar images for animation [{image, bounds, time, age_minutes}, ...]
         "short_term_precipitation" — per-point nowcast [{timestamps, values}, ...]
+        "_errors" — (optional) per-provider exceptions, keyed by display name
+                    ("RWS", "KNMI"). Consumed and stripped by main.py before
+                    the result is cached, so it never gets pickled.
     """
     result: Dict = {}
+    errors: Dict[str, Exception] = {}
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         rws_future = pool.submit(_fetch_rws, stations_config.get("rws", []))
@@ -554,6 +558,7 @@ def fetch(stations_config: Dict, soar_points: List[Dict]) -> Dict:
         except Exception as exc:
             print(f"[nl] RWS fetch error: {exc}")
             result["rws"] = {}
+            errors["RWS"] = exc
 
         try:
             knmi = knmi_future.result()
@@ -565,5 +570,9 @@ def fetch(stations_config: Dict, soar_points: List[Dict]) -> Dict:
             print(f"[nl] KNMI fetch error: {exc}")
             result["rain_tiles"] = None
             result["short_term_precipitation"] = []
+            errors["KNMI"] = exc
+
+    if errors:
+        result["_errors"] = errors
 
     return result

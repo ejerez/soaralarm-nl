@@ -64,6 +64,17 @@ const s = {
   header: {
     padding: '18px 20px 0',
   },
+  outageBanner: {
+    background: 'rgba(230, 168, 23, 0.13)',
+    borderBottom: `2px solid #e6a817`,
+    color: '#f5cf6c',
+    padding: '14px 20px',
+    fontSize: fs(17),
+    fontWeight: 700,
+    textAlign: 'center',
+    lineHeight: 1.35,
+    letterSpacing: '0.01em',
+  },
   titleRow: {
     display: 'flex',
     alignItems: 'baseline',
@@ -228,6 +239,23 @@ export default function App() {
       <TermsAndConditions />
       <WhatsNew />
       <Tutorial activeTab={activeTab} onSwitchTab={setActiveTab} />
+
+      {/* ── Outage banner ── */}
+      {status?.outages?.length > 0 && (() => {
+        // Dedupe by provider so a provider that fails twice in one cycle
+        // doesn't show up twice in the banner.
+        const providers = [...new Set(status.outages.map(o => o.provider).filter(Boolean))]
+        const joined =
+          providers.length === 1 ? providers[0] :
+          providers.length === 2 ? `${providers[0]} and ${providers[1]}` :
+          `${providers.slice(0, -1).join(', ')}, and ${providers[providers.length - 1]}`
+        const verb = providers.length === 1 ? 'API seems' : 'APIs seem'
+        return (
+          <div style={s.outageBanner}>
+            Soaralarm is (partially) not working at the moment. {joined} {verb} to be down!
+          </div>
+        )
+      })()}
 
       {/* ── Tab bar ── */}
       <nav style={s.tabBar}>
