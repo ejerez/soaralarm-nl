@@ -62,6 +62,7 @@ desktop.ini
 
 .cache/
 .claude/
+.kilo/
 .vscode/
 .idea/
 *.swp

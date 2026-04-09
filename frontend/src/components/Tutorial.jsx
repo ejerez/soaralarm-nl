@@ -124,6 +124,11 @@ const STEPS = [
     title: 'Availability window',
     body:  <>Restricts times used in the <b style={{ color: T.text }}>flyable hours</b> calculations in the <b style={{ color: T.text }}>Map tab</b> and all the plots in the <b style={{ color: T.text }}>Point tab</b>. Defaults to values based on <b style={{ color: T.text }}>sunrise and sunset</b>, but you can also set your own values with <b style={{ color: T.text }}>Custom Time Window</b>.</>,
   },
+  {
+    tab: 2, selector: '[data-tutorial="settings-install"]', position: 'below',
+    title: 'Add to Home Screen',
+    body:  <>You can add Soaralarm to your <b style={{ color: T.text }}>home screen</b> for quick access like a native app. Tap <b style={{ color: T.text }}>Add to Home Screen</b> in Settings. On <b style={{ color: T.text }}>iPhone (Safari)</b>, you'll be guided through the manual process. On <b style={{ color: T.text }}>Android (Chromium)</b>, it will install directly.</>,
+  },
   // ── Info tab intro ──
   {
     tab: 2, selector: null, position: 'center',

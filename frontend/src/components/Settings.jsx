@@ -135,6 +135,37 @@ export default function Settings({ data }) {
     ? [{ key: firstKey, size: wings[firstKey].default_size }]
     : selectedWings
 
+  const isStandalone = typeof window !== 'undefined' &&
+    (window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true)
+  const isIOS = typeof window !== 'undefined' &&
+    (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
+  const [installable, setInstallable] = useState(!!window.__deferredInstallPrompt)
+  const canInstall = !isStandalone && (installable || isIOS)
+
+  useEffect(() => {
+    const onInstallable = () => setInstallable(true)
+    const onInstalled = () => setInstallable(false)
+    window.addEventListener('soaralarm:installable', onInstallable)
+    window.addEventListener('soaralarm:installed', onInstalled)
+    return () => {
+      window.removeEventListener('soaralarm:installable', onInstallable)
+      window.removeEventListener('soaralarm:installed', onInstalled)
+    }
+  }, [])
+
+  const handleInstall = async () => {
+    if (isIOS) {
+      alert('To add Soaralarm to your home screen, tap the "Share" button in Safari and select "Add to Home Screen".')
+      return
+    }
+    const prompt = window.__deferredInstallPrompt
+    if (!prompt) return
+    prompt.prompt()
+    await prompt.userChoice
+    window.__deferredInstallPrompt = null
+    setInstallable(false)
+  }
+
   // Auto-save: debounced refetch after any change
   const refetchTimer = useRef(null)
   const autoApply = useCallback(() => {
@@ -163,19 +194,38 @@ export default function Settings({ data }) {
     <div>
       <div style={{ marginBottom: 20, fontSize: fs(16), fontWeight: 600, color: T.text }}>Settings</div>
 
-      {/* Tutorial button */}
-      <button
-        onClick={() => window.dispatchEvent(new Event('soaralarm:start-tutorial'))}
-        style={{
-          background: T.card, color: T.text2,
-          border: `1px solid ${T.border}`, borderRadius: 8,
-          padding: '9px 22px', fontSize: fs(13), cursor: 'pointer',
-          fontFamily: T.font, display: 'inline-flex', alignItems: 'center', gap: 8,
-          marginBottom: 16,
-        }}
-      >
-        <img src="/paraglider_small.png" width={26} height={26} alt="" /> App Tutorial
-      </button>
+        {/* Tutorial button */}
+        <button
+          onClick={() => window.dispatchEvent(new Event('soaralarm:start-tutorial'))}
+          style={{
+            background: T.card, color: T.text2,
+            border: `1px solid ${T.border}`, borderRadius: 8,
+            padding: '9px 22px', fontSize: fs(13), cursor: 'pointer',
+            fontFamily: T.font, display: 'inline-flex', alignItems: 'center', gap: 8,
+            marginRight: 12, marginBottom: 16,
+          }}
+        >
+          <img src="/paraglider_small.png" width={26} height={26} alt="" /> App Tutorial
+        </button>
+
+        {/* Add to Home Screen button */}
+        {!isStandalone && (
+          <button
+            data-tutorial="settings-install"
+            onClick={handleInstall}
+            disabled={!canInstall}
+            style={{
+              background: T.card, color: canInstall ? T.text2 : T.text3,
+              border: `1px solid ${T.border}`, borderRadius: 8,
+              padding: '9px 22px', fontSize: fs(13), cursor: canInstall ? 'pointer' : 'not-allowed',
+              fontFamily: T.font, display: 'inline-flex', alignItems: 'center', gap: 8,
+              marginBottom: 16,
+              opacity: canInstall ? 1 : 0.5,
+            }}
+          >
+            <img src="/paraglider_small.png" width={26} height={26} alt="" /> Add to Home Screen
+          </button>
+        )}
 
       {/* Card 1: Country, Mode, Speed Unit, Forecast Model */}
       <div style={card}>

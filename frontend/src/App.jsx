@@ -18,6 +18,18 @@ if (typeof document !== 'undefined' && !document.getElementById('soar-fonts')) {
   document.head.appendChild(link)
 }
 
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    window.__deferredInstallPrompt = e;
+    window.dispatchEvent(new Event('soaralarm:installable'));
+  });
+  window.addEventListener('appinstalled', () => {
+    window.__deferredInstallPrompt = null;
+    window.dispatchEvent(new Event('soaralarm:installed'));
+  });
+}
+
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const T = {
   bg:        '#1a1a1a',

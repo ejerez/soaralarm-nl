@@ -1,6 +1,10 @@
 {
-    "version": 1.11,
+    "version": 1.12,
     "features":[
+        {
+            "feature": "Add to Home Screen",
+            "message": "You can now use the 'Add to Home Screen' button in the <b>Settings</b> tab to add Soaralarm to your home screen like it's an app. A proper app will come at some point, but for now this adds some convenience!"
+        },
         {
             "feature": "Automatic Model Selection",
             "message": "The weather models are now selected automatically, based on the <b>best model for each day</b>. If desired, you can disable this feature in the <b>Settings</b>."
