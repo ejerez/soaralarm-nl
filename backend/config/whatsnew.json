@@ -1,17 +1,13 @@
 {
-    "version": 1.12,
+    "version": 1.13,
     "features":[
         {
-            "feature": "Add to Home Screen",
-            "message": "You can now use the 'Add to Home Screen' button in the <b>Settings</b> tab to add Soaralarm to your home screen like it's an app. A proper app will come at some point, but for now this adds some convenience!"
-        },
-        {
-            "feature": "Automatic Model Selection",
-            "message": "The weather models are now selected automatically, based on the <b>best model for each day</b>. If desired, you can disable this feature in the <b>Settings</b>."
+            "feature": "URL Sharing",
+            "message": "You current selection is now reflected in the URL, making it <b>easier to share</b> with fellow pilots."
         },
         {
             "feature": "In case you missed it",
-            "message": "The map now shows animations of the current <b>rain radar</b> from KNMI. A <b>short-term precipitation</b> forecast has also been added to the detailed forecasts, covering the <b>next 2 hours</b>. But beware, <b>the KNMI radar sometimes misses light or low-altitude rain</b>!"
+            "message": "<b>Automatic model selection</b> is now enabled by default. You can disable it in the <b>Settings</b> tab."
         }
     ]
 }

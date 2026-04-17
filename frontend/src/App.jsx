@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { fs } from './fs.js'
 import { useSoarData } from './hooks/useSoarData.js'
+import { buildUrl, parseUrl } from './urlSync.js'
 import MapForecast, { certLabel } from './components/MapForecast.jsx'
 import PointForecast from './components/PointForecast.jsx'
 import Settings      from './components/Settings.jsx'
@@ -188,7 +189,7 @@ const s = {
 export default function App() {
   const [activeTab, setActiveTab] = useState(0)
   const data = useSoarData()
-  const { status, days, loading, error, dateIdx, setDateIdx, certainty, model, setModel, models, refetchDisplay, countries, modes, country, mode, ptIdx, altFont, largeFont, outdoorsMode, autoModelSelection, defaultModelByDay } = data
+  const { status, days, loading, error, dateIdx, setDateIdx, certainty, model, setModel, models, refetchDisplay, countries, modes, country, mode, ptIdx, altFont, largeFont, outdoorsMode, autoModelSelection, defaultModelByDay, suppressAutoSelectRef } = data
 
   // Apply preference overrides globally via injected <style>
   useEffect(() => {
@@ -215,6 +216,36 @@ export default function App() {
     )
     style.textContent = rules.join('\n')
   }, [altFont, largeFont, outdoorsMode])
+
+  // ── URL → state sync (popstate + initial parse) ───────────────────────────
+  useEffect(() => {
+    function applyUrl() {
+      const parsed = parseUrl(window.location.pathname, data.points)
+      if (!parsed) return
+      if (parsed.dateIdx != null) {
+        suppressAutoSelectRef.current = true
+        setDateIdx(parsed.dateIdx)
+      }
+      if (parsed.ptIdx != null) {
+        data.setPtIdx(parsed.ptIdx)
+      }
+      if (parsed.tab != null) {
+        setActiveTab(parsed.tab)
+      }
+    }
+    applyUrl()
+    window.addEventListener('popstate', applyUrl)
+    return () => window.removeEventListener('popstate', applyUrl)
+  }, [data.points, data.setPtIdx, setDateIdx, suppressAutoSelectRef])
+
+  // ── State → URL sync (replaceState) ───────────────────────────────────────
+  useEffect(() => {
+    if (!days.length) return
+    const newPath = buildUrl(activeTab, dateIdx, data.ptIdx, data.points)
+    if (window.location.pathname !== newPath) {
+      window.history.replaceState(null, '', newPath)
+    }
+  }, [activeTab, dateIdx, data.ptIdx, data.points, days])
 
   if (loading) return (
     <div style={s.app}>

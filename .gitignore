@@ -55,10 +55,20 @@ yarn-debug.log*
 yarn-error.log*
 
 
+# ── Android / Capacitor ──────────────────────────────────────────────────────
+frontend/android/.gradle/
+frontend/android/app/build/
+frontend/android/build/
+frontend/android/local.properties
+*.apk
+*.aab
+*.keystore
+
 # ── OS & editor ──────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 desktop.ini
+nul
 
 .cache/
 .claude/

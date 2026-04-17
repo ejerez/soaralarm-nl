@@ -6,17 +6,24 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "android:build": "vite build && npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:sync": "npx cap sync android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
+    "date-fns": "^3.6.0",
+    "leaflet": "^1.9.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-leaflet": "^4.2.1",
-    "leaflet": "^1.9.4",
-    "recharts": "^2.12.7",
-    "date-fns": "^3.6.0"
+    "recharts": "^2.12.7"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",

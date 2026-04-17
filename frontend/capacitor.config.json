@@ -1,0 +1,9 @@
+{
+  "appId": "eu.soaralarm.app",
+  "appName": "Soaralarm",
+  "webDir": "dist",
+  "server": {
+    "url": "https://nl.soaralarm.eu",
+    "cleartext": true
+  }
+}

@@ -207,6 +207,7 @@ export function useSoarData() {
   const [dateIdx, setDateIdx]           = useState(1)
   const [ptIdx,   setPtIdx]             = useState(0)
   const [selectedTime, setSelectedTime] = useState(null)
+  const suppressAutoSelectRef = useRef(false)
 
   // Auto-select best point on date change and when forecast first loads.
   // Ref starts as null so the very first forecast load triggers selection.
@@ -215,6 +216,10 @@ export function useSoarData() {
     if (!displayForecast || !points.length) return
     if (prevAutoDateRef.current === dateIdx) return
     prevAutoDateRef.current = dateIdx
+    if (suppressAutoSelectRef.current) {
+      suppressAutoSelectRef.current = false
+      return
+    }
     const dayPf = displayForecast[dateIdx] || []
     const certDi = certainty?.[dateIdx]
     setPtIdx(findBestLocationIndex(dayPf, certDi, points))
@@ -619,6 +624,7 @@ export function useSoarData() {
     defaultModelByDay,
     dateIdx, setDateIdx,
     ptIdx,   setPtIdx,
+    suppressAutoSelectRef,
     selectedTime, setSelectedTime,
     refreshForecast: api.refreshForecast,
     refreshMeasure:  api.refreshMeasure,
