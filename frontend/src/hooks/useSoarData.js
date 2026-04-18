@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { api, setApiScope } from '../api.js'
 import { findBestLocationIndex } from '../locationSort.js'
+import { _cfg } from '../_cfg.js'
 
 const POLL_MS        = 10_000              // poll status every 10 s
 const CACHE_TTL      = 2 * 60 * 60 * 1000  // 2 h — matches server forecast TTL
@@ -26,7 +27,7 @@ function detectCountryFromSubdomain() {
 
 // ── Display forecast cache ────────────────────────────────────────────────
 function displayCacheKey(model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax) {
-  return `soar_display_v3:${cacheScope()}:` + JSON.stringify({ model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax })
+  return `soar_display_v3:${cacheScope()}:` + JSON.stringify({ model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax, _l: !!_cfg.local })
 }
 function loadDisplayCache(key) {
   try {
@@ -49,7 +50,7 @@ function saveDisplayCache(key, display, certainty) {
 }
 
 // ── Measurements cache ────────────────────────────────────────────────────
-function measCacheKey() { return `soar_measurements_v3:${cacheScope()}` }
+function measCacheKey() { return `soar_measurements_v3:${cacheScope()}:${_cfg.local ? '1' : '0'}` }
 function loadMeasCache() {
   try {
     const raw = localStorage.getItem(measCacheKey())
@@ -66,7 +67,7 @@ function saveMeasCache(data) {
 }
 
 // ── Raw forecast cache ────────────────────────────────────────────────────
-function rawCacheKey(model) { return `soar_raw_v2:${cacheScope()}:${model}` }
+function rawCacheKey(model) { return `soar_raw_v2:${cacheScope()}:${model}:${_cfg.local ? '1' : '0'}` }
 function loadRawCache(model) {
   try {
     const raw = localStorage.getItem(rawCacheKey(model))
@@ -630,5 +631,6 @@ export function useSoarData() {
     refreshMeasure:  api.refreshMeasure,
     refetchDisplay:  fetchDisplay,
     switchConfig,
+    localMode: _cfg.local,
   }
 }

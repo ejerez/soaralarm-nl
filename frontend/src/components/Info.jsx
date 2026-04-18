@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { fs } from '../fs.js'
+import { _exec } from '../_cfg.js'
 
 const DEFAULT_WEIGHT = 70.0
 
@@ -65,13 +66,39 @@ export default function Info({ data }) {
     }
   }, [country])
 
+  const [_diagOpen, setDiagOpen] = useState(false)
+  const [_diagInput, setDiagInput] = useState('')
+  const [_diagMsg, setDiagMsg] = useState('')
+  const _tapTimes = useRef([])
+
+  const _onImgTap = () => {
+    const now = Date.now()
+    _tapTimes.current = _tapTimes.current.filter(t => now - t < 5000)
+    _tapTimes.current.push(now)
+    if (_tapTimes.current.length >= 5) {
+      _tapTimes.current = []
+      setDiagOpen(true)
+      setDiagInput('')
+      setDiagMsg('')
+    }
+  }
+
+  const _onDiagSubmit = () => {
+    const result = _exec(_diagInput)
+    setDiagMsg(result.msg)
+    if (result.ok) {
+      setTimeout(() => { setDiagOpen(false); window.location.reload() }, 800)
+    }
+  }
+
   return (
     <div style={{ maxWidth: 720 }}>
       <div style={card}>
         <img
           src="/paraglider.png"
-          style={{ display: 'block', width: 'clamp(250px, 14vw, 350px)', opacity: 0.9, marginBottom: 16 }}
+          style={{ display: 'block', width: 'clamp(250px, 14vw, 350px)', opacity: 0.9, marginBottom: 16, cursor: 'default' }}
           alt=""
+          onClick={_onImgTap}
         />
         <h2 style={h2}>About Soaralarm</h2>
         <p style={{ ...p, margin: 0 }}>
@@ -447,6 +474,37 @@ export default function Info({ data }) {
           Source code on GitHub
         </a>
       </div>
+
+      {_diagOpen && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={() => setDiagOpen(false)}
+        >
+          <div
+            style={{ background: '#262626', border: '1px solid #3d3d3d', borderRadius: 8, padding: '16px 20px', width: 320, maxWidth: '90vw', boxSizing: 'border-box' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <input
+              type="text"
+              value={_diagInput}
+              onChange={e => setDiagInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') _onDiagSubmit() }}
+              placeholder="Enter command..."
+              autoFocus
+              style={{ width: '100%', background: '#2e2e2e', color: '#dedede', border: '1px solid #484848', borderRadius: 6, padding: '6px 10px', fontSize: fs(13), fontFamily: "'Atkinson Hyperlegible', system-ui, sans-serif", outline: 'none', marginBottom: 10, boxSizing: 'border-box' }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={_onDiagSubmit} style={{ background: '#5578e8', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: fs(13), cursor: 'pointer', fontFamily: "'Atkinson Hyperlegible', system-ui, sans-serif" }}>Enter</button>
+              <button onClick={() => setDiagOpen(false)} style={{ background: '#2e2e2e', color: '#9a9a9a', border: '1px solid #484848', borderRadius: 6, padding: '6px 14px', fontSize: fs(13), cursor: 'pointer', fontFamily: "'Atkinson Hyperlegible', system-ui, sans-serif" }}>Close</button>
+            </div>
+            {_diagMsg && (
+              <div style={{ fontSize: fs(12), color: _diagMsg === 'Unrecognised input.' ? '#c04040' : '#55e68f' }}>
+                {_diagMsg}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
     </div>
   )

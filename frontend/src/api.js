@@ -1,3 +1,5 @@
+import { _cfg } from './_cfg.js'
+
 const BASE = '/api'
 const TRANSIENT = new Set([502, 503, 504])
 const RETRY_DELAYS = [1000, 2000, 4000]  // 3 attempts, ~7 s total
@@ -19,6 +21,7 @@ function _appendScope(path, { country = true, mode = true } = {}) {
   const url = new URL(path, 'http://x')  // dummy base for relative paths
   if (country && _scope.country) url.searchParams.set('country', _scope.country)
   if (mode && _scope.mode)       url.searchParams.set('mode', _scope.mode)
+  if (_cfg.local) url.searchParams.set('detail', 'true')
   return url.pathname + url.search
 }
 
@@ -76,6 +79,7 @@ export const api = {
     })
     if (_scope.country) params.set('country', _scope.country)
     if (_scope.mode)    params.set('mode', _scope.mode)
+    if (_cfg.local)     params.set('detail', 'true')
     if (selectedWings?.length) {
       params.set('wings', JSON.stringify(selectedWings))
     }

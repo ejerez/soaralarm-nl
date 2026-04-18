@@ -27,11 +27,11 @@ app.add_middleware(
 # All countries and modes are loaded on startup.  Each API request specifies
 # which country/mode it needs via query parameters — no global "active" selection.
 state = {
-    "countries": {},          # {code: {name, timezone}}
-    "modes": {},              # {code: display_name}
-    "c": {},                  # per-country: {code: {soar_points, models, stations, forecast, measurements, updating_*}}
-    "m": {},                  # per-mode:    {code: {wings, ranges}}
-    "enriched": {},           # per country:mode combo: {"nl:para": [enriched points]}
+    "countries": {},  # {code: {name, timezone}}
+    "modes": {},  # {code: display_name}
+    "c": {},  # per-country: {code: {soar_points, models, stations, forecast, measurements, updating_*}}
+    "m": {},  # per-mode:    {code: {wings, ranges}}
+    "enriched": {},  # per country:mode combo: {"nl:para": [enriched points]}
 }
 
 # ── Display result cache ─────────────────────────────────────────────────────
@@ -39,11 +39,11 @@ state = {
 # Cleared per-country whenever a fresh forecast is fetched for that country.
 _display_cache: dict = {}
 
-CONFIG_DIR   = Path("config")
-CACHE_DIR    = Path(".cache")
-FORECAST_TTL       = 7200   # 2 hours
-MEASURE_TTL_DAY    = 900    # 15 minutes
-MEASURE_TTL_NIGHT  = 3600   # 60 minutes
+CONFIG_DIR = Path("config")
+CACHE_DIR = Path(".cache")
+FORECAST_TTL = 7200  # 2 hours
+MEASURE_TTL_DAY = 900  # 15 minutes
+MEASURE_TTL_NIGHT = 3600  # 60 minutes
 
 # Hard ceiling on a single forecast refresh run. Any longer than this and we
 # assume something went wrong (network hang, deadlocked thread, etc.) and
@@ -58,29 +58,47 @@ FORECAST_PROVIDER = "Open-Meteo"
 # skip subsequent refresh attempts for this many seconds. Without this, the
 # frontend's 10-second status poll would hammer the upstream provider while
 # it's already on fire. Backoff is cleared on the next successful refresh.
-FORECAST_BACKOFF_SECONDS    = 600   # 10 minutes
-MEASUREMENT_BACKOFF_SECONDS = 600   # 10 minutes
+FORECAST_BACKOFF_SECONDS = 600  # 10 minutes
+MEASUREMENT_BACKOFF_SECONDS = 600  # 10 minutes
 
 
 _CONN_ERROR_NAMES = {
-    "ConnectionError", "ConnectTimeout", "ReadTimeout", "Timeout",
-    "MaxRetryError", "NewConnectionError", "ProtocolError",
-    "SSLError", "ChunkedEncodingError", "RetryError",
-    "ConnectTimeoutError", "ReadTimeoutError", "TimeoutError",
+    "ConnectionError",
+    "ConnectTimeout",
+    "ReadTimeout",
+    "Timeout",
+    "MaxRetryError",
+    "NewConnectionError",
+    "ProtocolError",
+    "SSLError",
+    "ChunkedEncodingError",
+    "RetryError",
+    "ConnectTimeoutError",
+    "ReadTimeoutError",
+    "TimeoutError",
 }
 
 # Substrings that indicate the upstream provider failed (5xx, rate limit,
 # DNS / connection refused / SSL / read timeout). Matched against str(exc)
 # of the *outermost* exception when chain-walking didn't yield a verdict.
 _OUTAGE_TOKENS = (
-    " 500 ", " 502 ", " 503 ", " 504 ",
-    "Bad Gateway", "Gateway Timeout", "Service Unavailable",
+    " 500 ",
+    " 502 ",
+    " 503 ",
+    " 504 ",
+    "Bad Gateway",
+    "Gateway Timeout",
+    "Service Unavailable",
     "Internal Server Error",
-    "Too many concurrent requests", "Too Many Requests",
-    "timed out", "timeout=",
-    "Connection refused", "Connection reset",
+    "Too many concurrent requests",
+    "Too Many Requests",
+    "timed out",
+    "timeout=",
+    "Connection refused",
+    "Connection reset",
     "Max retries exceeded",
-    "Name or service not known", "getaddrinfo failed",
+    "Name or service not known",
+    "getaddrinfo failed",
     "Temporary failure in name resolution",
 )
 
@@ -224,9 +242,11 @@ def _get_country(country: str) -> dict:
     """Return per-country state dict, or None if invalid."""
     return state["c"].get(country)
 
+
 def _get_mode(mode: str) -> dict:
     """Return per-mode state dict, or None if invalid."""
     return state["m"].get(mode)
+
 
 def _forecast_age(country: str) -> Optional[float]:
     c = state["c"].get(country)
@@ -235,12 +255,14 @@ def _forecast_age(country: str) -> Optional[float]:
     t = c["forecast"].get("time")
     return (datetime.now() - t).total_seconds() if t else None
 
+
 def _measure_age(country: str) -> Optional[float]:
     c = state["c"].get(country)
     if not c:
         return None
     t = c["measurements"].get("time")
     return (datetime.now() - t).total_seconds() if t else None
+
 
 def _today_sun(country: str):
     """Return (sunrise, sunset) as UTC-aware datetimes for today, or (None, None)."""
@@ -249,30 +271,34 @@ def _today_sun(country: str):
         if not c:
             return None, None
         model_keys = list(c["models"].keys())
-        forecast = next((c["forecast"].get(k) for k in model_keys if c["forecast"].get(k)), None)
+        forecast = next(
+            (c["forecast"].get(k) for k in model_keys if c["forecast"].get(k)), None
+        )
         if not forecast or len(forecast) < 2:
             return None, None
         today_fc = forecast[1][0] if forecast[1] else None
         if not today_fc or not today_fc.get("sunrise") or not today_fc.get("sunset"):
             return None, None
         sunrise = datetime.fromisoformat(today_fc["sunrise"])
-        sunset  = datetime.fromisoformat(today_fc["sunset"])
+        sunset = datetime.fromisoformat(today_fc["sunset"])
         if sunrise.tzinfo is None:
             sunrise = sunrise.replace(tzinfo=timezone.utc)
         if sunset.tzinfo is None:
-            sunset  = sunset.replace(tzinfo=timezone.utc)
+            sunset = sunset.replace(tzinfo=timezone.utc)
         return sunrise, sunset
     except Exception:
         return None, None
+
 
 def _in_daylight_window(country: str) -> bool:
     """Return True if now is within 60 minutes of today's sunrise/sunset."""
     sunrise, sunset = _today_sun(country)
     if sunrise is None:
         return True
-    now    = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
     margin = timedelta(minutes=60)
     return now >= sunrise - margin and now <= sunset + margin
+
 
 def _clear_display_cache_for_country(country: str):
     """Remove all display cache entries for a given country."""
@@ -299,19 +325,21 @@ async def _refresh_forecast(country: str):
     c["forecast_refresh_started_at"] = datetime.now()
     try:
         country_cfg = state["countries"].get(country, {})
-        timezone    = country_cfg.get("timezone", "Europe/Berlin")
-        svc         = ForecastService(c["soar_points"], timezone=timezone)
-        models      = c["models"]
-        model_keys  = list(models.keys())
-        default     = model_keys[0]
+        timezone = country_cfg.get("timezone", "Europe/Berlin")
+        svc = ForecastService(c["soar_points"], timezone=timezone)
+        models = c["models"]
+        model_keys = list(models.keys())
+        default = model_keys[0]
 
         # Hard timeout — without this, a hung HTTP call inside the executor
         # would never return and `updating_forecast` would stay True forever.
         raw_list = await asyncio.wait_for(
-            asyncio.gather(*[
-                svc.fetch_raw(name, models[name]["resolution"])
-                for name in model_keys
-            ]),
+            asyncio.gather(
+                *[
+                    svc.fetch_raw(name, models[name]["resolution"])
+                    for name in model_keys
+                ]
+            ),
             timeout=FORECAST_REFRESH_TIMEOUT,
         )
         raws = dict(zip(model_keys, raw_list))
@@ -320,7 +348,9 @@ async def _refresh_forecast(country: str):
         for name in model_keys:
             for field in models[name].get("patch", []):
                 for pt_idx in range(len(raws[name])):
-                    raws[name][pt_idx]["hourly"][field] = default_raw[pt_idx]["hourly"][field]
+                    raws[name][pt_idx]["hourly"][field] = default_raw[pt_idx]["hourly"][
+                        field
+                    ]
 
         for name in model_keys:
             c["forecast"][name] = svc.process(raws[name])
@@ -331,13 +361,19 @@ async def _refresh_forecast(country: str):
         c["forecast_outage"] = None
         c["forecast_retry_after"] = None
     except asyncio.TimeoutError as exc:
-        print(f"[forecast:{country}] ERROR: refresh timed out after {FORECAST_REFRESH_TIMEOUT}s")
+        print(
+            f"[forecast:{country}] ERROR: refresh timed out after {FORECAST_REFRESH_TIMEOUT}s"
+        )
         c["forecast_outage"] = _classify_outage(exc, FORECAST_PROVIDER)
-        c["forecast_retry_after"] = datetime.now() + timedelta(seconds=FORECAST_BACKOFF_SECONDS)
+        c["forecast_retry_after"] = datetime.now() + timedelta(
+            seconds=FORECAST_BACKOFF_SECONDS
+        )
     except Exception as exc:
         print(f"[forecast:{country}] ERROR: {exc}")
         c["forecast_outage"] = _classify_outage(exc, FORECAST_PROVIDER)
-        c["forecast_retry_after"] = datetime.now() + timedelta(seconds=FORECAST_BACKOFF_SECONDS)
+        c["forecast_retry_after"] = datetime.now() + timedelta(
+            seconds=FORECAST_BACKOFF_SECONDS
+        )
     finally:
         c["updating_forecast"] = False
         c["forecast_refresh_started_at"] = None
@@ -369,7 +405,8 @@ async def _refresh_measurements(country: str):
         c["measurement_outages"] = outages
         c["measurement_retry_after"] = (
             datetime.now() + timedelta(seconds=MEASUREMENT_BACKOFF_SECONDS)
-            if outages else None
+            if outages
+            else None
         )
     except Exception as exc:
         print(f"[measurements:{country}] ERROR: {exc}")
@@ -389,13 +426,14 @@ def _build_outages(c: dict) -> list:
 
 # ── Routes ───────────────────────────────────────────────────────────────────
 
+
 @app.get("/api/status")
 def get_status(country: str = Query(...)):
     c = _get_country(country)
     if not c:
         return {"error": f"unknown country: {country}"}
-    fa    = _forecast_age(country)
-    ma    = _measure_age(country)
+    fa = _forecast_age(country)
+    ma = _measure_age(country)
     in_dl = _in_daylight_window(country)
     meas_ttl = MEASURE_TTL_DAY if in_dl else MEASURE_TTL_NIGHT
     model_keys = list(c["models"].keys())
@@ -406,10 +444,18 @@ def get_status(country: str = Query(...)):
         tz_name = state["countries"].get(country, {}).get("timezone", "Europe/Berlin")
         local_tz = zoneinfo.ZoneInfo(tz_name)
         # Truncate to the hour and add one hour for the end time
-        default_ts = sunrise.astimezone(local_tz).replace(minute=0, second=0, microsecond=0).strftime("%H:%M")
-        default_te = sunset.astimezone(local_tz).replace(minute=0, second=0, microsecond=0).strftime("%H:%M")
+        default_ts = (
+            sunrise.astimezone(local_tz)
+            .replace(minute=0, second=0, microsecond=0)
+            .strftime("%H:%M")
+        )
+        default_te = (
+            sunset.astimezone(local_tz)
+            .replace(minute=0, second=0, microsecond=0)
+            .strftime("%H:%M")
+        )
         # Add one hour to end time
-        default_te_h, default_te_m = map(int, default_te.split(':'))
+        default_te_h, default_te_m = map(int, default_te.split(":"))
         default_te = f"{(default_te_h + 1):02d}:{default_te_m:02d}"
     else:
         default_ts = "07:00"
@@ -424,55 +470,66 @@ def get_status(country: str = Query(...)):
         rain_tile_count = len(rain_tiles)
         if rain_tile_count > 0:
             from datetime import datetime, timezone
+
             now = datetime.now(timezone.utc)
-            
+
             # Create detailed tile info array with dynamic ages of all tiles (oldest to newest)
             tiles_info = []
             for tile in rain_tiles:
                 if tile.get("timestamp"):
-                    tile_time = datetime.fromtimestamp(tile["timestamp"] / 1000, timezone.utc)
+                    tile_time = datetime.fromtimestamp(
+                        tile["timestamp"] / 1000, timezone.utc
+                    )
                     age_minutes = int((now - tile_time).total_seconds() / 60)
                     tiles_info.append(age_minutes)
                 else:
                     # Current tile without timestamp - age is 0
                     tiles_info.append(0)
             rain_tiles_info = tiles_info
-            
+
             # Use the age of the most recent tile (current tile) for backward compatibility
             most_recent_tile = rain_tiles[-1]  # Last tile is most recent
             if most_recent_tile.get("timestamp"):
-                tile_time = datetime.fromtimestamp(most_recent_tile["timestamp"] / 1000, timezone.utc)
+                tile_time = datetime.fromtimestamp(
+                    most_recent_tile["timestamp"] / 1000, timezone.utc
+                )
                 rain_tile_age_seconds = int((now - tile_time).total_seconds())
             else:
                 # Current tile without timestamp - age is 0
                 rain_tile_age_seconds = 0
 
     return {
-        "forecast_age_seconds":     fa,
-        "measurement_age_seconds":  ma,
-        "forecast_stale":           fa is None or fa >= FORECAST_TTL,
-        "measurement_stale":        ma is None or ma >= meas_ttl,
-        "measurement_in_daylight":  in_dl,
-        "updating_forecast":        c["updating_forecast"],
-        "updating_measurements":    c["updating_measurements"],
-        "forecast_available":       bool(model_keys and c["forecast"].get(model_keys[0])),
-        "measurements_available":   bool(c["measurements"] and "time" in c["measurements"]),
-        "outages":                  _build_outages(c),
-        "rain_tile_count":          rain_tile_count,
-        "rain_tile_age_seconds":    rain_tile_age_seconds,
-        "rain_tiles_info":          rain_tiles_info,
-        "default_time_start":       default_ts,
-        "default_time_end":         default_te,
+        "forecast_age_seconds": fa,
+        "measurement_age_seconds": ma,
+        "forecast_stale": fa is None or fa >= FORECAST_TTL,
+        "measurement_stale": ma is None or ma >= meas_ttl,
+        "measurement_in_daylight": in_dl,
+        "updating_forecast": c["updating_forecast"],
+        "updating_measurements": c["updating_measurements"],
+        "forecast_available": bool(model_keys and c["forecast"].get(model_keys[0])),
+        "measurements_available": bool(
+            c["measurements"] and "time" in c["measurements"]
+        ),
+        "outages": _build_outages(c),
+        "rain_tile_count": rain_tile_count,
+        "rain_tile_age_seconds": rain_tile_age_seconds,
+        "rain_tiles_info": rain_tiles_info,
+        "default_time_start": default_ts,
+        "default_time_end": default_te,
     }
 
 
 @app.get("/api/points")
-def get_points(country: str = Query(...), mode: str = Query(...)):
+def get_points(
+    country: str = Query(...), mode: str = Query(...), detail: bool = Query(False)
+):
     key = f"{country}:{mode}"
     enriched = state["enriched"].get(key)
     if enriched is None:
         return {"error": f"unknown country:mode combination: {key}"}
-    return enriched
+    if detail:
+        return [{**pt, "priority": 0} for pt in enriched]
+    return [pt for pt in enriched if pt.get("priority", 0) >= 0]
 
 
 @app.get("/api/wings")
@@ -511,7 +568,9 @@ async def refresh_forecast(bg: BackgroundTasks, country: str = Query(...)):
     if _in_backoff(c, "forecast_retry_after"):
         return {
             "status": "backed_off",
-            "retry_after_seconds": (c["forecast_retry_after"] - datetime.now()).total_seconds(),
+            "retry_after_seconds": (
+                c["forecast_retry_after"] - datetime.now()
+            ).total_seconds(),
         }
 
     # Stuck-state recovery: if a previous refresh has been "running" longer
@@ -520,9 +579,15 @@ async def refresh_forecast(bg: BackgroundTasks, country: str = Query(...)):
     # so the frontend's normal poll-driven refresh can take over.
     if c["updating_forecast"]:
         started = c.get("forecast_refresh_started_at")
-        if started is None or (datetime.now() - started).total_seconds() > FORECAST_REFRESH_TIMEOUT * 1.5:
-            print(f"[forecast:{country}] WARNING: previous refresh appears stuck "
-                  f"(started_at={started}); resetting flag")
+        if (
+            started is None
+            or (datetime.now() - started).total_seconds()
+            > FORECAST_REFRESH_TIMEOUT * 1.5
+        ):
+            print(
+                f"[forecast:{country}] WARNING: previous refresh appears stuck "
+                f"(started_at={started}); resetting flag"
+            )
             c["updating_forecast"] = False
             c["forecast_refresh_started_at"] = None
         else:
@@ -540,7 +605,9 @@ async def refresh_measurements(bg: BackgroundTasks, country: str = Query(...)):
     if _in_backoff(c, "measurement_retry_after"):
         return {
             "status": "backed_off",
-            "retry_after_seconds": (c["measurement_retry_after"] - datetime.now()).total_seconds(),
+            "retry_after_seconds": (
+                c["measurement_retry_after"] - datetime.now()
+            ).total_seconds(),
         }
     if not c["updating_measurements"]:
         bg.add_task(_refresh_measurements, country)
@@ -548,17 +615,101 @@ async def refresh_measurements(bg: BackgroundTasks, country: str = Query(...)):
     return {"status": "already_running"}
 
 
+def _visible_indices(soar_pts, detail: bool) -> List[int]:
+    if detail:
+        return list(range(len(soar_pts)))
+    return [i for i, pt in enumerate(soar_pts) if pt.get("priority", 0) >= 0]
+
+
+def _compute_certainty(disp, ALL_MODELS, model_disps, models_cfg, soar_pts, detail):
+    certainty_full = []
+    for day_idx, day_disp in enumerate(disp):
+        use_models = [
+            mk
+            for mk in ALL_MODELS
+            if day_idx <= models_cfg.get(mk, {}).get("forecast_days", 999)
+        ]
+        total = sum(
+            1 for mk in use_models if mk in model_disps and model_disps[mk] is not None
+        )
+
+        n_points = len(day_disp)
+        point_agree = [0] * n_points
+        for pi in range(n_points):
+            for mk in use_models:
+                if mk not in model_disps or model_disps[mk] is None:
+                    continue
+                m_days = model_disps[mk]
+                if day_idx < len(m_days) and pi < len(m_days[day_idx]):
+                    pf_m = m_days[day_idx][pi]
+                    fly_m = (
+                        pf_m["good_hours"]
+                        + pf_m["cross_hours"]
+                        + pf_m["gusty_hours"]
+                        + pf_m["cross_gusty_hours"]
+                    )
+                    if fly_m > 0:
+                        point_agree[pi] += 1
+
+        best_pi, best_agree, best_prio, best_quality, best_fly = 0, -1, 999, -1, -1
+        for pi, pf in enumerate(day_disp):
+            fly = (
+                pf["good_hours"]
+                + pf["cross_hours"]
+                + pf["gusty_hours"]
+                + pf["cross_gusty_hours"]
+            )
+            quality = pf["good_hours"] + pf["gusty_hours"]
+            ag = point_agree[pi]
+            prio = soar_pts[pi].get("priority", 0) if pi < len(soar_pts) else 0
+            if detail:
+                prio = 0
+            if (
+                ag > best_agree
+                or (ag == best_agree and prio < best_prio)
+                or (ag == best_agree and prio == best_prio and quality > best_quality)
+                or (
+                    ag == best_agree
+                    and prio == best_prio
+                    and quality == best_quality
+                    and fly > best_fly
+                )
+            ):
+                best_agree, best_prio, best_quality, best_fly, best_pi = (
+                    ag,
+                    prio,
+                    quality,
+                    fly,
+                    pi,
+                )
+
+        certainty_full.append(
+            {
+                "agree": best_agree,
+                "total": total,
+                "best_pi": best_pi,
+                "by_point": point_agree,
+            }
+        )
+    return certainty_full
+
+
 @app.get("/api/forecast/display")
 def get_display_forecast(
-    country:    str             = Query(...),
-    mode:       str             = Query(...),
-    model:      str             = Query(None),
-    time_start: str             = Query("00:00"),
-    time_end:   str             = Query("23:59"),
-    wings:      str             = Query(None, description='JSON array of {key, size} objects'),
-    weight:     float           = Query(70.0, description='Total pilot weight in flight (kg)'),
-    wind_min:   Optional[float] = Query(None, description='Custom minimum wind speed (km/h)'),
-    wind_max:   Optional[float] = Query(None, description='Custom maximum gust speed (km/h)'),
+    country: str = Query(...),
+    mode: str = Query(...),
+    model: str = Query(None),
+    time_start: str = Query("00:00"),
+    time_end: str = Query("23:59"),
+    wings: str = Query(None, description="JSON array of {key, size} objects"),
+    weight: float = Query(70.0, description="Total pilot weight in flight (kg)"),
+    wind_min: Optional[float] = Query(
+        None, description="Custom minimum wind speed (km/h)"
+    ),
+    wind_max: Optional[float] = Query(
+        None, description="Custom maximum gust speed (km/h)"
+    ),
+    detail: bool = Query(False),
 ):
     """Returns per-day, per-point display data (gantt, wind_pizza, hours)."""
     c = _get_country(country)
@@ -580,7 +731,7 @@ def get_display_forecast(
         return {"error": "forecast not available"}
 
     t_start = time.fromisoformat(time_start)
-    t_end   = time.fromisoformat(time_end)
+    t_end = time.fromisoformat(time_end)
 
     selected_wings: List[dict] = []
     if wings:
@@ -592,7 +743,18 @@ def get_display_forecast(
     wings_key = json.dumps(selected_wings, sort_keys=True)
 
     def _cached_display(mk: str, ignore_precip_vis: bool = False):
-        cache_key = (country, mode, mk, time_start, time_end, wings_key, weight, wind_min, wind_max, ignore_precip_vis)
+        cache_key = (
+            country,
+            mode,
+            mk,
+            time_start,
+            time_end,
+            wings_key,
+            weight,
+            wind_min,
+            wind_max,
+            ignore_precip_vis,
+        )
         if cache_key in _display_cache:
             return _display_cache[cache_key]
         raw_mk = c["forecast"].get(mk)
@@ -601,8 +763,18 @@ def get_display_forecast(
         try:
             tz = state["countries"].get(country, {}).get("timezone", "Europe/Berlin")
             svc = ForecastService(c["soar_points"], timezone=tz)
-            result = svc.display(raw_mk, t_start, t_end, selected_wings, m["wings"], m["ranges"],
-                                 weight, wind_min, wind_max, ignore_precip_vis=ignore_precip_vis)
+            result = svc.display(
+                raw_mk,
+                t_start,
+                t_end,
+                selected_wings,
+                m["wings"],
+                m["ranges"],
+                weight,
+                wind_min,
+                wind_max,
+                ignore_precip_vis=ignore_precip_vis,
+            )
         except Exception as exc:
             print(f"[display:{country}:{mode}] ERROR for {mk}: {exc}")
             return None
@@ -613,52 +785,75 @@ def get_display_forecast(
     if disp is None:
         return {"error": "forecast not available"}
 
-    # ── Certainty: count model agreement at each day's best location ─────────
     ALL_MODELS = list(c["models"].keys())
-    model_disps = {mk: _cached_display(mk, ignore_precip_vis=True) for mk in ALL_MODELS if c["forecast"].get(mk)}
+    model_disps = {
+        mk: _cached_display(mk, ignore_precip_vis=True)
+        for mk in ALL_MODELS
+        if c["forecast"].get(mk)
+    }
 
-    certainty = []
-    for day_idx, day_disp in enumerate(disp):
-        use_models = [mk for mk in ALL_MODELS
-                      if day_idx <= c["models"].get(mk, {}).get("forecast_days", 999)]
-        total = sum(1 for mk in use_models if mk in model_disps and model_disps[mk] is not None)
+    soar_pts = c["soar_points"]
+    certainty_full = _compute_certainty(
+        disp, ALL_MODELS, model_disps, c["models"], soar_pts, detail
+    )
 
-        n_points = len(day_disp)
-        point_agree = [0] * n_points
-        for pi in range(n_points):
-            for mk in use_models:
-                if mk not in model_disps or model_disps[mk] is None:
-                    continue
-                m_days = model_disps[mk]
-                if day_idx < len(m_days) and pi < len(m_days[day_idx]):
-                    pf_m = m_days[day_idx][pi]
-                    fly_m = (pf_m["good_hours"] + pf_m["cross_hours"]
-                             + pf_m["gusty_hours"] + pf_m["cross_gusty_hours"])
-                    if fly_m > 0:
-                        point_agree[pi] += 1
+    vis = _visible_indices(soar_pts, detail)
 
-        best_pi, best_agree, best_prio, best_quality, best_fly = 0, -1, 999, -1, -1
-        soar_pts = c["soar_points"]
-        for pi, pf in enumerate(day_disp):
-            fly     = pf["good_hours"] + pf["cross_hours"] + pf["gusty_hours"] + pf["cross_gusty_hours"]
+    disp_filtered = [[day[i] for i in vis] for day in disp]
+
+    certainty_filtered = []
+    for day_idx, cert in enumerate(certainty_full):
+        by_point_vis = [cert["by_point"][i] for i in vis if i < len(cert["by_point"])]
+        best_vis, best_agree, best_prio, best_quality, best_fly = 0, -1, 999, -1, -1
+        for vi, oi in enumerate(vis):
+            if day_idx >= len(disp) or oi >= len(disp[day_idx]):
+                continue
+            pf = disp[day_idx][oi]
+            fly = (
+                pf["good_hours"]
+                + pf["cross_hours"]
+                + pf["gusty_hours"]
+                + pf["cross_gusty_hours"]
+            )
             quality = pf["good_hours"] + pf["gusty_hours"]
-            ag      = point_agree[pi]
-            prio    = soar_pts[pi].get("priority", 0) if pi < len(soar_pts) else 0
-            if (ag > best_agree
-                    or (ag == best_agree and prio < best_prio)
-                    or (ag == best_agree and prio == best_prio and quality > best_quality)
-                    or (ag == best_agree and prio == best_prio and quality == best_quality and fly > best_fly)):
-                best_agree, best_prio, best_quality, best_fly, best_pi = ag, prio, quality, fly, pi
+            ag = cert["by_point"][oi] if oi < len(cert["by_point"]) else 0
+            prio = 0
+            if (
+                ag > best_agree
+                or (ag == best_agree and prio < best_prio)
+                or (ag == best_agree and prio == best_prio and quality > best_quality)
+                or (
+                    ag == best_agree
+                    and prio == best_prio
+                    and quality == best_quality
+                    and fly > best_fly
+                )
+            ):
+                best_agree, best_prio, best_quality, best_fly, best_vis = (
+                    ag,
+                    prio,
+                    quality,
+                    fly,
+                    vi,
+                )
 
-        certainty.append({"agree": best_agree, "total": total, "best_pi": best_pi, "by_point": point_agree})
+        certainty_filtered.append(
+            {
+                "agree": best_agree,
+                "total": cert["total"],
+                "best_pi": best_vis,
+                "by_point": by_point_vis,
+            }
+        )
 
-    return {"model": model, "display": disp, "certainty": certainty}
+    return {"model": model, "display": disp_filtered, "certainty": certainty_filtered}
 
 
 @app.get("/api/forecast/raw")
 def get_raw_forecast(
     country: str = Query(...),
-    model:   str = Query(None),
+    model: str = Query(None),
+    detail: bool = Query(False),
 ):
     """Returns full hourly forecast data per day per point for the point-detail view."""
     c = _get_country(country)
@@ -672,15 +867,26 @@ def get_raw_forecast(
     raw = c["forecast"].get(model)
     if not raw:
         return {"error": "forecast not available"}
-    return {"model": model, "forecast": raw}
+    vis = _visible_indices(c["soar_points"], detail)
+    return {"model": model, "forecast": [[day[i] for i in vis] for day in raw]}
 
 
 @app.get("/api/measurements")
-def get_measurements(country: str = Query(...)):
+def get_measurements(country: str = Query(...), detail: bool = Query(False)):
     c = _get_country(country)
     if not c:
         return {"error": f"unknown country: {country}"}
-    return MeasurementService.serialize(c["measurements"])
+    data = MeasurementService.serialize(c["measurements"])
+    if not detail and data:
+        vis = set(_visible_indices(c["soar_points"], detail))
+        if "short_term_precipitation" in data and isinstance(
+            data["short_term_precipitation"], list
+        ):
+            data["short_term_precipitation"] = [
+                v if i in vis else None
+                for i, v in enumerate(data["short_term_precipitation"])
+            ]
+    return data
 
 
 @app.get("/api/countries")
@@ -695,25 +901,35 @@ def get_modes():
 
 @app.get("/api/days")
 def get_days():
-    week_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    
+    week_days = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+    ]
+
     # Get the forecast timestamp to align labels with forecast data
     # If no forecast is available, use current time
     c = state.get("c", {}).get("nl")  # Assuming Netherlands as default country
     forecast_time = c.get("forecast", {}).get("time") if c else None
-    
+
     if forecast_time:
         # Use the forecast's timeline
         base_date = forecast_time.date()
     else:
         # Fallback to current time
         base_date = datetime.today().date()
-    
+
     wd = base_date.weekday()
-    
+
     # Generate labels relative to the base date
     # Yesterday (wd-1), Today (wd), Tomorrow (wd+1), then next 5 days
-    days = ["Yesterday", "Today", "Tomorrow"] + [week_days[(wd + 2 + i) % 7] for i in range(5)]
+    days = ["Yesterday", "Today", "Tomorrow"] + [
+        week_days[(wd + 2 + i) % 7] for i in range(5)
+    ]
     return {"days": days}
 
 
