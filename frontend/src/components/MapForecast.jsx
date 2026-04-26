@@ -113,7 +113,7 @@ function InfoTooltip({ text }) {
   )
 }
 
-function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateIdx, isLocations, effectiveTimeStart, effectiveTimeEnd }) {
+function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateIdx, isLocations, effectiveTimeStart, effectiveTimeEnd, wingsConfig }) {
   const COLOR         = { good: C.good, cross: C.cross, good_gusty: C.gusty, cross_gusty: C.crossGusty, no: 'transparent' }
   const WEATHER_COLOR = { fog: C.fog, rain: C.rain }
 
@@ -230,18 +230,27 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
 
   return (
     <div ref={containerRef} style={{ width: '100%', position: 'relative' }} onClick={() => setTooltip(null)}>
-      {tooltip && (
-        <div style={{
-          position: 'absolute', left: Math.min(tooltip.x, W - 160), top: tooltip.y - 46,
-          background: T.card, border: `1px solid ${T.borderEm}`, borderRadius: 6,
-          padding: '6px 10px', fontSize: fs(12), color: T.text, fontFamily: T.font,
-          pointerEvents: 'none', zIndex: 10, whiteSpace: 'nowrap',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-        }}>
-          <div style={{ fontWeight: 600 }}>{tooltip.label}</div>
-          <div style={{ color: T.text2, marginTop: 2 }}>{tooltip.time}</div>
-        </div>
-      )}
+      {tooltip && (() => {
+        const ttW = 180
+        const ttH = tooltip.wings ? 62 : 42
+        const containerEl = containerRef.current
+        const cW = containerEl ? containerEl.clientWidth : 700
+        const left = Math.max(0, Math.min(tooltip.x, cW - ttW))
+        const top = tooltip.y - ttH - 6 < 0 ? tooltip.y + 20 : tooltip.y - ttH - 6
+        return (
+          <div style={{
+            position: 'absolute', left, top,
+            background: T.card, border: `1px solid ${T.borderEm}`, borderRadius: 6,
+            padding: '6px 10px', fontSize: fs(12), color: T.text, fontFamily: T.font,
+            pointerEvents: 'none', zIndex: 10, whiteSpace: 'nowrap',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+          }}>
+            <div style={{ fontWeight: 600, color: ({ good: C.good, cross: C.cross, good_gusty: C.gusty, cross_gusty: C.crossGusty, fog: C.fog, rain: C.rain })[tooltip.type] || T.text }}>{tooltip.label}</div>
+            {tooltip.wings && <div style={{ fontSize: fs(10), color: T.text2, marginTop: 1 }}>{tooltip.wings}</div>}
+            <div style={{ color: T.text2, marginTop: 2 }}>{tooltip.time}</div>
+          </div>
+        )
+      })()}
       <svg width={W} height={svgH} style={{ fontFamily: T.font, display: 'block' }}>
         {hourLabels.map(h => (
           <g key={h.label + h.x}>
@@ -282,16 +291,41 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
                   </text>
                 )
               })()}
-              {flyableRows.map((r, i) => (
-                <rect key={i} {...barGeom(r.start, r.end)} y={y + BAR_Y} height={BAR_H}
-                  fill={COLOR[r.type] || '#444'} rx={2} opacity={0.88} style={{ cursor: 'pointer' }}
-                  onClick={e => { e.stopPropagation(); const di = days.indexOf(day); if (onDayClick && di !== -1) onDayClick(di); setTooltip({ label: TYPE_LABEL[r.type] || r.type, time: barTime(r.start, r.end), x: barGeom(r.start, r.end).x, y: y + BAR_Y }) }}
-                />
-              ))}
+              {flyableRows.map((r, i) => {
+                const geom = barGeom(r.start, r.end)
+                const wingLabel = (r.wings || [])
+                  .filter(w => w.key !== 'custom')
+                  .map(w => `${w.size}`)//`${wingsConfig?.[w.key]?.abbr || w.key} ${w.size}`)
+                  .join(', ')
+                const wingNames = (r.wings || [])
+                  .filter(w => w.key !== 'custom')
+                  .map(w => `${wingsConfig?.[w.key]?.display_name || w.key} ${w.size}m²`)
+                  .join(', ')
+                return (
+                  <g key={i}>
+                    <rect {...geom} y={y + BAR_Y} height={BAR_H}
+                      fill={COLOR[r.type] || '#444'} rx={2} opacity={0.88} style={{ cursor: 'pointer' }}
+                      onClick={e => { e.stopPropagation(); const di = days.indexOf(day); if (onDayClick && di !== -1) onDayClick(di); setTooltip({ label: TYPE_LABEL[r.type] || r.type, type: r.type, wings: wingNames || '', time: barTime(r.start, r.end), x: geom.x, y: y + BAR_Y }) }}
+                    />
+                    {geom.width > 20 && wingLabel && (
+                      <text
+                        x={geom.x + geom.width / 2}
+                        y={y + BAR_Y + BAR_H / 2 + 1}
+                        textAnchor="middle" dominantBaseline="central"
+                        fontSize={fs(Math.min(11, BAR_H - 2))}
+                        fill="rgba(0,0,0,0.75)" fontWeight={700}
+                        style={{ pointerEvents: 'none' }}
+                      >
+                        {wingLabel}
+                      </text>
+                    )}
+                  </g>
+                )
+              })}
               {wRows.map((r, i) => (
                 <rect key={'w' + i} {...barGeom(r.start, r.end)} y={y + BAR_Y} height={BAR_H}
                   fill={WEATHER_COLOR[r.type] || '#666'} rx={2} opacity={0.6} style={{ cursor: 'pointer' }}
-                  onClick={e => { e.stopPropagation(); const di = days.indexOf(day); if (onDayClick && di !== -1) onDayClick(di); setTooltip({ label: TYPE_LABEL[r.type] || r.type, time: barTime(r.start, r.end), x: barGeom(r.start, r.end).x, y: y + BAR_Y }) }}
+                  onClick={e => { e.stopPropagation(); const di = days.indexOf(day); if (onDayClick && di !== -1) onDayClick(di); setTooltip({ label: TYPE_LABEL[r.type] || r.type, type: r.type, wings: '', time: barTime(r.start, r.end), x: barGeom(r.start, r.end).x, y: y + BAR_Y }) }}
                 />
               ))}
             </g>
@@ -327,7 +361,7 @@ const Legendsmall_ = ({ items }) => (
 )
 
 export default function MapForecast({ data, onNavigateToPoint }) {
-  const { displayForecast, certainty, points, days, dateIdx, setDateIdx, ptIdx, timeStart, timeEnd, effectiveTimeStart, effectiveTimeEnd } = data
+  const { displayForecast, certainty, points, days, dateIdx, setDateIdx, ptIdx, timeStart, timeEnd, effectiveTimeStart, effectiveTimeEnd, wings } = data
 
   const [plotDays,     setPlotDays]     = useState(() => { try { return Number(localStorage.getItem('plotDays')) || 5 } catch { return 5 } })
   const [showYesterday, setShowYesterday] = useState(() => { try { return localStorage.getItem('showYesterday') === 'true' } catch { return false } })
@@ -595,6 +629,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         di,
         good: bpf?.good_hours || 0, cross: bpf?.cross_hours || 0,
         gusty: bpf?.gusty_hours || 0, cross_gusty: bpf?.cross_gusty_hours || 0,
+        wingSetHours: bpf?.wing_set_hours || {},
         label: ((bpf?.good_hours||0)+(bpf?.cross_hours||0)+(bpf?.gusty_hours||0)+(bpf?.cross_gusty_hours||0)) > 0 ? (bpt?.name||'') : '',
         agree: bestAgree, total: certDi?.total ?? 0,
       })
@@ -603,7 +638,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       if (certDi) certByDayMap[dayName] = { ...certDi, agree: bestAgree }
       weatherByDayMap[shortDay] = { has_fog: dayPf.some(pf => pf.has_fog), has_rain: dayPf.some(pf => pf.has_rain) }
       if (bpf?.gantt) bpf.gantt.forEach(g => {
-        const c = clampToWindow({ day: dayName, point: bpt?.name||'', type: g.type, start: g.start, end: g.end })
+        const c = clampToWindow({ day: dayName, point: bpt?.name||'', type: g.type, start: g.start, end: g.end, wings: g.wings || [] })
         if (c) gantt.push(c)
       })
       const bestFly = (bpf?.good_hours||0) + (bpf?.cross_hours||0) + (bpf?.gusty_hours||0) + (bpf?.cross_gusty_hours||0)
@@ -639,7 +674,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       locPtMap.push(pi)
       if (certDay) locCertMap[ptName] = { agree, total: certDay.total }
       if (pf.gantt) pf.gantt.forEach(g => {
-        const c = clampToWindow({ day: ptName, point: '', type: g.type, start: g.start, end: g.end })
+        const c = clampToWindow({ day: ptName, point: '', type: g.type, start: g.start, end: g.end, wings: g.wings || [] })
         if (c) locGantt.push(c)
       })
       if (pf.fog_gantt) pf.fog_gantt.forEach(g => {
@@ -654,6 +689,69 @@ export default function MapForecast({ data, onNavigateToPoint }) {
 
     return { barData: bar, ganttRows: gantt, weatherRows: weather, locGanttRows: locGantt, locWeatherRows: locWeather, locCertByDay: locCertMap, locDays, locPtMap, certByDay: certByDayMap, weatherByDay: weatherByDayMap }
   }, [displayForecast, points, days, certainty, plotDays, showYesterday, effectiveTimeStart, effectiveTimeEnd, dateIdx])
+
+  const QUALITIES = [
+    { key: 'good', name: 'Good wind', color: C.good },
+    { key: 'cross', name: 'Crosswind', color: C.cross },
+    { key: 'gusty', name: 'Gusty', color: C.gusty },
+    { key: 'cross_gusty', name: 'Crosswind, Gusty', color: C.crossGusty },
+  ]
+
+  const wingSetLabel = (wsKey) => wsKey.split(',').map(ws => {
+    const colonIdx = ws.lastIndexOf(':')
+    const key = ws.slice(0, colonIdx)
+    const size = ws.slice(colonIdx + 1)
+    if (key === 'custom') return ''
+    return `${size}` //`${wings?.[key]?.abbr || key} ${size}`
+  }).filter(Boolean).join(', ')
+
+  const wingSetFullName = (wsKey) => wsKey.split(',').map(ws => {
+    const colonIdx = ws.lastIndexOf(':')
+    const key = ws.slice(0, colonIdx)
+    const size = ws.slice(colonIdx + 1)
+    if (key === 'custom') return ''
+    return `${wings?.[key]?.display_name || key} ${size}m²`
+  }).filter(Boolean).join(', ')
+
+  const allWingSetKeys = useMemo(() => {
+    const keys = new Set()
+    barData.forEach(d => {
+      Object.keys(d.wingSetHours || {}).forEach(k => {
+        if (!k.includes('custom')) keys.add(k)
+      })
+    })
+    return [...keys].sort()
+  }, [barData])
+
+  const flatBarData = useMemo(() => {
+    return barData.map(d => {
+      const flat = { ...d, _topLabel: 0 }
+      allWingSetKeys.forEach(wsKey => {
+        const wsHours = d.wingSetHours?.[wsKey] || {}
+        flat[`good__${wsKey}`] = wsHours.good || 0
+        flat[`cross__${wsKey}`] = wsHours.cross || 0
+        flat[`gusty__${wsKey}`] = wsHours.gusty || 0
+        flat[`cross_gusty__${wsKey}`] = wsHours.cross_gusty || 0
+      })
+      return flat
+    })
+  }, [barData, allWingSetKeys])
+
+  const barMeta = useMemo(() => {
+    const map = {}
+    QUALITIES.forEach(q => {
+      allWingSetKeys.forEach(wsKey => {
+        map[`${q.key}__${wsKey}`] = {
+          qualityName: q.name,
+          qualityColor: q.color,
+          wingLabel: wingSetFullName(wsKey),
+        }
+      })
+    })
+    return map
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allWingSetKeys, wings])
+
   const selectDay = (di) => { setDateIdx(di) }
 
   const TOOLTIP_STYLE = {
@@ -732,24 +830,91 @@ export default function MapForecast({ data, onNavigateToPoint }) {
           </div>
         )}
         <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={barData} margin={{ top: 40, right: 8, left: 0, bottom: 0 }} onClick={e => { const d = e?.activePayload?.[0]?.payload; if (d?.di != null) selectDay(d.di) }} style={{ cursor: 'pointer' }}>
+          <BarChart data={allWingSetKeys.length > 0 ? flatBarData : barData} margin={{ top: 40, right: 8, left: 0, bottom: 0 }} onClick={e => { const d = e?.activePayload?.[0]?.payload; if (d?.di != null) selectDay(d.di) }} style={{ cursor: 'pointer' }}>
             <XAxis dataKey="day" tick={{ fill: T.text2, fontSize: fs(11), fontFamily: T.font }} interval={0} />
             <YAxis width={28} tick={{ fill: T.text2, fontSize: fs(12), fontFamily: T.font }} />
-            <Tooltip {...TOOLTIP_STYLE} cursor={false} labelFormatter={(_, payload) => payload?.[0]?.payload?.fullDay || ''} formatter={(val, name) => val > 0 ? [`${val}h`, name] : [null, null]} />
-            {(() => { const sel = barData.find(d => d.di === dateIdx); return sel ? <ReferenceArea x1={sel.day} x2={sel.day} fill="#ffffff" fillOpacity={0.10} ifOverflow="visible" /> : null })()}
-            <Bar dataKey="good"        name="Good wind"        stackId="a" fill={C.good}       radius={[0,0,0,0]} />
-            <Bar dataKey="cross"       name="Crosswind"        stackId="a" fill={C.cross}      radius={[0,0,0,0]} />
-            <Bar dataKey="gusty"       name="Gusty"            stackId="a" fill={C.gusty}      radius={[0,0,0,0]} />
-            <Bar dataKey="cross_gusty" name="Crosswind, Gusty" stackId="a" fill={C.crossGusty} radius={[0,0,0,0]}>
-              <LabelList dataKey="label" position="top" content={({ x, y, width, value, index }) => {
-                if (!value) return null
-                const selected = barData[index]?.di === dateIdx
+            <Tooltip {...TOOLTIP_STYLE} cursor={false}
+              content={({ payload, label }) => {
+                if (!payload?.length) return null
+                const fullDay = payload[0]?.payload?.fullDay || label
+                const entries = payload
+                  .filter(p => p.value > 0 && barMeta[p.dataKey])
+                  .map(p => {
+                    const m = barMeta[p.dataKey]
+                    return { hours: p.value, ...m }
+                  })
+                if (!entries.length) return null
                 return (
-                  <text x={x + width / 2} y={y - 6} textAnchor="middle" fontSize={fsc(8, '1.4vw', 10)} fontFamily={T.font}
-                    fill={selected ? T.text : T.text2} fontWeight={selected ? 600 : 400}>{value}</text>
+                  <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: fs(12), fontFamily: T.font, padding: '6px 10px', boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
+                    <div style={{ color: T.text2, marginBottom: 4 }}>{fullDay}</div>
+                    {entries.map((e, i) => (
+                      <div key={i} style={{ marginBottom: i < entries.length - 1 ? 4 : 0 }}>
+                        <span style={{ color: e.qualityColor || T.text, fontWeight: 600 }}>{e.hours}h {e.qualityName}</span>
+                        {e.wingLabel && <div style={{ fontSize: fs(10), color: T.text2 }}>{e.wingLabel}</div>}
+                      </div>
+                    ))}
+                  </div>
                 )
-              }} />
-            </Bar>
+              }}
+            />
+            {(() => { const sel = barData.find(d => d.di === dateIdx); return sel ? <ReferenceArea x1={sel.day} x2={sel.day} fill="#ffffff" fillOpacity={0.10} ifOverflow="visible" /> : null })()}
+            {allWingSetKeys.length > 0 ? (
+              <>
+                {QUALITIES.flatMap(q =>
+                  allWingSetKeys.map(wsKey => (
+                    <Bar
+                      key={`${q.key}__${wsKey}`}
+                      dataKey={`${q.key}__${wsKey}`}
+                      stackId="a"
+                      fill={q.color}
+                      radius={[0, 0, 0, 0]}
+                      legendType="none"
+                      label={(props) => {
+                        const { x, y, width, height, value } = props
+                        if (!value || height < 14) return null
+                        const label = wingSetLabel(wsKey)
+                        if (!label) return null
+                        return (
+                          <text x={x + width / 2} y={y + height / 2}
+                            textAnchor="middle" dominantBaseline="central"
+                            fontSize={Math.min(11, height - 2, width < 40 ? 8 : 11)}
+                            fill="rgba(0,0,0,0.75)" fontWeight={700}
+                            fontFamily={T.font}>
+                            {label}
+                          </text>
+                        )
+                      }}
+                    />
+                  ))
+                )}
+                <Bar dataKey="_topLabel" stackId="a" fill="transparent" legendType="none"
+                  label={{ position: 'top', content: ({ x, y, width, index }) => {
+                    const d = barData[index]
+                    if (!d?.label) return null
+                    const selected = d.di === dateIdx
+                    return (
+                      <text x={x + width / 2} y={y - 6} textAnchor="middle" fontSize={fsc(8, '1.4vw', 10)} fontFamily={T.font}
+                        fill={selected ? T.text : T.text2} fontWeight={selected ? 600 : 400}>{d.label}</text>
+                    )
+                  }}} />
+              </>
+            ) : (
+              <>
+                <Bar dataKey="good"        name="Good wind"        stackId="a" fill={C.good}       radius={[0,0,0,0]} />
+                <Bar dataKey="cross"       name="Crosswind"        stackId="a" fill={C.cross}      radius={[0,0,0,0]} />
+                <Bar dataKey="gusty"       name="Gusty"            stackId="a" fill={C.gusty}      radius={[0,0,0,0]} />
+                <Bar dataKey="cross_gusty" name="Crosswind, Gusty" stackId="a" fill={C.crossGusty} radius={[0,0,0,0]}>
+                  <LabelList dataKey="label" position="top" content={({ x, y, width, value, index }) => {
+                    if (!value) return null
+                    const selected = barData[index]?.di === dateIdx
+                    return (
+                      <text x={x + width / 2} y={y - 6} textAnchor="middle" fontSize={fsc(8, '1.4vw', 10)} fontFamily={T.font}
+                        fill={selected ? T.text : T.text2} fontWeight={selected ? 600 : 400}>{value}</text>
+                    )
+                  }} />
+                </Bar>
+              </>
+            )}
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -799,9 +964,9 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         {ganttMode === 'locations'
           ? <GanttChart ganttRows={locGanttRows} weatherRows={locWeatherRows} days={locDays} certByDay={locCertByDay} isLocations
               onDayClick={(idx) => { if (locPtMap[idx] != null) data.setPtIdx(locPtMap[idx]) }}
-              dateIdx={locPtMap.indexOf(ptIdx)} effectiveTimeStart={effectiveTimeStart} effectiveTimeEnd={effectiveTimeEnd} />
+              dateIdx={locPtMap.indexOf(ptIdx)} effectiveTimeStart={effectiveTimeStart} effectiveTimeEnd={effectiveTimeEnd} wingsConfig={wings} />
           : <GanttChart ganttRows={ganttRows} weatherRows={weatherRows} days={days} certByDay={certByDay} onDayClick={selectDay} dateIdx={dateIdx} 
-                      effectiveTimeStart={effectiveTimeStart} effectiveTimeEnd={effectiveTimeEnd} />
+                      effectiveTimeStart={effectiveTimeStart} effectiveTimeEnd={effectiveTimeEnd} wingsConfig={wings} />
         }
         <div style={{ padding: '6px 12px 0' }}>
           <Legendsmall_ items={[

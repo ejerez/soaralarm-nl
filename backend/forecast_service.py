@@ -348,9 +348,11 @@ class ForecastService:
                 hd         = head_ranges[pt_idx]
                 wind_pizza = [0, 0, 0]  # left-cross, good, right-cross
                 wind_quality = [0, 0, 0, 0]
+                wing_quality_counts = {}
                 gantt      = []
-                prev       = None
-                start      = None
+                gantt_seg_key = None
+                gantt_seg_start = None
+                gantt_seg_wings = None
                 last_time  = None
                 fog_gantt  = []
                 fog_prev   = None
@@ -374,17 +376,21 @@ class ForecastService:
                     in_window = win_start <= t_local <= win_end
 
                     if custom_mode:
-                        wind_flyable = (
-                            float(pf["wind_speed"][i] or 0) >= wind_min
-                            and float(pf["wind_gusts"][i] or 0) <= wind_max
+                        flyable_wings = (
+                            [{"key": "custom", "size": 0}]
+                            if (float(pf["wind_speed"][i] or 0) >= wind_min
+                                and float(pf["wind_gusts"][i] or 0) <= wind_max)
+                            else []
                         )
                     else:
                         wind_ranges = eff_ranges[pt_idx]
-                        wind_flyable = any(
-                            float(pf["wind_speed"][i]  or 0) > wing["range"][0]
-                            and float(pf["wind_gusts"][i] or 0) < wing["range"][1]
+                        flyable_wings = [
+                            {"key": wing["key"], "size": int(wing["size"]) if float(wing["size"]).is_integer() else wing["size"]}
                             for wing in wind_ranges
-                        )
+                            if (float(pf["wind_speed"][i] or 0) > wing["range"][0]
+                                and float(pf["wind_gusts"][i] or 0) < wing["range"][1])
+                        ]
+                    wind_flyable = len(flyable_wings) > 0
 
                     flyable = (
                         in_window
@@ -449,18 +455,44 @@ class ForecastService:
                         else:
                             wind_quality[1] += 1
 
-                    if cat != prev:
-                        if prev is not None:
-                            gantt.append({"type": prev, "start": start, "end": t_shifted})
-                        prev  = cat
-                        start = t_shifted
+                    if cat != "no" and flyable_wings:
+                        ws_key = ",".join(sorted(f"{w['key']}:{w['size']}" for w in flyable_wings))
+                        if ws_key not in wing_quality_counts:
+                            wing_quality_counts[ws_key] = {"good": 0, "cross": 0, "gusty": 0, "cross_gusty": 0}
+                        if cat in wing_quality_counts[ws_key]:
+                            wing_quality_counts[ws_key][cat] += 1
+
+                    if cat != "no" and flyable_wings:
+                        cur_ws_key = ",".join(sorted(f"{w['key']}:{w['size']}" for w in flyable_wings))
+                        cur_gantt_key = f"{cat}|{cur_ws_key}"
+                        cur_wings = [{"key": w["key"], "size": w["size"]} for w in flyable_wings]
+                    else:
+                        cur_gantt_key = "no"
+                        cur_wings = []
+
+                    if cur_gantt_key != gantt_seg_key:
+                        if gantt_seg_key is not None and gantt_seg_key != "no":
+                            gantt.append({
+                                "type": gantt_seg_key.split("|", 1)[0],
+                                "start": gantt_seg_start,
+                                "end": t_shifted,
+                                "wings": gantt_seg_wings or [],
+                            })
+                        gantt_seg_key = cur_gantt_key
+                        gantt_seg_start = t_shifted
+                        gantt_seg_wings = cur_wings
                     last_time = t_shifted
 
                 # Use exclusive end (start of next hour) to match mid-loop entries
                 if last_time:
                     end_exc = (pd.Timestamp(last_time) + timedelta(hours=1)).isoformat()
-                if prev is not None and last_time:
-                    gantt.append({"type": prev, "start": start, "end": end_exc})
+                if gantt_seg_key is not None and gantt_seg_key != "no" and last_time:
+                    gantt.append({
+                        "type": gantt_seg_key.split("|", 1)[0],
+                        "start": gantt_seg_start,
+                        "end": end_exc,
+                        "wings": gantt_seg_wings or [],
+                    })
                 if fog_prev is not None and last_time:
                     fog_gantt.append({"type": fog_prev, "start": fog_start, "end": end_exc})
                 if rain_prev is not None and last_time:
@@ -472,6 +504,7 @@ class ForecastService:
                     "cross_hours":   wind_quality[1],
                     "gusty_hours":   wind_quality[2],
                     "cross_gusty_hours":   wind_quality[3],
+                    "wing_set_hours": wing_quality_counts,
                     "gantt":         gantt,
                     "fog_gantt":     [g for g in fog_gantt  if g["type"] == "fog"],
                     "rain_gantt":    [g for g in rain_gantt if g["type"] == "rain"],

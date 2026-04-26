@@ -2,18 +2,21 @@
     "scraper_16":
     {
         "display_name": "High AR Parakite",
+        "abbr": "HA",
         "default_size": 16,
         "tooltip": "High AR parakites like the Scraper, Bandit, Albatroxx"
     },
     "hopper_16":
     {
         "display_name": "Parakite",
+        "abbr": "PK",
         "default_size": 16,
         "tooltip": "Medium AR parakites like the Hopper, Moustache, Mullet"
     },
     "paraglider_16":
     {
         "display_name": "Paraglider",
+        "abbr": "PG",
         "default_size": 16,
         "tooltip": "Standard paragliders"
     }

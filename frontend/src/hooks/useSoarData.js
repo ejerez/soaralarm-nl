@@ -27,7 +27,7 @@ function detectCountryFromSubdomain() {
 
 // ── Display forecast cache ────────────────────────────────────────────────
 function displayCacheKey(model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax) {
-  return `soar_display_v3:${cacheScope()}:` + JSON.stringify({ model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax, _l: !!_cfg.local })
+  return `soar_display_v4:${cacheScope()}:` + JSON.stringify({ model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax, _l: !!_cfg.local })
 }
 function loadDisplayCache(key) {
   try {
@@ -43,7 +43,7 @@ function saveDisplayCache(key, display, certainty) {
     localStorage.setItem(key, JSON.stringify({ display, certainty, savedAt: Date.now() }))
   } catch {
     try {
-      Object.keys(localStorage).filter(k => k.startsWith('soar_display_v3:')).forEach(k => localStorage.removeItem(k))
+      Object.keys(localStorage).filter(k => k.startsWith('soar_display_v4:')).forEach(k => localStorage.removeItem(k))
       localStorage.setItem(key, JSON.stringify({ display, certainty, savedAt: Date.now() }))
     } catch {}
   }
