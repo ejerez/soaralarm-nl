@@ -1,6 +1,7 @@
 import asyncio
 import json
 import pickle
+import secrets
 import zoneinfo
 from datetime import datetime, time, timedelta, timezone
 from json import load
@@ -60,6 +61,44 @@ FORECAST_PROVIDER = "Open-Meteo"
 # it's already on fire. Backoff is cleared on the next successful refresh.
 FORECAST_BACKOFF_SECONDS = 600  # 10 minutes
 MEASUREMENT_BACKOFF_SECONDS = 600  # 10 minutes
+
+# ── Local mode tokens ─────────────────────────────────────────────────────────
+_LOCAL_TOKENS_FILE = Path(__file__).resolve().parent / "config" / "local_tokens.json"
+_local_tokens: dict = {}
+
+
+def _load_local_tokens():
+    global _local_tokens
+    try:
+        if _LOCAL_TOKENS_FILE.exists():
+            _local_tokens = json.loads(_LOCAL_TOKENS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        _local_tokens = {}
+
+
+def _save_local_tokens():
+    try:
+        _LOCAL_TOKENS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _LOCAL_TOKENS_FILE.write_text(json.dumps(_local_tokens, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _get_or_create_token(country: str) -> str:
+    if country not in _local_tokens:
+        _local_tokens[country] = secrets.token_hex(32)
+        _save_local_tokens()
+    return _local_tokens[country]
+
+
+def _is_local(local_token: Optional[str], country: str) -> bool:
+    if not local_token:
+        return False
+    expected = _local_tokens.get(country)
+    return expected is not None and expected == local_token
+
+
+_load_local_tokens()
 
 
 _CONN_ERROR_NAMES = {
@@ -521,8 +560,9 @@ def get_status(country: str = Query(...)):
 
 @app.get("/api/points")
 def get_points(
-    country: str = Query(...), mode: str = Query(...), detail: bool = Query(False)
+    country: str = Query(...), mode: str = Query(...), local_token: Optional[str] = Query(None)
 ):
+    detail = _is_local(local_token, country)
     key = f"{country}:{mode}"
     enriched = state["enriched"].get(key)
     if enriched is None:
@@ -709,9 +749,10 @@ def get_display_forecast(
     wind_max: Optional[float] = Query(
         None, description="Custom maximum gust speed (km/h)"
     ),
-    detail: bool = Query(False),
+    local_token: Optional[str] = Query(None),
 ):
     """Returns per-day, per-point display data (gantt, wind_pizza, hours)."""
+    detail = _is_local(local_token, country)
     c = _get_country(country)
     m = _get_mode(mode)
     if not c:
@@ -853,9 +894,10 @@ def get_display_forecast(
 def get_raw_forecast(
     country: str = Query(...),
     model: str = Query(None),
-    detail: bool = Query(False),
+    local_token: Optional[str] = Query(None),
 ):
     """Returns full hourly forecast data per day per point for the point-detail view."""
+    detail = _is_local(local_token, country)
     c = _get_country(country)
     if not c:
         return {"error": f"unknown country: {country}"}
@@ -872,7 +914,8 @@ def get_raw_forecast(
 
 
 @app.get("/api/measurements")
-def get_measurements(country: str = Query(...), detail: bool = Query(False)):
+def get_measurements(country: str = Query(...), local_token: Optional[str] = Query(None)):
+    detail = _is_local(local_token, country)
     c = _get_country(country)
     if not c:
         return {"error": f"unknown country: {country}"}
@@ -937,3 +980,47 @@ def get_days():
 def get_whatsnew():
     p = Path(__file__).resolve().parent / "config" / "whatsnew.json"
     return json.loads(p.read_text(encoding="utf-8"))
+
+
+def _find_local_mode_entry(country_code: str):
+    p = Path(__file__).resolve().parent / "config" / "local_mode.json"
+    try:
+        entries = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(entries, list):
+        return None
+    country_name = state["countries"].get(country_code, {}).get("name", "")
+    for entry in entries:
+        if entry.get("country") in (country_code, country_name):
+            return entry
+    return None
+
+
+@app.get("/api/local_mode_question")
+def get_local_mode_question(country: str = Query(...)):
+    entry = _find_local_mode_entry(country)
+    if not entry:
+        return {"question": None}
+    return {"question": entry["question"]}
+
+
+@app.post("/api/local_mode_verify")
+def verify_local_mode_answer(country: str = Query(...), answer: str = Body(..., embed=True)):
+    entry = _find_local_mode_entry(country)
+    if not entry:
+        return {"ok": False}
+    cleaned = answer.replace(" ", "").replace("\t", "").lower()
+    if entry["answer"] in cleaned:
+        token = _get_or_create_token(country)
+        return {"ok": True, "token": token}
+    return {"ok": False}
+
+
+# TODO: Remove this endpoint after existing users have migrated
+@app.post("/api/local_mode_migrate")
+def migrate_local_mode(country: str = Query(...)):
+    if country != "nl":
+        return {"ok": False}
+    token = _get_or_create_token(country)
+    return {"ok": True, "token": token}

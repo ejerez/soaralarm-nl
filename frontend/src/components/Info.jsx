@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { fs } from '../fs.js'
-import { _exec } from '../_cfg.js'
+import { _exec, _cfg } from '../_cfg.js'
+import { api } from '../api.js'
 
 const DEFAULT_WEIGHT = 70.0
 
@@ -69,7 +70,19 @@ export default function Info({ data }) {
   const [_diagOpen, setDiagOpen] = useState(false)
   const [_diagInput, setDiagInput] = useState('')
   const [_diagMsg, setDiagMsg] = useState('')
+  const [_diagPhase, setDiagPhase] = useState('command')
+  const [_diagQuestion, setDiagQuestion] = useState(null)
+  const [_notice, setNotice] = useState(null)
   const _tapTimes = useRef([])
+
+  useEffect(() => {
+    if (_cfg.needsMigrate) {
+      api.localModeMigrate('nl').then(r => {
+        if (r.ok && r.token) _cfg.setToken('nl', r.token)
+        _cfg.clearMigrationFlag()
+      }).catch(() => _cfg.clearMigrationFlag())
+    }
+  }, [])
 
   const _onImgTap = () => {
     const now = Date.now()
@@ -80,15 +93,70 @@ export default function Info({ data }) {
       setDiagOpen(true)
       setDiagInput('')
       setDiagMsg('')
+      setDiagPhase('command')
+      setDiagQuestion(null)
     }
   }
 
-  const _onDiagSubmit = () => {
-    const result = _exec(_diagInput)
-    setDiagMsg(result.msg)
-    if (result.ok) {
-      setTimeout(() => { setDiagOpen(false); window.location.reload() }, 800)
+  const _onDiagSubmit = async () => {
+    if (_diagPhase === 'question') {
+      try {
+        const r = await api.localModeVerify(country, _diagInput)
+        if (r.ok && r.token) {
+          _cfg.setToken(country, r.token)
+          setDiagOpen(false)
+          setNotice({
+            text: 'Local mode enabled. NOTE: The default mode of Soaralarm is tuned to protect small and sensitive sites, and direct visiting/infrequent pilots towards bigger and less sensitive locations. Please help keep these sites protected, do not share how to enable local mode with anyone unless they\'re locals or frequent, respectful pilots.',
+            isError: false,
+          })
+        } else {
+          setDiagOpen(false)
+          setNotice({
+            text: 'Error: incorrect answer. Local mode is meant only for local and frequent pilots who already know the flying locations well.',
+            isError: true,
+          })
+        }
+      } catch {
+        setDiagMsg('Verification failed. Please try again.')
+      }
+      return
     }
+
+    const result = _exec(_diagInput)
+    if (result.needsQuestion) {
+      try {
+        const r = await api.localModeQuestion(country)
+        if (!r.question) {
+          setDiagMsg('Local mode is not available for this country.')
+          return
+        }
+        setDiagPhase('question')
+        setDiagQuestion(r.question)
+        setDiagInput('')
+        setDiagMsg('')
+      } catch {
+        setDiagMsg('Failed to load question.')
+      }
+      return
+    }
+    if (result.disableLocal) {
+      _cfg.clearToken(country)
+      setDiagMsg('Done.')
+      setTimeout(() => { setDiagOpen(false); window.location.reload() }, 800)
+      return
+    }
+    if (result.ok) {
+      setDiagMsg('Done.')
+      setTimeout(() => { setDiagOpen(false); window.location.reload() }, 800)
+    } else {
+      setDiagMsg(result.msg)
+    }
+  }
+
+  const _onDiagClose = () => {
+    setDiagOpen(false)
+    setDiagPhase('command')
+    setDiagQuestion(null)
   }
 
   return (
@@ -478,30 +546,49 @@ export default function Info({ data }) {
       {_diagOpen && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
-          onClick={() => setDiagOpen(false)}
+          onClick={_onDiagClose}
         >
           <div
             style={{ background: '#262626', border: '1px solid #3d3d3d', borderRadius: 8, padding: '16px 20px', width: 320, maxWidth: '90vw', boxSizing: 'border-box' }}
             onClick={e => e.stopPropagation()}
           >
+            {_diagPhase === 'question' && _diagQuestion && (
+              <p style={{ fontSize: fs(12), color: '#dedede', margin: '0 0 10px', lineHeight: 1.5 }}>{_diagQuestion}</p>
+            )}
             <input
               type="text"
               value={_diagInput}
               onChange={e => setDiagInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') _onDiagSubmit() }}
-              placeholder="Enter command..."
+              placeholder={_diagPhase === 'question' ? 'Your answer...' : 'Enter command...'}
               autoFocus
               style={{ width: '100%', background: '#2e2e2e', color: '#dedede', border: '1px solid #484848', borderRadius: 6, padding: '6px 10px', fontSize: fs(13), fontFamily: "'Atkinson Hyperlegible', system-ui, sans-serif", outline: 'none', marginBottom: 10, boxSizing: 'border-box' }}
             />
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={_onDiagSubmit} style={{ background: '#5578e8', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: fs(13), cursor: 'pointer', fontFamily: "'Atkinson Hyperlegible', system-ui, sans-serif" }}>Enter</button>
-              <button onClick={() => setDiagOpen(false)} style={{ background: '#2e2e2e', color: '#9a9a9a', border: '1px solid #484848', borderRadius: 6, padding: '6px 14px', fontSize: fs(13), cursor: 'pointer', fontFamily: "'Atkinson Hyperlegible', system-ui, sans-serif" }}>Close</button>
+              <button onClick={_onDiagClose} style={{ background: '#2e2e2e', color: '#9a9a9a', border: '1px solid #484848', borderRadius: 6, padding: '6px 14px', fontSize: fs(13), cursor: 'pointer', fontFamily: "'Atkinson Hyperlegible', system-ui, sans-serif" }}>Close</button>
             </div>
             {_diagMsg && (
-              <div style={{ fontSize: fs(12), color: _diagMsg === 'Unrecognised input.' ? '#c04040' : '#55e68f' }}>
+              <div style={{ fontSize: fs(12), color: _diagMsg.startsWith('Error') ? '#c04040' : '#55e68f', marginTop: 8, lineHeight: 1.5 }}>
                 {_diagMsg}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {_notice && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}
+        >
+          <div
+            style={{ background: '#262626', border: '1px solid #3d3d3d', borderRadius: 8, padding: '16px 20px', width: 340, maxWidth: '90vw', boxSizing: 'border-box' }}
+          >
+            <p style={{ fontSize: fs(13), color: _notice.isError ? '#c04040' : '#55e68f', margin: '0 0 14px', lineHeight: 1.6 }}>{_notice.text}</p>
+            <button
+              onClick={() => { const wasOk = !_notice.isError; setNotice(null); if (wasOk) window.location.reload() }}
+              style={{ background: '#5578e8', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: fs(13), cursor: 'pointer', fontFamily: "'Atkinson Hyperlegible', system-ui, sans-serif" }}
+            >I understand</button>
           </div>
         </div>
       )}

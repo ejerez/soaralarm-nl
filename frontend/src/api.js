@@ -2,11 +2,8 @@ import { _cfg } from './_cfg.js'
 
 const BASE = '/api'
 const TRANSIENT = new Set([502, 503, 504])
-const RETRY_DELAYS = [1000, 2000, 4000]  // 3 attempts, ~7 s total
+const RETRY_DELAYS = [1000, 2000, 4000]
 
-// ── Country/mode scope ──────────────────────────────────────────────────────
-// Set once on init (from subdomain or localStorage) and updated when the user
-// switches country/mode.  Auto-appended as query params to every request.
 let _scope = { country: '', mode: '' }
 
 export function setApiScope(country, mode) {
@@ -17,11 +14,16 @@ export function getApiScope() {
   return { ..._scope }
 }
 
+function _localTokenParam(url) {
+  const token = _cfg.getToken(_scope.country)
+  if (token) url.searchParams.set('local_token', token)
+}
+
 function _appendScope(path, { country = true, mode = true } = {}) {
-  const url = new URL(path, 'http://x')  // dummy base for relative paths
+  const url = new URL(path, 'http://x')
   if (country && _scope.country) url.searchParams.set('country', _scope.country)
   if (mode && _scope.mode)       url.searchParams.set('mode', _scope.mode)
-  if (_cfg.local) url.searchParams.set('detail', 'true')
+  _localTokenParam(url)
   return url.pathname + url.search
 }
 
@@ -56,7 +58,6 @@ async function post(path, body) {
 }
 
 export const api = {
-  // country + mode
   status:          ()  => get(_appendScope('/status', { mode: false })),
   points:          ()  => get(_appendScope('/points')),
   wings:           ()  => get(_appendScope('/wings', { country: false })),
@@ -64,11 +65,14 @@ export const api = {
   models:          ()  => get(_appendScope('/models', { mode: false })),
   measurements:    ()  => get(_appendScope('/measurements', { mode: false })),
 
-  // no scope needed
   days:            ()  => get('/days'),
   countries:       ()  => get('/countries'),
   modes:           ()  => get('/modes'),
   whatsnew:        ()  => get('/whatsnew'),
+
+  localModeQuestion: (country) => get(`/local_mode_question?country=${country}`),
+  localModeVerify:   (country, answer) => post(`/local_mode_verify?country=${country}`, { answer }),
+  localModeMigrate:  (country) => post(`/local_mode_migrate?country=${country}`),
 
   displayForecast: (model, ts, te, selectedWings, weight, windMin, windMax) => {
     const params = new URLSearchParams({
@@ -79,7 +83,8 @@ export const api = {
     })
     if (_scope.country) params.set('country', _scope.country)
     if (_scope.mode)    params.set('mode', _scope.mode)
-    if (_cfg.local)     params.set('detail', 'true')
+    const token = _cfg.getToken(_scope.country)
+    if (token) params.set('local_token', token)
     if (selectedWings?.length) {
       params.set('wings', JSON.stringify(selectedWings))
     }

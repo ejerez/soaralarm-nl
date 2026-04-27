@@ -259,18 +259,36 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
     <div ref={containerRef} style={{ width: '100%', position: 'relative' }} onClick={() => setTooltip(null)}>
       {tooltip && (() => {
         const cW = containerRef.current?.clientWidth || 700
-        const left = Math.max(0, Math.min(tooltip.x, cW - 180))
+        const left = Math.max(0, Math.min(tooltip.x, cW - 230))
         const top = tooltip.y - 60 < 0 ? tooltip.y + 20 : tooltip.y - 60
         return (
           <div ref={tooltipRef} style={{
             position: 'absolute', left, top,
             background: T.card, border: `1px solid ${T.borderEm}`, borderRadius: 6,
             padding: '6px 10px', fontSize: fs(12), color: T.text, fontFamily: T.font,
-            pointerEvents: 'none', zIndex: 10, whiteSpace: 'nowrap',
+            pointerEvents: 'none', zIndex: 10, whiteSpace: 'normal', maxWidth: 220,
             boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
           }}>
             <div style={{ fontWeight: 600, color: ({ good: C.good, cross: C.cross, good_gusty: C.gusty, cross_gusty: C.crossGusty, fog: C.fog, rain: C.rain })[tooltip.type] || T.text }}>{tooltip.label}</div>
-            {tooltip.wings && <div style={{ fontSize: fs(10), color: T.text2, marginTop: 1 }}>{tooltip.wings}</div>}
+            {tooltip.wings?.length > 0 && (() => {
+              const maxTextW = 200
+              const ctx = _fitCanvas?.getContext('2d')
+              if (!ctx) return <div style={{ fontSize: fs(10), color: T.text2, marginTop: 1 }}>{tooltip.wings.join(', ')}</div>
+              ctx.font = `${fs(10)}px ${T.font}`
+              const lines = []
+              let cur = []
+              for (const w of tooltip.wings) {
+                const candidate = cur.length === 0 ? w : cur.join(', ') + ', ' + w
+                if (ctx.measureText(candidate).width <= maxTextW) {
+                  cur.push(w)
+                } else {
+                  if (cur.length > 0) lines.push(cur.join(', '))
+                  cur = [w]
+                }
+              }
+              if (cur.length > 0) lines.push(cur.join(', '))
+              return <div style={{ fontSize: fs(10), color: T.text2, marginTop: 1, lineHeight: 1.4 }}>{lines.map((l, i) => <div key={i}>{l}</div>)}</div>
+            })()}
             <div style={{ color: T.text2, marginTop: 2 }}>{tooltip.time}</div>
           </div>
         )
@@ -317,16 +335,9 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
               })()}
               {flyableRows.map((r, i) => {
                 const geom = barGeom(r.start, r.end)
-                const wingLabel = (r.wings || [])
-                  .filter(w => w.key !== 'custom')
-                  .sort((a, b) => a.size - b.size)
-                  .map(w => `${w.size}`)
-                  .join(', ')
-                const wingNames = (r.wings || [])
-                  .filter(w => w.key !== 'custom')
-                  .sort((a, b) => a.size - b.size)
-                  .map(w => `${wingsConfig?.[w.key]?.display_name || w.key} ${w.size}m²`)
-                  .join(', ')
+                const sortedWings = (r.wings || []).filter(w => w.key !== 'custom').sort((a, b) => a.size - b.size)
+                const wingLabel = sortedWings.length > 0 ? `${sortedWings[0].size}` : ''
+                const wingNames = sortedWings.map(w => `${wingsConfig?.[w.key]?.display_name || w.key} ${w.size}m²`)
                 return (
                   <g key={i}>
                     <rect {...geom} y={y + BAR_Y} height={BAR_H}
@@ -334,7 +345,7 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
                       onClick={e => { e.stopPropagation(); const di = days.indexOf(day); if (onDayClick && di !== -1) onDayClick(di); setTooltip({ label: TYPE_LABEL[r.type] || r.type, type: r.type, wings: wingNames || '', time: barTime(r.start, r.end), x: geom.x, y: y + BAR_Y }) }}
                     />
                     {wingLabel && (() => {
-                      const sz = fitTextSize(wingLabel, geom.width - 4, fs(Math.min(11, BAR_H - 2)))
+                      const sz = fitTextSize(wingLabel, geom.width - 4, fs(Math.min(W < 400 ? 9 : 11, BAR_H - 2)))
                       if (!sz) return null
                       return (
                         <text
@@ -355,7 +366,7 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
               {wRows.map((r, i) => (
                 <rect key={'w' + i} {...barGeom(r.start, r.end)} y={y + BAR_Y} height={BAR_H}
                   fill={WEATHER_COLOR[r.type] || '#666'} rx={2} opacity={0.6} style={{ cursor: 'pointer' }}
-                  onClick={e => { e.stopPropagation(); const di = days.indexOf(day); if (onDayClick && di !== -1) onDayClick(di); setTooltip({ label: TYPE_LABEL[r.type] || r.type, type: r.type, wings: '', time: barTime(r.start, r.end), x: barGeom(r.start, r.end).x, y: y + BAR_Y }) }}
+                  onClick={e => { e.stopPropagation(); const di = days.indexOf(day); if (onDayClick && di !== -1) onDayClick(di); setTooltip({ label: TYPE_LABEL[r.type] || r.type, type: r.type, wings: [], time: barTime(r.start, r.end), x: barGeom(r.start, r.end).x, y: y + BAR_Y }) }}
                 />
               ))}
             </g>
@@ -727,13 +738,16 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     { key: 'cross_gusty', name: 'Crosswind, Gusty', color: C.crossGusty },
   ]
 
-  const wingSetLabel = (wsKey) => wsKey.split(',').map(ws => {
-    const colonIdx = ws.lastIndexOf(':')
-    const key = ws.slice(0, colonIdx)
-    const size = ws.slice(colonIdx + 1)
-    if (key === 'custom') return null
-    return { size: Number(size), label: `${size}` }
-  }).filter(Boolean).sort((a, b) => a.size - b.size).map(o => o.label).join(', ')
+  const wingSetLabel = (wsKey) => {
+    const items = wsKey.split(',').map(ws => {
+      const colonIdx = ws.lastIndexOf(':')
+      const key = ws.slice(0, colonIdx)
+      const size = ws.slice(colonIdx + 1)
+      if (key === 'custom') return null
+      return { size: Number(size), label: `${size}` }
+    }).filter(Boolean).sort((a, b) => a.size - b.size)
+    return items.length > 0 ? items[0].label : ''
+  }
 
   const wingSetFullName = (wsKey) => wsKey.split(',').map(ws => {
     const colonIdx = ws.lastIndexOf(':')
@@ -741,7 +755,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     const size = ws.slice(colonIdx + 1)
     if (key === 'custom') return null
     return { size: Number(size), label: `${wings?.[key]?.display_name || key} ${size}m²` }
-  }).filter(Boolean).sort((a, b) => a.size - b.size).map(o => o.label).join(', ')
+  }).filter(Boolean).sort((a, b) => a.size - b.size).map(o => o.label)
 
   const allWingSetKeys = useMemo(() => {
     const keys = new Set()
@@ -880,7 +894,25 @@ export default function MapForecast({ data, onNavigateToPoint }) {
                     {entries.map((e, i) => (
                       <div key={i} style={{ marginBottom: i < entries.length - 1 ? 4 : 0 }}>
                         <span style={{ color: e.qualityColor || T.text, fontWeight: 600 }}>{e.hours}h {e.qualityName}</span>
-                        {e.wingLabel && <div style={{ fontSize: fs(10), color: T.text2, wordBreak: 'break-word' }}>{e.wingLabel}</div>}
+                        {e.wingLabel?.length > 0 && (() => {
+                          const maxTextW = 250
+                          const ctx = _fitCanvas?.getContext('2d')
+                          if (!ctx) return <div style={{ fontSize: fs(10), color: T.text2 }}>{e.wingLabel.join(', ')}</div>
+                          ctx.font = `${fs(10)}px ${T.font}`
+                          const lines = []
+                          let cur = []
+                          for (const w of e.wingLabel) {
+                            const candidate = cur.length === 0 ? w : cur.join(', ') + ', ' + w
+                            if (ctx.measureText(candidate).width <= maxTextW) {
+                              cur.push(w)
+                            } else {
+                              if (cur.length > 0) lines.push(cur.join(', '))
+                              cur = [w]
+                            }
+                          }
+                          if (cur.length > 0) lines.push(cur.join(', '))
+                          return <div style={{ fontSize: fs(10), color: T.text2, lineHeight: 1.4 }}>{lines.map((l, i) => <div key={i}>{l}</div>)}</div>
+                        })()}
                       </div>
                     ))}
                   </div>
