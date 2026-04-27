@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useMemo, useState } from 'react'
 import { fs, fsc } from '../fs.js'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, LabelList, ReferenceArea } from 'recharts'
 import L from 'leaflet'
@@ -126,7 +126,7 @@ function InfoTooltip({ text }) {
   )
 }
 
-function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateIdx, isLocations, effectiveTimeStart, effectiveTimeEnd, wingsConfig }) {
+function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateIdx, isLocations, effectiveTimeStart, effectiveTimeEnd, wingsConfig, wingModelName }) {
   const COLOR         = { good: C.good, cross: C.cross, good_gusty: C.gusty, cross_gusty: C.crossGusty, no: 'transparent' }
   const WEATHER_COLOR = { fog: C.fog, rain: C.rain }
 
@@ -337,7 +337,8 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
                 const geom = barGeom(r.start, r.end)
                 const sortedWings = (r.wings || []).filter(w => w.key !== 'custom').sort((a, b) => a.size - b.size)
                 const wingLabel = sortedWings.length > 0 ? `${sortedWings[0].size}` : ''
-                const wingNames = sortedWings.map(w => `${wingsConfig?.[w.key]?.display_name || w.key} ${w.size}m²`)
+                const allWingNames = sortedWings.map(w => `${wingModelName ? wingModelName(w.key, w.size) : (wingsConfig?.[w.key]?.display_name || w.key)} ${w.size}m²`)
+                const wingNames = allWingNames.length > 1 ? [`${allWingNames[0]} - ${allWingNames[allWingNames.length - 1]}`] : allWingNames
                 return (
                   <g key={i}>
                     <rect {...geom} y={y + BAR_Y} height={BAR_H}
@@ -402,11 +403,16 @@ const Legendsmall_ = ({ items }) => (
 )
 
 export default function MapForecast({ data, onNavigateToPoint }) {
-  const { displayForecast, certainty, points, days, dateIdx, setDateIdx, ptIdx, timeStart, timeEnd, effectiveTimeStart, effectiveTimeEnd, wings } = data
+  const { displayForecast, certainty, points, days, dateIdx, setDateIdx, ptIdx, timeStart, timeEnd, effectiveTimeStart, effectiveTimeEnd, wings, selectedWings } = data
 
   const [plotDays,     setPlotDays]     = useState(() => { try { return Number(localStorage.getItem('plotDays')) || 5 } catch { return 5 } })
   const [showYesterday, setShowYesterday] = useState(() => { try { return localStorage.getItem('showYesterday') === 'true' } catch { return false } })
   const [ganttMode, setGanttMode] = useState(() => { try { return localStorage.getItem('ganttMode') || 'locations' } catch { return 'locations' } })
+
+  const wingModelName = useCallback((key, size) => {
+    const sw = (selectedWings || []).find(w => w.key === key && w.size === size)
+    return sw?.model || wings?.[key]?.display_name || key
+  }, [selectedWings, wings])
 
   const mapRef     = useRef(null)
   const leafletRef = useRef(null)
@@ -749,13 +755,16 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     return items.length > 0 ? items[0].label : ''
   }
 
-  const wingSetFullName = (wsKey) => wsKey.split(',').map(ws => {
-    const colonIdx = ws.lastIndexOf(':')
-    const key = ws.slice(0, colonIdx)
-    const size = ws.slice(colonIdx + 1)
-    if (key === 'custom') return null
-    return { size: Number(size), label: `${wings?.[key]?.display_name || key} ${size}m²` }
-  }).filter(Boolean).sort((a, b) => a.size - b.size).map(o => o.label)
+  const wingSetFullName = (wsKey) => {
+    const arr = wsKey.split(',').map(ws => {
+      const colonIdx = ws.lastIndexOf(':')
+      const key = ws.slice(0, colonIdx)
+      const size = ws.slice(colonIdx + 1)
+      if (key === 'custom') return null
+      return { size: Number(size), label: `${wingModelName(key, Number(size))} ${size}m²` }
+    }).filter(Boolean).sort((a, b) => a.size - b.size).map(o => o.label)
+    return arr.length > 1 ? [`${arr[0]} - ${arr[arr.length - 1]}`] : arr
+  }
 
   const allWingSetKeys = useMemo(() => {
     const keys = new Set()
@@ -876,7 +885,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={allWingSetKeys.length > 0 ? flatBarData : barData} margin={{ top: 40, right: 8, left: 0, bottom: 0 }} onClick={e => { const d = e?.activePayload?.[0]?.payload; if (d?.di != null) selectDay(d.di) }} style={{ cursor: 'pointer' }}>
             <XAxis dataKey="day" tick={{ fill: T.text2, fontSize: fs(11), fontFamily: T.font }} interval={0} />
-            <YAxis width={28} tick={{ fill: T.text2, fontSize: fs(12), fontFamily: T.font }} />
+            <YAxis width={28} allowDecimals={false} tick={{ fill: T.text2, fontSize: fs(12), fontFamily: T.font }} />
             <Tooltip {...TOOLTIP_STYLE} cursor={false} allowEscapeViewBox={{ x: false, y: false }}
               content={({ payload, label }) => {
                 if (!payload?.length) return null
@@ -1028,9 +1037,9 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         {ganttMode === 'locations'
           ? <GanttChart ganttRows={locGanttRows} weatherRows={locWeatherRows} days={locDays} certByDay={locCertByDay} isLocations
               onDayClick={(idx) => { if (locPtMap[idx] != null) data.setPtIdx(locPtMap[idx]) }}
-              dateIdx={locPtMap.indexOf(ptIdx)} effectiveTimeStart={effectiveTimeStart} effectiveTimeEnd={effectiveTimeEnd} wingsConfig={wings} />
+              dateIdx={locPtMap.indexOf(ptIdx)} effectiveTimeStart={effectiveTimeStart} effectiveTimeEnd={effectiveTimeEnd} wingsConfig={wings} wingModelName={wingModelName} />
           : <GanttChart ganttRows={ganttRows} weatherRows={weatherRows} days={days} certByDay={certByDay} onDayClick={selectDay} dateIdx={dateIdx} 
-                      effectiveTimeStart={effectiveTimeStart} effectiveTimeEnd={effectiveTimeEnd} wingsConfig={wings} />
+                      effectiveTimeStart={effectiveTimeStart} effectiveTimeEnd={effectiveTimeEnd} wingsConfig={wings} wingModelName={wingModelName} />
         }
         <div style={{ padding: '6px 12px 0' }}>
           <Legendsmall_ items={[

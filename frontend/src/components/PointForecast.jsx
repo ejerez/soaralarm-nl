@@ -435,9 +435,13 @@ function InfoSymbols({ info }) {
 }
 
 export default function PointForecast({ data }) {
-  const { rawForecast, displayForecast, points, measurements, wings, days, dateIdx, ptIdx, setPtIdx, speedUnit = 'km/h', altStationPrefs, setAltStationPrefs, effectiveTimeStart, effectiveTimeEnd, selectedTime, setSelectedTime } = data
+  const { rawForecast, displayForecast, points, measurements, wings, days, dateIdx, ptIdx, setPtIdx, speedUnit = 'km/h', altStationPrefs, setAltStationPrefs, effectiveTimeStart, effectiveTimeEnd, selectedTime, setSelectedTime, selectedWings } = data
   const isToday = days?.[dateIdx] === 'Today'
   const toUnit = (v) => v == null ? null : parseFloat((v * SPEED_FACTOR[speedUnit]).toFixed(1))
+  const wingModelName = (key, size) => {
+    const sw = (selectedWings || []).find(w => w.key === key && w.size === size)
+    return sw?.model || wings?.[key]?.display_name || key
+  }
 
   const point = points[ptIdx]
   const dayFc = rawForecast?.[dateIdx]?.[ptIdx]
@@ -547,6 +551,19 @@ export default function PointForecast({ data }) {
 
   const dispPf     = displayForecast?.[dateIdx]?.[ptIdx]
   const wind_ranges = dispPf?.wind_ranges ?? []
+  const flyableWingKeys = useMemo(() => {
+    const s = new Set()
+    for (const g of (dispPf?.gantt || [])) {
+      for (const w of (g.wings || [])) s.add(`${w.key}:${w.size}`)
+    }
+    return s
+  }, [dispPf])
+  const visibleWindRanges = (() => {
+    const filtered = wind_ranges.filter(wr => wr.key === 'custom' || flyableWingKeys.has(`${wr.key}:${wr.size}`))
+    if (filtered.length <= 2) return filtered
+    const sorted = [...filtered].sort((a, b) => a.size - b.size)
+    return [sorted[0], sorted[sorted.length - 1]]
+  })()
 
   return (
     <div>
@@ -591,9 +608,9 @@ export default function PointForecast({ data }) {
             {selectedTime && (
               <ReferenceLine x={selectedTime} yAxisId="wind" stroke="rgba(255,255,255,0.6)" strokeWidth={1} />
             )}
-            {wind_ranges.map((wing, i) => {
+            {visibleWindRanges.map((wing, i) => {
               const dash = DASH[i % DASH.length]
-              const displayName = wings[wing.key]?.display_name ?? wing.key
+              const displayName = wingModelName(wing.key, wing.size)
               const label = wing.key==='custom' ? 'Custom' : `${displayName} ${wing.size}`
               const [wMin, wMax] = wing.range
               const posMin = i%2===0 ? 'insideTopLeft' : 'insideTopRight'
@@ -666,7 +683,7 @@ export default function PointForecast({ data }) {
         <div style={{ fontSize: fs(12), color: T.text2, marginTop: 4, lineHeight: 2 }}>
           <span style={{ color: T.text, fontWeight: 600 }}>Wind ranges at {point.name}:</span><br />
           {wind_ranges.map(wr => {
-            const displayName = wings[wr.key]?.display_name ?? wr.key
+            const displayName = wingModelName(wr.key, wr.size)
             const [wMin, wMax] = wr.range
             return (
               <span key={wr.key} style={{ marginRight: 16 }}>

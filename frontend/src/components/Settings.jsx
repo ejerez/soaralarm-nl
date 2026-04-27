@@ -61,7 +61,7 @@ function WingRow({ entry, wings, isRemovable, onChange, onRemove }) {
     <div style={{ marginBottom: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <select style={{ ...select_, flex: 1, minWidth: 0 }} value={entry.key}
-          onChange={e => { setTipOpen(false); const k = e.target.value; onChange({ key: k, size: wings[k]?.default_size ?? entry.size }) }}
+          onChange={e => { setTipOpen(false); const k = e.target.value; onChange({ key: k, size: wings[k]?.default_size ?? entry.size, model: undefined }) }}
           disabled={wingKeys.length === 0}
         >
           {wingKeys.map(k => <option key={k} value={k}>{wings[k].display_name}</option>)}
@@ -82,6 +82,15 @@ function WingRow({ entry, wings, isRemovable, onChange, onRemove }) {
           ? <button onClick={onRemove} title="Remove" style={{ background:'transparent', border:`1px solid ${T.border}`, borderRadius:4, width:26, height:26, cursor:'pointer', color:T.text2, fontSize:fs(13), display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>✕</button>
           : null
         }
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, paddingLeft: 2 }}>
+        <span style={{ fontSize: fs(12), color: T.text3 }}>Model</span>
+        <input type="text" style={{ ...input_, width: 120 }}
+          value={entry.model ?? ''}
+          onChange={e => onChange({...entry, model: e.target.value || undefined})}
+          placeholder={wings[entry.key]?.display_name ?? ''}
+          title="Optional wing model name shown in tooltips"
+        />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, paddingLeft: 2 }}>
         <span style={{ fontSize: fs(12), color: T.text3 }}>Size</span>
@@ -175,18 +184,18 @@ export default function Settings({ data }) {
 
   function updateRow(i, v) {
     const next = rows.map((r, j) => j === i ? v : r)
-    setSelectedWings(next.map(r => ({ key: r.key, size: Number(r.size) || 0 })))
+    setSelectedWings(next.map(r => { const o = { key: r.key, size: Number(r.size) || 0 }; if (r.model) o.model = r.model; return o }))
     autoApply()
   }
   function removeRow(i) {
     const next = rows.filter((_, j) => j !== i)
-    setSelectedWings(next.map(r => ({ key: r.key, size: Number(r.size) || 0 })))
+    setSelectedWings(next.map(r => { const o = { key: r.key, size: Number(r.size) || 0 }; if (r.model) o.model = r.model; return o }))
     autoApply()
   }
   function addRow() {
     if (rows.length >= MAX_WINGS || !firstKey) return
     const next = [...rows, { key: firstKey, size: wings[firstKey]?.default_size ?? 0 }]
-    setSelectedWings(next.map(r => ({ key: r.key, size: Number(r.size) || 0 })))
+    setSelectedWings(next.map(r => { const o = { key: r.key, size: Number(r.size) || 0 }; if (r.model) o.model = r.model; return o }))
     autoApply()
   }
 
