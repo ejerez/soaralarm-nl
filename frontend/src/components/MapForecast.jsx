@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useMemo, useState } from 'react'
 import { fs, fsc } from '../fs.js'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, LabelList, ReferenceArea } from 'recharts'
 import L from 'leaflet'
@@ -36,6 +36,19 @@ const C = {
   crossGusty:  '#c12e0d',
   rain:        '#1b8fe2',
   fog:         '#8888a0',
+}
+
+const _fitCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null
+function fitTextSize(text, maxWidth, maxSize, fontWeight = 700, fontFamily = T.font) {
+  if (!text || maxWidth <= 0 || !_fitCanvas) return maxSize
+  const ctx = _fitCanvas.getContext('2d')
+  let s = maxSize
+  while (s > 5) {
+    ctx.font = `${fontWeight} ${s}px ${fontFamily}`
+    if (ctx.measureText(text).width <= maxWidth) break
+    s -= 0.5
+  }
+  return s < 6 ? 0 : s
 }
 
 function windPolygons(point, pf, maxMag) {
@@ -142,6 +155,20 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
   const TYPE_LABEL = { good: 'Good', cross: 'Crosswind', good_gusty: 'Gusty', cross_gusty: 'Crosswind, Gusty', fog: 'Fog', rain: 'Rain' }
   const fmtH = (iso) => { const d = new Date(iso); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
   const [tooltip, setTooltip] = useState(null)
+  const tooltipRef = useRef(null)
+  useLayoutEffect(() => {
+    if (!tooltip || !tooltipRef.current || !containerRef.current) return
+    const ttEl = tooltipRef.current
+    const cW = containerRef.current.clientWidth
+    const ttW = ttEl.offsetWidth
+    const ttH = ttEl.offsetHeight
+    let left = parseFloat(ttEl.style.left) || 0
+    let top = parseFloat(ttEl.style.top) || 0
+    if (left + ttW > cW) left = Math.max(0, cW - ttW - 4)
+    if (top < 0) top = tooltip.y + 20
+    ttEl.style.left = `${left}px`
+    ttEl.style.top = `${top}px`
+  }, [tooltip])
 
   const grouped = {}
   for (const r of ganttRows) { if (!grouped[r.day]) grouped[r.day] = []; grouped[r.day].push(r) }
@@ -231,14 +258,11 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
   return (
     <div ref={containerRef} style={{ width: '100%', position: 'relative' }} onClick={() => setTooltip(null)}>
       {tooltip && (() => {
-        const ttW = 180
-        const ttH = tooltip.wings ? 62 : 42
-        const containerEl = containerRef.current
-        const cW = containerEl ? containerEl.clientWidth : 700
-        const left = Math.max(0, Math.min(tooltip.x, cW - ttW))
-        const top = tooltip.y - ttH - 6 < 0 ? tooltip.y + 20 : tooltip.y - ttH - 6
+        const cW = containerRef.current?.clientWidth || 700
+        const left = Math.max(0, Math.min(tooltip.x, cW - 180))
+        const top = tooltip.y - 60 < 0 ? tooltip.y + 20 : tooltip.y - 60
         return (
-          <div style={{
+          <div ref={tooltipRef} style={{
             position: 'absolute', left, top,
             background: T.card, border: `1px solid ${T.borderEm}`, borderRadius: 6,
             padding: '6px 10px', fontSize: fs(12), color: T.text, fontFamily: T.font,
@@ -295,10 +319,12 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
                 const geom = barGeom(r.start, r.end)
                 const wingLabel = (r.wings || [])
                   .filter(w => w.key !== 'custom')
-                  .map(w => `${w.size}`)//`${wingsConfig?.[w.key]?.abbr || w.key} ${w.size}`)
+                  .sort((a, b) => a.size - b.size)
+                  .map(w => `${w.size}`)
                   .join(', ')
                 const wingNames = (r.wings || [])
                   .filter(w => w.key !== 'custom')
+                  .sort((a, b) => a.size - b.size)
                   .map(w => `${wingsConfig?.[w.key]?.display_name || w.key} ${w.size}m²`)
                   .join(', ')
                 return (
@@ -307,18 +333,22 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
                       fill={COLOR[r.type] || '#444'} rx={2} opacity={0.88} style={{ cursor: 'pointer' }}
                       onClick={e => { e.stopPropagation(); const di = days.indexOf(day); if (onDayClick && di !== -1) onDayClick(di); setTooltip({ label: TYPE_LABEL[r.type] || r.type, type: r.type, wings: wingNames || '', time: barTime(r.start, r.end), x: geom.x, y: y + BAR_Y }) }}
                     />
-                    {geom.width > 20 && wingLabel && (
-                      <text
-                        x={geom.x + geom.width / 2}
-                        y={y + BAR_Y + BAR_H / 2 + 1}
-                        textAnchor="middle" dominantBaseline="central"
-                        fontSize={fs(Math.min(11, BAR_H - 2))}
-                        fill="rgba(0,0,0,0.75)" fontWeight={700}
-                        style={{ pointerEvents: 'none' }}
-                      >
-                        {wingLabel}
-                      </text>
-                    )}
+                    {wingLabel && (() => {
+                      const sz = fitTextSize(wingLabel, geom.width - 4, fs(Math.min(11, BAR_H - 2)))
+                      if (!sz) return null
+                      return (
+                        <text
+                          x={geom.x + geom.width / 2}
+                          y={y + BAR_Y + BAR_H / 2 + 1}
+                          textAnchor="middle" dominantBaseline="central"
+                          fontSize={sz}
+                          fill="rgba(0,0,0,0.75)" fontWeight={700}
+                          style={{ pointerEvents: 'none' }}
+                        >
+                          {wingLabel}
+                        </text>
+                      )
+                    })()}
                   </g>
                 )
               })}
@@ -701,17 +731,17 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     const colonIdx = ws.lastIndexOf(':')
     const key = ws.slice(0, colonIdx)
     const size = ws.slice(colonIdx + 1)
-    if (key === 'custom') return ''
-    return `${size}` //`${wings?.[key]?.abbr || key} ${size}`
-  }).filter(Boolean).join(', ')
+    if (key === 'custom') return null
+    return { size: Number(size), label: `${size}` }
+  }).filter(Boolean).sort((a, b) => a.size - b.size).map(o => o.label).join(', ')
 
   const wingSetFullName = (wsKey) => wsKey.split(',').map(ws => {
     const colonIdx = ws.lastIndexOf(':')
     const key = ws.slice(0, colonIdx)
     const size = ws.slice(colonIdx + 1)
-    if (key === 'custom') return ''
-    return `${wings?.[key]?.display_name || key} ${size}m²`
-  }).filter(Boolean).join(', ')
+    if (key === 'custom') return null
+    return { size: Number(size), label: `${wings?.[key]?.display_name || key} ${size}m²` }
+  }).filter(Boolean).sort((a, b) => a.size - b.size).map(o => o.label).join(', ')
 
   const allWingSetKeys = useMemo(() => {
     const keys = new Set()
@@ -814,7 +844,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       </div>
 
       {/* Bar chart */}
-      <div data-tutorial="barchart" style={{ position: 'relative', WebkitTapHighlightColor: 'transparent' }}>
+      <div data-tutorial="barchart" style={{ position: 'relative', overflow: 'visible', WebkitTapHighlightColor: 'transparent' }}>
         {barData.some(d => weatherByDay[d.day]?.has_fog || weatherByDay[d.day]?.has_rain) && (
           <div style={{ position: 'absolute', top: 'clamp(20px, -2.5vw, 14px)', left: 28, right: 8, display: 'flex', zIndex: 1, pointerEvents: 'none' }}>
             {barData.map((d, i) => {
@@ -833,7 +863,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
           <BarChart data={allWingSetKeys.length > 0 ? flatBarData : barData} margin={{ top: 40, right: 8, left: 0, bottom: 0 }} onClick={e => { const d = e?.activePayload?.[0]?.payload; if (d?.di != null) selectDay(d.di) }} style={{ cursor: 'pointer' }}>
             <XAxis dataKey="day" tick={{ fill: T.text2, fontSize: fs(11), fontFamily: T.font }} interval={0} />
             <YAxis width={28} tick={{ fill: T.text2, fontSize: fs(12), fontFamily: T.font }} />
-            <Tooltip {...TOOLTIP_STYLE} cursor={false}
+            <Tooltip {...TOOLTIP_STYLE} cursor={false} allowEscapeViewBox={{ x: false, y: false }}
               content={({ payload, label }) => {
                 if (!payload?.length) return null
                 const fullDay = payload[0]?.payload?.fullDay || label
@@ -845,12 +875,12 @@ export default function MapForecast({ data, onNavigateToPoint }) {
                   })
                 if (!entries.length) return null
                 return (
-                  <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: fs(12), fontFamily: T.font, padding: '6px 10px', boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
+                  <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: fs(12), fontFamily: T.font, padding: '6px 10px', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', maxWidth: 280 }}>
                     <div style={{ color: T.text2, marginBottom: 4 }}>{fullDay}</div>
                     {entries.map((e, i) => (
                       <div key={i} style={{ marginBottom: i < entries.length - 1 ? 4 : 0 }}>
                         <span style={{ color: e.qualityColor || T.text, fontWeight: 600 }}>{e.hours}h {e.qualityName}</span>
-                        {e.wingLabel && <div style={{ fontSize: fs(10), color: T.text2 }}>{e.wingLabel}</div>}
+                        {e.wingLabel && <div style={{ fontSize: fs(10), color: T.text2, wordBreak: 'break-word' }}>{e.wingLabel}</div>}
                       </div>
                     ))}
                   </div>
@@ -874,10 +904,12 @@ export default function MapForecast({ data, onNavigateToPoint }) {
                         if (!value || height < 14) return null
                         const label = wingSetLabel(wsKey)
                         if (!label) return null
+                        const sz = fitTextSize(label, width - 4, Math.min(11, height - 2))
+                        if (sz < 6) return null
                         return (
                           <text x={x + width / 2} y={y + height / 2}
                             textAnchor="middle" dominantBaseline="central"
-                            fontSize={Math.min(11, height - 2, width < 40 ? 8 : 11)}
+                            fontSize={sz}
                             fill="rgba(0,0,0,0.75)" fontWeight={700}
                             fontFamily={T.font}>
                             {label}

@@ -463,9 +463,10 @@ class ForecastService:
                             wing_quality_counts[ws_key][cat] += 1
 
                     if cat != "no" and flyable_wings:
-                        cur_ws_key = ",".join(sorted(f"{w['key']}:{w['size']}" for w in flyable_wings))
+                        wings_sorted = sorted(flyable_wings, key=lambda w: w["size"])
+                        cur_ws_key = ",".join(f"{w['key']}:{w['size']}" for w in wings_sorted)
                         cur_gantt_key = f"{cat}|{cur_ws_key}"
-                        cur_wings = [{"key": w["key"], "size": w["size"]} for w in flyable_wings]
+                        cur_wings = [{"key": w["key"], "size": w["size"]} for w in wings_sorted]
                     else:
                         cur_gantt_key = "no"
                         cur_wings = []

@@ -2,12 +2,12 @@
     "version": 1.13,
     "features":[
         {
-            "feature": "URL Sharing",
-            "message": "You current selection is now reflected in the URL, making it <b>easier to share</b> with fellow pilots."
+            "feature": "Flyable Wings",
+            "message": "The <b>wings you can fly at each time of the day</b> are now displayed on the plots on the <b>Map tab</b>."
         },
         {
             "feature": "In case you missed it",
-            "message": "<b>Automatic model selection</b> is now enabled by default. You can disable it in the <b>Settings</b> tab."
+            "message": "You current selection is now reflected in the URL, making it <b>easier to share</b> with fellow pilots."
         }
     ]
 }

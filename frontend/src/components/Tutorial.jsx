@@ -45,7 +45,7 @@ const STEPS = [
   {
     tab: 0, selector: '[data-tutorial="barchart"]', position: 'above',
     title: 'Flyable hours',
-    body:  <>Each stacked bar shows <b style={{ color: T.text }}>estimated flyable hours</b> at the calculated <b style={{ color: T.text }}>best location</b> for that day. <b style={{ color: '#1b8fe2' }}>Rain</b> and <b style={{ color: '#8888a0' }}>Fog</b> warnings appear above the bars when expected. <b style={{ color: T.text }}>Tapping on a bar</b> will <b style={{ color: T.text }}>automatically select</b> that day and location on the <b style={{ color: T.text }}>map</b> and on the <b style={{ color: T.text }}>Point tab</b>.</>,
+    body:  <>Each stacked bar shows <b style={{ color: T.text }}>estimated flyable hours</b> at the calculated <b style={{ color: T.text }}>best location</b> for that day, as well as how many hours are flyable for <b style={{ color: T.text }}>each selected wing</b>. <b style={{ color: '#1b8fe2' }}>Rain</b> and <b style={{ color: '#8888a0' }}>Fog</b> warnings appear above the bars when expected. <b style={{ color: T.text }}>Tapping on a bar</b> will <b style={{ color: T.text }}>automatically select</b> that day and location on the <b style={{ color: T.text }}>map</b> and on the <b style={{ color: T.text }}>Point tab</b>.</>,
   },
   {
     tab: 0, selector: '[data-tutorial="confidence"]', position: 'above',
@@ -55,7 +55,7 @@ const STEPS = [
   {
     tab: 0, selector: '[data-tutorial="gantt"]', position: 'above',
     title: 'Flyable windows',
-    body:  <>Shows when flyable conditions are expected. In <b style={{ color: T.text }}>Locations mode</b>, it shows the best estimated locations for the selected day (up to 5). In <b style={{ color: T.text }}>Date mode</b>, it shows the estimated <b style={{ color: T.text }}>best location</b> for each day. Each coloured block is a <b style={{ color: T.text }}>flyable window</b> – tap it to see the wind category and exact time range. Note that, like with the bar chart, <b style={{ color: T.text }}>tapping on a time window</b> will <b style={{ color: T.text }}>automatically select</b> that day and/or location on both the <b style={{ color: T.text }}>map</b> and on the <b style={{ color: T.text }}>Point tab</b>.</>,
+    body:  <>Shows when flyable conditions are expected. In <b style={{ color: T.text }}>Locations mode</b>, it shows the best estimated locations for the selected day (up to 5). In <b style={{ color: T.text }}>Date mode</b>, it shows the estimated <b style={{ color: T.text }}>best location</b> for each day. Each coloured block is a <b style={{ color: T.text }}>flyable window</b> – tap it to see the wind category, flyable wings, and exact time range. Note that, like with the bar chart, <b style={{ color: T.text }}>tapping on a time window</b> will <b style={{ color: T.text }}>automatically select</b> that day and/or location on both the <b style={{ color: T.text }}>map</b> and on the <b style={{ color: T.text }}>Point tab</b>.</>,
   },
   // ── Point tab intro ──
   {
