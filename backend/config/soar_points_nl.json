@@ -163,7 +163,7 @@
     {
         "lat": 51.738564,
         "lon": 3.749946,
-        "name": "Wilhelminahoeve",
+        "name": "Renesse Wilh.",
         "station": [ "rws", "brouwersdam.brouwershavensegat.2" ],
         "heading": 338,
         "slope": { "steepness": "steep", "height": 10 },

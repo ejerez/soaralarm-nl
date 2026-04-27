@@ -1,9 +1,13 @@
 {
-    "version": 1.14,
+    "version": 1.15,
     "features":[
         {
             "feature": "Flyable Wings",
-            "message": "The <b>wings you can fly at each time of the day</b> are now displayed on the plots on the <b>Map tab</b>."
+            "message": "The <b>wings you can fly at each time of the day</b> are now displayed on the plots on the <b>Map tab</b>, prioritizing whichever size has the most flyable hours."
+        },
+        {
+            "feature": "Wing Names",
+            "message": "You can now specify your wings' <b>names or models</b>."
         },
         {
             "feature": "In case you missed it",

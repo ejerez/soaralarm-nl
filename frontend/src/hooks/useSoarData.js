@@ -27,7 +27,7 @@ function detectCountryFromSubdomain() {
 
 // ── Display forecast cache ────────────────────────────────────────────────
 function displayCacheKey(model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax) {
-  return `soar_display_v4:${cacheScope()}:` + JSON.stringify({ model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax, _l: !!_cfg.local })
+  return `soar_display_v5:${cacheScope()}:` + JSON.stringify({ model, timeStart, timeEnd, selectedWings, weight, customWind, windMin, windMax, _l: !!_cfg.local })
 }
 function loadDisplayCache(key) {
   try {

@@ -126,7 +126,7 @@ function InfoTooltip({ text }) {
   )
 }
 
-function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateIdx, isLocations, effectiveTimeStart, effectiveTimeEnd, wingsConfig, wingModelName }) {
+function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateIdx, isLocations, effectiveTimeStart, effectiveTimeEnd, wingsConfig, wingModelName, bestWingByDay }) {
   const COLOR         = { good: C.good, cross: C.cross, good_gusty: C.gusty, cross_gusty: C.crossGusty, no: 'transparent' }
   const WEATHER_COLOR = { fog: C.fog, rain: C.rain }
 
@@ -336,7 +336,9 @@ function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateI
               {flyableRows.map((r, i) => {
                 const geom = barGeom(r.start, r.end)
                 const sortedWings = (r.wings || []).filter(w => w.key !== 'custom').sort((a, b) => a.size - b.size)
-                const wingLabel = sortedWings.length > 0 ? `${sortedWings[0].size}` : ''
+                const bw = bestWingByDay?.[r.day]
+                const bestIsFlyable = bw && sortedWings.some(w => w.key === bw.key && w.size === bw.size)
+                const wingLabel = bestIsFlyable ? `${bw.size}` : (sortedWings.length > 0 ? `${sortedWings[0].size}` : '')
                 const allWingNames = sortedWings.map(w => `${wingModelName ? wingModelName(w.key, w.size) : (wingsConfig?.[w.key]?.display_name || w.key)} ${w.size}m²`)
                 const wingNames = allWingNames.length > 1 ? [`${allWingNames[0]} - ${allWingNames[allWingNames.length - 1]}`] : allWingNames
                 return (
@@ -644,8 +646,8 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     })
   }, [ptIdx, baseRadius, selRadius])
 
-  const { barData, ganttRows, weatherRows, locGanttRows, locWeatherRows, locCertByDay, locDays, locPtMap, certByDay, weatherByDay } = useMemo(() => {
-    if (!displayForecast || !points.length) return { barData: [], ganttRows: [], weatherRows: [], locGanttRows: [], locWeatherRows: [], locCertByDay: {}, locDays: [], locPtMap: [], certByDay: {}, weatherByDay: {} }
+  const { barData, ganttRows, weatherRows, locGanttRows, locWeatherRows, locCertByDay, locDays, locPtMap, certByDay, weatherByDay, bestWingByDay, locBestWingByDay } = useMemo(() => {
+    if (!displayForecast || !points.length) return { barData: [], ganttRows: [], weatherRows: [], locGanttRows: [], locWeatherRows: [], locCertByDay: {}, locDays: [], locPtMap: [], certByDay: {}, weatherByDay: {}, bestWingByDay: {}, locBestWingByDay: {} }
     // Clamp a gantt entry to the availability window; returns null if fully outside
     const clampToWindow = (g) => {
       const sDate = g.start.slice(0, 10) // "YYYY-MM-DD"
@@ -660,7 +662,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         end:   gEnd > winEnd + 3600_000   ? new Date(winEnd + 3600_000).toISOString()     : g.end,
       }
     }
-    const bar = [], gantt = [], weather = [], certByDayMap = {}, weatherByDayMap = {}
+    const bar = [], gantt = [], weather = [], certByDayMap = {}, weatherByDayMap = {}, bestWingByDayMap = {}
     // di=0 is Yesterday, di=1 is Today; plotDays counts forward from Today
     const maxDi = plotDays  // Today=1 … Today+plotDays-1 = plotDays
     displayForecast.forEach((dayPf, di) => {
@@ -677,11 +679,13 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         good: bpf?.good_hours || 0, cross: bpf?.cross_hours || 0,
         gusty: bpf?.gusty_hours || 0, cross_gusty: bpf?.cross_gusty_hours || 0,
         wingSetHours: bpf?.wing_set_hours || {},
+        bestWing: bpf?.best_wing || null,
         label: ((bpf?.good_hours||0)+(bpf?.cross_hours||0)+(bpf?.gusty_hours||0)+(bpf?.cross_gusty_hours||0)) > 0 ? (bpt?.name||'') : '',
         agree: bestAgree, total: certDi?.total ?? 0,
       })
       const dayName  = days[di] || `Day ${di}`
-      const shortDay = shortenDay(dayName)  // barData uses short names — key weather map the same way
+      const shortDay = shortenDay(dayName)
+      bestWingByDayMap[dayName] = bpf?.best_wing || null
       if (certDi) certByDayMap[dayName] = { ...certDi, agree: bestAgree }
       weatherByDayMap[shortDay] = { has_fog: dayPf.some(pf => pf.has_fog), has_rain: dayPf.some(pf => pf.has_rain) }
       if (bpf?.gantt) bpf.gantt.forEach(g => {
@@ -700,7 +704,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     })
 
     // ── Locations mode: top 5 flyable locations for selected date ──────────
-    const locGantt = [], locWeather = [], locCertMap = {}, locDays = [], locPtMap = []
+    const locGantt = [], locWeather = [], locCertMap = {}, locDays = [], locPtMap = [], locBestWingMap = {}
     const dayPf = displayForecast[dateIdx] || []
     const certDay = certainty?.[dateIdx]
     // Score each point: flyable total > 0, then rank by confidence desc, priority asc, quality (good+gusty) desc, total flyable desc
@@ -720,6 +724,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       locDays.push(ptName)
       locPtMap.push(pi)
       if (certDay) locCertMap[ptName] = { agree, total: certDay.total }
+      locBestWingMap[ptName] = pf.best_wing || null
       if (pf.gantt) pf.gantt.forEach(g => {
         const c = clampToWindow({ day: ptName, point: '', type: g.type, start: g.start, end: g.end, wings: g.wings || [] })
         if (c) locGantt.push(c)
@@ -734,7 +739,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       })
     })
 
-    return { barData: bar, ganttRows: gantt, weatherRows: weather, locGanttRows: locGantt, locWeatherRows: locWeather, locCertByDay: locCertMap, locDays, locPtMap, certByDay: certByDayMap, weatherByDay: weatherByDayMap }
+    return { barData: bar, ganttRows: gantt, weatherRows: weather, locGanttRows: locGantt, locWeatherRows: locWeather, locCertByDay: locCertMap, locDays, locPtMap, certByDay: certByDayMap, weatherByDay: weatherByDayMap, bestWingByDay: bestWingByDayMap, locBestWingByDay: locBestWingMap }
   }, [displayForecast, points, days, certainty, plotDays, showYesterday, effectiveTimeStart, effectiveTimeEnd, dateIdx])
 
   const QUALITIES = [
@@ -941,9 +946,22 @@ export default function MapForecast({ data, onNavigateToPoint }) {
                       radius={[0, 0, 0, 0]}
                       legendType="none"
                       label={(props) => {
-                        const { x, y, width, height, value } = props
+                        const { x, y, width, height, value, index } = props
                         if (!value || height < 14) return null
-                        const label = wingSetLabel(wsKey)
+                        const bw = barData[index]?.bestWing
+                        const items = wsKey.split(',').map(ws => {
+                          const colonIdx = ws.lastIndexOf(':')
+                          const key = ws.slice(0, colonIdx)
+                          const size = Number(ws.slice(colonIdx + 1))
+                          if (key === 'custom') return null
+                          return { key, size }
+                        }).filter(Boolean).sort((a, b) => a.size - b.size)
+                        let label
+                        if (bw && items.some(item => item.key === bw.key && item.size === bw.size)) {
+                          label = `${bw.size}`
+                        } else {
+                          label = items.length > 0 ? `${items[0].size}` : ''
+                        }
                         if (!label) return null
                         const sz = fitTextSize(label, width - 4, Math.min(11, height - 2))
                         if (sz < 6) return null
@@ -1037,9 +1055,9 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         {ganttMode === 'locations'
           ? <GanttChart ganttRows={locGanttRows} weatherRows={locWeatherRows} days={locDays} certByDay={locCertByDay} isLocations
               onDayClick={(idx) => { if (locPtMap[idx] != null) data.setPtIdx(locPtMap[idx]) }}
-              dateIdx={locPtMap.indexOf(ptIdx)} effectiveTimeStart={effectiveTimeStart} effectiveTimeEnd={effectiveTimeEnd} wingsConfig={wings} wingModelName={wingModelName} />
+              dateIdx={locPtMap.indexOf(ptIdx)} effectiveTimeStart={effectiveTimeStart} effectiveTimeEnd={effectiveTimeEnd} wingsConfig={wings} wingModelName={wingModelName} bestWingByDay={locBestWingByDay} />
           : <GanttChart ganttRows={ganttRows} weatherRows={weatherRows} days={days} certByDay={certByDay} onDayClick={selectDay} dateIdx={dateIdx} 
-                      effectiveTimeStart={effectiveTimeStart} effectiveTimeEnd={effectiveTimeEnd} wingsConfig={wings} wingModelName={wingModelName} />
+                      effectiveTimeStart={effectiveTimeStart} effectiveTimeEnd={effectiveTimeEnd} wingsConfig={wings} wingModelName={wingModelName} bestWingByDay={bestWingByDay} />
         }
         <div style={{ padding: '6px 12px 0' }}>
           <Legendsmall_ items={[

@@ -551,6 +551,7 @@ export default function PointForecast({ data }) {
 
   const dispPf     = displayForecast?.[dateIdx]?.[ptIdx]
   const wind_ranges = dispPf?.wind_ranges ?? []
+  const bestWing = dispPf?.best_wing ?? null
   const flyableWingKeys = useMemo(() => {
     const s = new Set()
     for (const g of (dispPf?.gantt || [])) {
@@ -562,7 +563,14 @@ export default function PointForecast({ data }) {
     const filtered = wind_ranges.filter(wr => wr.key === 'custom' || flyableWingKeys.has(`${wr.key}:${wr.size}`))
     if (filtered.length <= 2) return filtered
     const sorted = [...filtered].sort((a, b) => a.size - b.size)
-    return [sorted[0], sorted[sorted.length - 1]]
+    const result = new Set()
+    if (bestWing) {
+      const bwEntry = sorted.find(w => w.key === bestWing.key && w.size === bestWing.size)
+      if (bwEntry) result.add(bwEntry)
+    }
+    result.add(sorted[0])
+    result.add(sorted[sorted.length - 1])
+    return [...result]
   })()
 
   return (
@@ -615,9 +623,14 @@ export default function PointForecast({ data }) {
               const [wMin, wMax] = wing.range
               const posMin = i%2===0 ? 'insideTopLeft' : 'insideTopRight'
               const posMax = i%2===0 ? 'insideBottomLeft' : 'insideBottomRight'
+              const isBest = bestWing && wing.key === bestWing.key && wing.size === bestWing.size
+              const minStroke = isBest ? '#3aaa66' : '#bba830'
+              const minFill = isBest ? '#1fd100' : '#ddb60a'
+              const maxStroke = isBest ? '#3aaa80' : '#bba830'
+              const maxFill = isBest ? '#6be655' : '#e0c428'
               return [
-                <ReferenceLine key={`min-${wing.key}`} yAxisId="wind" y={toUnit(wMin)} stroke="#3aaa66" strokeWidth={1.5} strokeDasharray={dash} label={{ value:`↑ ${label} ↑`, fill:'#1fd100', fontSize:fs(8), position:posMin }} />,
-                <ReferenceLine key={`max-${wing.key}`} yAxisId="wind" y={toUnit(wMax)} stroke="#3aaa80" strokeWidth={1.5} strokeDasharray={dash} label={{ value:`↓ ${label} ↓`, fill:'#6be655', fontSize:fs(8), position:posMax }} />,
+                <ReferenceLine key={`min-${wing.key}`} yAxisId="wind" y={toUnit(wMin)} stroke={minStroke} strokeWidth={1.5} strokeDasharray={dash} label={{ value:`↑ ${label} ↑`, fill:minFill, fontSize:fs(8), position:posMin }} />,
+                <ReferenceLine key={`max-${wing.key}`} yAxisId="wind" y={toUnit(wMax)} stroke={maxStroke} strokeWidth={1.5} strokeDasharray={dash} label={{ value:`↓ ${label} ↓`, fill:maxFill, fontSize:fs(8), position:posMax }} />,
               ]
             })}
             <Area yAxisId="wind" type="monotone" dataKey="wind_gusts"    name={`Gusts (${speedUnit})`}        fill="#c07028" stroke="#c07028" fillOpacity={0.25} dot={false} connectNulls />
@@ -685,13 +698,16 @@ export default function PointForecast({ data }) {
           {wind_ranges.map(wr => {
             const displayName = wingModelName(wr.key, wr.size)
             const [wMin, wMax] = wr.range
+            const isBest = bestWing && wr.key === bestWing.key && wr.size === bestWing.size
+            const minColor = isBest ? '#1fd100' : '#ddb60a'
+            const maxColor = isBest ? '#6be655' : '#e0c428'
             return (
               <span key={wr.key} style={{ marginRight: 16 }}>
                 <b style={{ color: T.text }}>{wr.key==='custom' ? 'Custom' : `${displayName} ${wr.size}m²`}</b>
                 {': '}
-                <span style={{ color: '#1fd100' }}>{Math.round(toUnit(wMin))}</span>
+                <span style={{ color: minColor }}>{Math.round(toUnit(wMin))}</span>
                 {' – '}
-                <span style={{ color: '#6be655' }}>{Math.round(toUnit(wMax))}</span>
+                <span style={{ color: maxColor }}>{Math.round(toUnit(wMax))}</span>
                 {` ${speedUnit}`}
               </span>
             )

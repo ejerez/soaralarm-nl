@@ -45,7 +45,7 @@ const STEPS = [
   {
     tab: 0, selector: '[data-tutorial="barchart"]', position: 'above',
     title: 'Flyable hours',
-    body:  <>Each stacked bar shows <b style={{ color: T.text }}>estimated flyable hours</b> at the calculated <b style={{ color: T.text }}>best location</b> for that day, as well as how many hours are flyable for <b style={{ color: T.text }}>each selected wing</b>. <b style={{ color: '#1b8fe2' }}>Rain</b> and <b style={{ color: '#8888a0' }}>Fog</b> warnings appear above the bars when expected. <b style={{ color: T.text }}>Tapping on a bar</b> will <b style={{ color: T.text }}>automatically select</b> that day and location on the <b style={{ color: T.text }}>map</b> and on the <b style={{ color: T.text }}>Point tab</b>.</>,
+    body:  <>Each stacked bar shows <b style={{ color: T.text }}>estimated flyable hours</b> at the calculated <b style={{ color: T.text }}>best location</b> for that day, as well as how many hours are flyable for each selected wing. Note that the bar shows the <b style={{ color: '#1b8fe2' }}>best wing size for the day</b>, or the smallest flyable wing, if the best wing isn't flyable. <b style={{ color: '#1b8fe2' }}>Rain</b> and <b style={{ color: '#8888a0' }}>Fog</b> warnings appear above the bars when expected. <b style={{ color: T.text }}>Tapping on a bar</b> will <b style={{ color: T.text }}>automatically select</b> that day and location on the <b style={{ color: T.text }}>map</b> and on the <b style={{ color: T.text }}>Point tab</b>.</>,
   },
   {
     tab: 0, selector: '[data-tutorial="confidence"]', position: 'above',

@@ -349,6 +349,7 @@ class ForecastService:
                 wind_pizza = [0, 0, 0]  # left-cross, good, right-cross
                 wind_quality = [0, 0, 0, 0]
                 wing_quality_counts = {}
+                individual_wing_hours = {}
                 gantt      = []
                 gantt_seg_key = None
                 gantt_seg_start = None
@@ -461,6 +462,9 @@ class ForecastService:
                             wing_quality_counts[ws_key] = {"good": 0, "cross": 0, "gusty": 0, "cross_gusty": 0}
                         if cat in wing_quality_counts[ws_key]:
                             wing_quality_counts[ws_key][cat] += 1
+                        for w in flyable_wings:
+                            wk = f"{w['key']}:{w['size']}"
+                            individual_wing_hours[wk] = individual_wing_hours.get(wk, 0) + 1
 
                     if cat != "no" and flyable_wings:
                         wings_sorted = sorted(flyable_wings, key=lambda w: w["size"])
@@ -499,6 +503,12 @@ class ForecastService:
                 if rain_prev is not None and last_time:
                     rain_gantt.append({"type": rain_prev, "start": rain_start, "end": end_exc})
 
+                best_wing = None
+                if individual_wing_hours:
+                    best_wk = max(individual_wing_hours, key=individual_wing_hours.get)
+                    bk, bs = best_wk.rsplit(':', 1)
+                    best_wing = {"key": bk, "size": int(float(bs)) if float(bs).is_integer() else float(bs)}
+
                 day_disp.append({
                     "wind_pizza":    wind_pizza,
                     "good_hours":    wind_quality[0],
@@ -515,6 +525,7 @@ class ForecastService:
                         [{"key": "custom", "range": [wind_min, wind_max]}]
                         if custom_mode else eff_ranges[pt_idx]
                     ),
+                    "best_wing":     best_wing,
                 })
             disp.append(day_disp)
         return disp
