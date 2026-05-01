@@ -30,10 +30,14 @@ soaralarm/
     ├── src/
     │   ├── App.jsx              # Tab shell, date bar, loading states
     │   ├── api.js               # Fetch wrapper with retry logic, auto-appends country/mode scope
+    │   ├── forecastShared.js    # Shared design tokens (T, C), helpers (fitTextSize, certLabel, parseWingSetKey, clampGanttToWindow)
+    │   ├── fs.js                # Font-size scaling helpers (fs, fsc) — all font sizes flow through these
+    │   ├── locationSort.js      # Shared location ranking logic (compareLocations, findBestLocationIndex)
     │   ├── hooks/
     │   │   └── useSoarData.js   # All data fetching, polling, caching, country/mode switching
     │   └── components/
-    │       ├── MapForecast.jsx     # Leaflet map, flyable-hours bar chart, Gantt, confidence
+    │       ├── MapForecast.jsx     # Leaflet map, flyable-hours bar chart, gantt chart wrapper, confidence
+    │       ├── GanttChart.jsx      # SVG gantt chart with flyable windows, weather overlays, tooltips
     │       ├── PointForecast.jsx   # Hourly charts, site info symbols, station selector
     │       ├── Settings.jsx        # Country, mode, model, wings, weight, time window, speed units
     │       ├── Info.jsx            # Flyability calculation (formulas from ranges), wind range table
@@ -148,6 +152,53 @@ An hour counts as flyable if it's within the wind range for at least one active 
 v₂ = v₁ · √((W₂/W₁) · (A₁/A₂))
 ```
 
+#### Wind category classification
+
+The `display()` method delegates hourly classification to focused helpers:
+
+| Helper | Purpose |
+|--------|---------|
+| `Cat` class | Constants for all wind categories (`GOOD`, `CROSS`, `GOOD_GUSTY`, `CROSS_GUSTY`, `NO`) plus `FLYABLE` set, `GUSTY_THRESHOLD`, and helpers like `_empty_quality_dict()` and `quality_index()`. Single source of truth for category names — prevents mismatches like the `"gusty"` vs `"good_gusty"` bug. |
+| `_classify_wind_direction(wind_dir, heading, head_range)` | Returns one of `Cat.GOOD`, `Cat.CROSS`, or `Cat.NO` based on the relative angle between wind direction and slope heading. |
+| `_pizza_slice(cat, head_range, rel_angle)` | Returns the wind pizza index (0=left-cross, 1=good, 2=right-cross) for the pizza chart overlays on the map. |
+| `_apply_gustiness(cat, wind_speed, wind_gusts)` | Appends `_gusty` suffix when gusts exceed wind speed by > 20 km/h. |
+| `_accumulate_quality(cat, ...)` | Updates all quality accumulators for one hour: `wind_quality` array, `wind_pizza`, `wing_quality_counts`, `individual_wing_hours`. |
+
+#### Segment trackers
+
+Gantt and weather segment tracking is handled by two small classes:
+
+| Class | Purpose |
+|-------|---------|
+| `_GanttTracker` | Tracks consecutive flyable segments with the same category+wing set. Emits gantt entries with `{type, start, end, wings}`. |
+| `_WeatherTracker` | Tracks consecutive fog or rain segments. Emits entries with `{type, start, end}`. |
+
+Both classes follow the same `update()` → `flush()` pattern: `update()` is called per hour and detects segment boundaries; `flush()` is called once after the loop to close the final segment.
+
+#### Output data shape
+
+Each day×point entry in the display output contains:
+
+```python
+{
+    "wind_pizza":          [left_cross, good, right_cross],
+    "good_hours":          int,    # good heading, no gustiness
+    "cross_hours":         int,    # crosswind heading, no gustiness
+    "gusty_hours":         int,    # good heading + gusty
+    "cross_gusty_hours":   int,    # crosswind heading + gusty
+    "wing_set_hours":      {"wing_key:size": {"good": N, "cross": N, "good_gusty": N, "cross_gusty": N}},
+    "gantt":               [{type, start, end, wings}],
+    "fog_gantt":           [{type, start, end}],
+    "rain_gantt":          [{type, start, end}],
+    "has_fog":             bool,
+    "has_rain":            bool,
+    "wind_ranges":         [{key, size, range: [min, max]}],
+    "best_wing":           {key, size} | null,
+}
+```
+
+The `wing_set_hours` dict uses the same `Cat` constants as keys (`good`, `cross`, `good_gusty`, `cross_gusty`). The frontend maps `good_gusty` to its display name "Gusty" via the `QUALITIES` array.
+
 ### Confidence scoring
 
 The backend runs `display()` once per model with `ignore_precip_vis=True` (so rain/fog don't interfere with wind agreement), then counts how many models agree there are flyable hours at each location. The location with the best agreement score is used for the bar chart, Gantt chart, and as the Point Forecast default. Ties are broken by good-quality hours (good + gusty), then total flyable hours.
@@ -207,6 +258,8 @@ Pickle files are scoped by country (`forecast_{country}.pkl`, `measurements_{cou
 
 `useSoarData.js` owns all remote state. On mount it detects the initial country from the subdomain (falling back to localStorage, then `"nl"`), sets the API scope via `setApiScope(country, mode)`, and loads from `localStorage` immediately so the UI is populated before any network round-trip. It then fetches fresh data in the background. A `setInterval` poll runs every 10 seconds, checking `/api/status` and triggering a display or measurement refetch whenever the server signals a background update has just finished or data has gone stale. Measurement refreshes are gated by the backend's `measurement_in_daylight` flag to avoid pointless overnight fetches.
 
+Settings changes (model, wings, weight, time window, wind range) trigger an immediate `fetchDisplay()` via a `useEffect` dependency array — there is no need to wait for the next poll cycle. The `fetchDisplay()` function is stable (never recreated) and reads the latest settings from a ref, so concurrent settings changes are coalesced correctly: if a fetch is already in progress, the pending flag ensures a second fetch runs immediately after the first completes.
+
 `dateIdx` and `ptIdx` (currently selected day and location) live inside `useSoarData` rather than in individual components. Tapping a map marker sets `ptIdx` so the user can switch to the Point tab with the right location pre-selected.
 
 `switchConfig(country, mode)` updates the API scope via `setApiScope()`, then reloads all data (points, days, status, wings, models, ranges) for the new combination. No server-side state mutation is needed — the backend is stateless with respect to the "active" country/mode; each request carries its own scope as query parameters. All localStorage cache keys are scoped by `country:mode` so switching back to a previous selection restores cached data instantly.
@@ -219,19 +272,44 @@ All data types are cached in `localStorage`, scoped by `country:mode`:
 
 | Data | Key pattern | TTL |
 |------|-------------|-----|
-| Display forecast (Gantt, hours, certainty) | `soar_display_v3:<country:mode>:<settings hash>` | 2 h |
-| Raw forecast (hourly per point) | `soar_raw_v3:<country:mode>:<model>` | 2 h |
+| Display forecast (Gantt, hours, certainty) | `soar_display_v6:<country:mode>:<settings hash>` | 2 h |
+| Raw forecast (hourly per point) | `soar_raw_v2:<country:mode>:<model>` | 2 h |
 | Measurements | `soar_measurements_v3:<country:mode>` | 15 min |
 
-The display cache key includes the full settings combination, so changing model, wings, weight or the time window triggers a fresh fetch rather than serving a stale result.
+The display cache key includes the full settings combination, so changing model, wings, weight or the time window triggers a fresh fetch rather than serving a stale result. The version number (`v6`) is bumped whenever the API response shape changes (e.g. the `gusty` → `good_gusty` key rename in `wing_set_hours`), ensuring existing users get fresh data immediately after deploy. On cache write failure (localStorage full), all display cache entries are pruned via a prefix match on `soar_display_`.
+
+### Shared utilities — `forecastShared.js`
+
+Design tokens and helper functions shared between `MapForecast.jsx`, `GanttChart.jsx`, and `App.jsx`:
+
+| Export | Purpose |
+|--------|---------|
+| `T` | Design tokens (bg, surface, card, border colors, text levels, accent, font family) |
+| `C` | Wind/weather colours (good, cross, gusty, crossGusty, rain, fog) |
+| `fitTextSize(text, maxW, maxS)` | Measures text with canvas context, returns largest font size that fits |
+| `certLabel(agree, total)` | Returns `{label, color}` for confidence stars (★★★★ → ★) |
+| `shortenDay(day)` | Maps full day names to abbreviations (Yesterday → Yest., Monday → Mon.) |
+| `parseWingSetKey(wsKey)` | Parses `"key:size,key:size"` strings into `[{key, size}]` arrays |
+| `clampGanttToWindow(g, start, end)` | Clamps a gantt entry to the effective time window, or returns `null` if outside |
+| `wingSetFullLabel(wsKey, wingModelName)` | Builds display labels like `"Scraper 16m² - Scraper 20m²"` |
+| `wrapTextLines(ctx, words, maxW)` | Word-wraps text into lines that fit within a given pixel width |
 
 ### Map tab
 
-`MapForecast.jsx` contains three visualisations that share a single `useMemo` pass over `displayForecast`:
+`MapForecast.jsx` renders three visualisations:
 
 - **Leaflet map** with arrow-shaped polygon overlays per location, sized and coloured by flyable quality. The map auto-zooms to fit all locations with padding using `fitBounds`. Popups show flyable hour summaries, Google Maps and Spot information links. Tapping a marker selects that location for the Point tab.
-- **Bar chart** (Recharts) showing stacked flyable-hour categories per day. Rain and fog badges sit in a row above the bars. Clicking a bar selects that day.
-- **Gantt chart** (plain SVG) showing flyable windows and weather overlays per day. Layout constants — including the left-label column width — are computed from the container's live pixel width via `ResizeObserver`, so the chart adapts to any screen size without fixed breakpoints.
+- **Bar chart** (Recharts) showing stacked flyable-hour categories per day. Rain and fog badges sit in a row above the bars. Clicking a bar selects that day. In wing-set mode (multiple wing configurations), bars are split by wing set with size labels inside each segment.
+- **Gantt chart** rendered by the extracted `GanttChart.jsx` component (plain SVG) showing flyable windows and weather overlays per day. Layout constants — including the left-label column width — are computed from the container's live pixel width via `ResizeObserver`, so the chart adapts to any screen size without fixed breakpoints.
+
+Data for these visualisations is computed by two focused `useMemo` hooks:
+
+| Memo | Outputs | Description |
+|------|---------|-------------|
+| `useBarAndGanttData` | `barData`, `certByDay`, `weatherByDay`, `bestWingByDay`, `ganttRows`, `weatherRows` | Date-mode: best location per day, bar chart data, gantt segments for the selected date range |
+| `useLocationsData` | `locGanttRows`, `locWeatherRows`, `locCertByDay`, `locDays`, `locPtMap`, `locBestWingByDay` | Location-mode: top 5 locations for the selected day, ranked by flyability |
+
+A third memo (`flatBarData`) flattens `wing_set_hours` into per-wing-set Recharts bar data keys (`good__wingKey`, `cross__wingKey`, etc.), mapping the backend's `good_gusty` key to the frontend's `gusty` display name.
 
 ### Point tab
 

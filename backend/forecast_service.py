@@ -16,6 +16,36 @@ from haversine import inverse_haversine
 from retry_requests import retry
 
 
+# ── Wind category constants ─────────────────────────────────────────────────
+# Single source of truth for wind quality category names used throughout
+# display() and consumed by the frontend.  Prevents mismatches like the
+# "gusty" vs "good_gusty" bug.
+
+class Cat:
+    GOOD         = "good"
+    CROSS        = "cross"
+    GOOD_GUSTY   = "good_gusty"
+    CROSS_GUSTY  = "cross_gusty"
+    NO           = "no"
+
+    FLYABLE = {GOOD, CROSS, GOOD_GUSTY, CROSS_GUSTY}
+
+    GUSTY_THRESHOLD = 20  # km/h — gusts must exceed wind speed by this much
+
+    @classmethod
+    def _empty_quality_dict(cls) -> Dict[str, int]:
+        return {cls.GOOD: 0, cls.CROSS: 0, cls.GOOD_GUSTY: 0, cls.CROSS_GUSTY: 0}
+
+    @classmethod
+    def quality_index(cls, cat: str) -> Optional[int]:
+        return {
+            cls.GOOD:        0,
+            cls.CROSS:       1,
+            cls.GOOD_GUSTY:  2,
+            cls.CROSS_GUSTY: 3,
+        }.get(cat)
+
+
 # ── Wind & heading range algorithm ───────────────────────────────────────────
 # Parameters are loaded from a mode-specific ranges JSON (e.g. ranges_para.json)
 # and passed into point_ranges() at startup.
@@ -96,6 +126,141 @@ def _sanitise(obj):
     except (TypeError, ValueError):
         pass
     return obj
+
+
+# ── Hourly classification helpers ────────────────────────────────────────────
+
+def _classify_wind_direction(wind_dir: float, heading: float, head_range: Dict) -> str:
+    """Classify a wind direction relative to a heading into a base Cat category.
+
+    Returns one of Cat.GOOD, Cat.CROSS, or Cat.NO.
+    Also returns the pizza slice index via a separate function.
+    """
+    rel = wind_dir - heading
+    if rel > 180:
+        rel -= 360
+    elif rel < -180:
+        rel += 360
+
+    cross_lo, cross_hi = head_range["cross"]
+    good_lo, good_hi   = head_range["good"]
+
+    if cross_lo < rel < good_lo:
+        return Cat.CROSS
+    elif good_lo <= rel <= good_hi:
+        return Cat.GOOD
+    elif good_hi < rel < cross_hi:
+        return Cat.CROSS
+    else:
+        return Cat.NO
+
+
+def _pizza_slice(cat: str, head_range: Dict, rel_angle: float) -> Optional[int]:
+    """Return wind_pizza index (0=left-cross, 1=good, 2=right-cross) or None."""
+    if cat == Cat.NO:
+        return None
+    good_mid = sum(head_range["good"]) / 2
+    return 1 if cat == Cat.GOOD else (0 if rel_angle < good_mid else 2)
+
+
+def _apply_gustiness(cat: str, wind_speed: float, wind_gusts: float) -> str:
+    """Append _gusty suffix when gusts exceed wind speed by > threshold."""
+    if cat != Cat.NO and wind_gusts - wind_speed > Cat.GUSTY_THRESHOLD:
+        return cat + "_gusty"
+    return cat
+
+
+def _accumulate_quality(
+    cat: str,
+    wind_quality: List[int],
+    wind_pizza: List[int],
+    head_range: Dict,
+    rel_angle: float,
+    flyable_wings: List[Dict],
+    wing_quality_counts: Dict[str, Dict[str, int]],
+    individual_wing_hours: Dict[str, int],
+):
+    """Update all quality accumulators for a single hour."""
+    idx = Cat.quality_index(cat)
+    if idx is not None:
+        wind_quality[idx] += 1
+
+    sl = _pizza_slice(cat, head_range, rel_angle)
+    if sl is not None:
+        wind_pizza[sl] += 1
+
+    if cat in Cat.FLYABLE and flyable_wings:
+        ws_key = ",".join(sorted(f"{w['key']}:{w['size']}" for w in flyable_wings))
+        if ws_key not in wing_quality_counts:
+            wing_quality_counts[ws_key] = Cat._empty_quality_dict()
+        if cat in wing_quality_counts[ws_key]:
+            wing_quality_counts[ws_key][cat] += 1
+        for w in flyable_wings:
+            wk = f"{w['key']}:{w['size']}"
+            individual_wing_hours[wk] = individual_wing_hours.get(wk, 0) + 1
+
+
+# ── Segment trackers ─────────────────────────────────────────────────────────
+
+class _GanttTracker:
+    """Tracks consecutive flyable segments with the same category+wing set."""
+
+    def __init__(self):
+        self.entries = []
+        self._seg_key = None
+        self._seg_start = None
+        self._seg_wings = None
+
+    def update(self, cat: str, flyable_wings: List[Dict], t_shifted: str):
+        if cat in Cat.FLYABLE and flyable_wings:
+            wings_sorted = sorted(flyable_wings, key=lambda w: w["size"])
+            ws_key = ",".join(f"{w['key']}:{w['size']}" for w in wings_sorted)
+            cur_key = f"{cat}|{ws_key}"
+            cur_wings = [{"key": w["key"], "size": w["size"]} for w in wings_sorted]
+        else:
+            cur_key = Cat.NO
+            cur_wings = []
+
+        if cur_key != self._seg_key:
+            if self._seg_key is not None and self._seg_key != Cat.NO:
+                self.entries.append({
+                    "type":  self._seg_key.split("|", 1)[0],
+                    "start": self._seg_start,
+                    "end":   t_shifted,
+                    "wings": self._seg_wings or [],
+                })
+            self._seg_key   = cur_key
+            self._seg_start = t_shifted
+            self._seg_wings = cur_wings
+
+    def flush(self, end_exc: str):
+        if self._seg_key is not None and self._seg_key != Cat.NO:
+            self.entries.append({
+                "type":  self._seg_key.split("|", 1)[0],
+                "start": self._seg_start,
+                "end":   end_exc,
+                "wings": self._seg_wings or [],
+            })
+
+
+class _WeatherTracker:
+    """Tracks consecutive fog or rain segments."""
+
+    def __init__(self):
+        self.entries = []
+        self._prev = None
+        self._start = None
+
+    def update(self, cat: str, t_shifted: str):
+        if cat != self._prev:
+            if self._prev is not None:
+                self.entries.append({"type": self._prev, "start": self._start, "end": t_shifted})
+            self._prev  = cat
+            self._start = t_shifted
+
+    def flush(self, end_exc: str):
+        if self._prev is not None:
+            self.entries.append({"type": self._prev, "start": self._start, "end": end_exc})
 
 
 class _TimeoutCachedSession(requests_cache.CachedSession):
@@ -312,7 +477,7 @@ class ForecastService:
         ignore_precip_vis: bool    = False,
     ) -> List[List[Dict]]:
         """
-        Compute wind_pizza, good_hours, cross_hours, gantt for each day×point.
+        Compute wind_pizza, quality hours, gantt for each day×point.
 
         Args:
             forecast:       Processed forecast (output of process()).
@@ -329,8 +494,6 @@ class ForecastService:
 
         custom_mode = wind_min is not None and wind_max is not None
 
-        # Pre-compute effective wind range and head range per point (constant across all days).
-        # Wind range is skipped in custom mode — the flat wind_min/wind_max is used instead.
         eff_ranges  = (
             None if custom_mode
             else [
@@ -344,23 +507,17 @@ class ForecastService:
         for day_idx, day in enumerate(forecast):
             day_disp = []
             for pt_idx, pf in enumerate(day):
-                point      = self.points[pt_idx]
-                hd         = head_ranges[pt_idx]
-                wind_pizza = [0, 0, 0]  # left-cross, good, right-cross
-                wind_quality = [0, 0, 0, 0]
-                wing_quality_counts = {}
+                point = self.points[pt_idx]
+                hd    = head_ranges[pt_idx]
+
+                wind_quality         = [0, 0, 0, 0]
+                wind_pizza           = [0, 0, 0]
+                wing_quality_counts  = {}
                 individual_wing_hours = {}
-                gantt      = []
-                gantt_seg_key = None
-                gantt_seg_start = None
-                gantt_seg_wings = None
-                last_time  = None
-                fog_gantt  = []
-                fog_prev   = None
-                fog_start  = None
-                rain_gantt = []
-                rain_prev  = None
-                rain_start = None
+                gantt_tracker        = _GanttTracker()
+                fog_tracker          = _WeatherTracker()
+                rain_tracker         = _WeatherTracker()
+                last_time            = None
 
                 for i, iso_time in enumerate(pf["time"]):
                     t = pd.Timestamp(iso_time)
@@ -368,7 +525,6 @@ class ForecastService:
 
                     win_start = t_local.replace(hour=t_start.hour, minute=t_start.minute,
                                                 second=0, microsecond=0)
-                    # 00:00 end means next-day midnight
                     if t_end.hour == 0 and t_end.minute == 0:
                         win_end = t_local.normalize() + pd.Timedelta(days=1)
                     else:
@@ -402,106 +558,36 @@ class ForecastService:
 
                     t_shifted = (t - timedelta(days=day_idx)).isoformat()
 
-                    # Track fog and rain windows independently of ignore_precip_vis —
-                    # these are always based on actual precipitation/visibility data.
                     is_fog  = in_window and float(pf["visibility"][i]    or 9999) < 300
                     is_rain = in_window and float(pf["precipitation"][i] or 0)    > 0.1
-
-                    fog_cat  = "fog"  if is_fog  else "no"
-                    rain_cat = "rain" if is_rain else "no"
-
-                    if fog_cat != fog_prev:
-                        if fog_prev is not None:
-                            fog_gantt.append({"type": fog_prev, "start": fog_start, "end": t_shifted})
-                        fog_prev  = fog_cat
-                        fog_start = t_shifted
-
-                    if rain_cat != rain_prev:
-                        if rain_prev is not None:
-                            rain_gantt.append({"type": rain_prev, "start": rain_start, "end": t_shifted})
-                        rain_prev  = rain_cat
-                        rain_start = t_shifted
+                    fog_tracker.update("fog" if is_fog else "no", t_shifted)
+                    rain_tracker.update("rain" if is_rain else "no", t_shifted)
 
                     if flyable:
-                        rel = float(pf["wind_direction"][i] or 0) - point["heading"]
-                        if rel > 180:
-                            rel -= 360
-                        elif rel < -180:
-                            rel += 360
-                        if hd["cross"][0] < rel < hd["good"][0]:
-                            cat = "cross"
-                            wind_pizza[0] += 1
-                        elif hd["good"][0] <= rel <= hd["good"][1]:
-                            cat = "good"
-                            wind_pizza[1] += 1
-                        elif hd["good"][1] < rel < hd["cross"][1]:
-                            cat = "cross"
-                            wind_pizza[2] += 1
-                        else:
-                            cat = "no"
+                        wind_dir = float(pf["wind_direction"][i] or 0)
+                        rel = wind_dir - point["heading"]
+                        if rel > 180: rel -= 360
+                        elif rel < -180: rel += 360
+                        base_cat = _classify_wind_direction(wind_dir, point["heading"], hd)
                     else:
-                        cat = "no"
+                        base_cat = Cat.NO
+                        rel = 0.0
 
-                    if cat != "no" and float(pf["wind_gusts"][i]) - float(pf["wind_speed"][i]) > 20:
-                        cat += "_gusty"
+                    cat = _apply_gustiness(base_cat, float(pf["wind_speed"][i] or 0),
+                                           float(pf["wind_gusts"][i] or 0))
 
-                    if "good" in cat:
-                        if "gusty" in cat:
-                            wind_quality[2] += 1
-                        else:
-                            wind_quality[0] += 1
-                    elif "cross" in cat:
-                        if "gusty" in cat:
-                            wind_quality[3] += 1
-                        else:
-                            wind_quality[1] += 1
+                    _accumulate_quality(cat, wind_quality, wind_pizza, hd, rel,
+                                        flyable_wings, wing_quality_counts,
+                                        individual_wing_hours)
 
-                    if cat != "no" and flyable_wings:
-                        ws_key = ",".join(sorted(f"{w['key']}:{w['size']}" for w in flyable_wings))
-                        if ws_key not in wing_quality_counts:
-                            wing_quality_counts[ws_key] = {"good": 0, "cross": 0, "gusty": 0, "cross_gusty": 0}
-                        if cat in wing_quality_counts[ws_key]:
-                            wing_quality_counts[ws_key][cat] += 1
-                        for w in flyable_wings:
-                            wk = f"{w['key']}:{w['size']}"
-                            individual_wing_hours[wk] = individual_wing_hours.get(wk, 0) + 1
-
-                    if cat != "no" and flyable_wings:
-                        wings_sorted = sorted(flyable_wings, key=lambda w: w["size"])
-                        cur_ws_key = ",".join(f"{w['key']}:{w['size']}" for w in wings_sorted)
-                        cur_gantt_key = f"{cat}|{cur_ws_key}"
-                        cur_wings = [{"key": w["key"], "size": w["size"]} for w in wings_sorted]
-                    else:
-                        cur_gantt_key = "no"
-                        cur_wings = []
-
-                    if cur_gantt_key != gantt_seg_key:
-                        if gantt_seg_key is not None and gantt_seg_key != "no":
-                            gantt.append({
-                                "type": gantt_seg_key.split("|", 1)[0],
-                                "start": gantt_seg_start,
-                                "end": t_shifted,
-                                "wings": gantt_seg_wings or [],
-                            })
-                        gantt_seg_key = cur_gantt_key
-                        gantt_seg_start = t_shifted
-                        gantt_seg_wings = cur_wings
+                    gantt_tracker.update(cat, flyable_wings, t_shifted)
                     last_time = t_shifted
 
-                # Use exclusive end (start of next hour) to match mid-loop entries
                 if last_time:
                     end_exc = (pd.Timestamp(last_time) + timedelta(hours=1)).isoformat()
-                if gantt_seg_key is not None and gantt_seg_key != "no" and last_time:
-                    gantt.append({
-                        "type": gantt_seg_key.split("|", 1)[0],
-                        "start": gantt_seg_start,
-                        "end": end_exc,
-                        "wings": gantt_seg_wings or [],
-                    })
-                if fog_prev is not None and last_time:
-                    fog_gantt.append({"type": fog_prev, "start": fog_start, "end": end_exc})
-                if rain_prev is not None and last_time:
-                    rain_gantt.append({"type": rain_prev, "start": rain_start, "end": end_exc})
+                    gantt_tracker.flush(end_exc)
+                    fog_tracker.flush(end_exc)
+                    rain_tracker.flush(end_exc)
 
                 best_wing = None
                 if individual_wing_hours:
@@ -516,11 +602,11 @@ class ForecastService:
                     "gusty_hours":   wind_quality[2],
                     "cross_gusty_hours":   wind_quality[3],
                     "wing_set_hours": wing_quality_counts,
-                    "gantt":         gantt,
-                    "fog_gantt":     [g for g in fog_gantt  if g["type"] == "fog"],
-                    "rain_gantt":    [g for g in rain_gantt if g["type"] == "rain"],
-                    "has_fog":       any(g["type"] == "fog"  for g in fog_gantt),
-                    "has_rain":      any(g["type"] == "rain" for g in rain_gantt),
+                    "gantt":         gantt_tracker.entries,
+                    "fog_gantt":     [g for g in fog_tracker.entries  if g["type"] == "fog"],
+                    "rain_gantt":    [g for g in rain_tracker.entries if g["type"] == "rain"],
+                    "has_fog":       any(g["type"] == "fog"  for g in fog_tracker.entries),
+                    "has_rain":      any(g["type"] == "rain" for g in rain_tracker.entries),
                     "wind_ranges":   (
                         [{"key": "custom", "range": [wind_min, wind_max]}]
                         if custom_mode else eff_ranges[pt_idx]

@@ -1,56 +1,16 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useMemo, useState } from 'react'
-import { fs, fsc } from '../fs.js'
+import React, { useCallback, useEffect, useRef, useMemo, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, LabelList, ReferenceArea } from 'recharts'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { fs, fsc } from '../fs.js'
 import { compareLocations, findBestLocationIndex } from '../locationSort.js'
+import GanttChart from './GanttChart.jsx'
+import { T, C, fitTextSize, certLabel, shortenDay, parseWingSetKey, clampGanttToWindow, wingSetFullLabel } from '../forecastShared.js'
 
 const DEG = Math.PI / 180
 function toRad(d) { return d * DEG }
 
-const DAY_SHORT = {
-  Yesterday: 'Yest.', Today: 'Today', Tomorrow: 'Tomr.',
-  Monday: 'Mon.', Tuesday: 'Tue.', Wednesday: 'Wed.',
-  Thursday: 'Thu.', Friday: 'Fri.', Saturday: 'Sat.', Sunday: 'Sun.',
-}
-function shortenDay(d) { return DAY_SHORT[d] ?? d }
-
-// ── Design tokens ─────────────────────────────────────────────────────────────
-const T = {
-  bg:        '#1a1a1a',
-  surface:   '#262626',
-  card:      '#262626',
-  raised:    '#2e2e2e',
-  borderDim: '#353535',
-  border:    '#3d3d3d',
-  text:      '#dedede',
-  text2:     '#9a9a9a',
-  text3:     '#757575',
-  font:      "'Atkinson Hyperlegible', system-ui, sans-serif",
-}
-// Flyable colours — slightly desaturated for a more refined look
-const C = {
-  good:        '#1dbb02',
-  cross:       '#ddb60a',
-  gusty:       '#d67900',
-  crossGusty:  '#c12e0d',
-  rain:        '#1b8fe2',
-  fog:         '#8888a0',
-}
-
-const _fitCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null
-function fitTextSize(text, maxWidth, maxSize, fontWeight = 700, fontFamily = T.font) {
-  if (!text || maxWidth <= 0 || !_fitCanvas) return maxSize
-  const ctx = _fitCanvas.getContext('2d')
-  let s = maxSize
-  while (s > 5) {
-    ctx.font = `${fontWeight} ${s}px ${fontFamily}`
-    if (ctx.measureText(text).width <= maxWidth) break
-    s -= 0.5
-  }
-  return s < 6 ? 0 : s
-}
-
+// ── Map wind polygons ────────────────────────────────────────────────────────
 function windPolygons(point, pf, maxMag) {
   const head      = toRad(point.heading)
   const good      = point.head_range.good
@@ -78,13 +38,6 @@ function markerColor(pf) {
   if (pf.cross_hours > 0) return C.cross
   if (pf.gusty_hours > 0 || pf.cross_gusty_hours > 0) return C.crossGusty
   return '#333'
-}
-
-export function certLabel(agree, total) {
-  if (agree === 4) return { label: '★★★★', color: '#00e6bc' }
-  if (agree === 3) return { label: '★★★',      color: '#00ef3c' }
-  if (agree === 2) return { label: '★★',    color: '#dbff26' }
-  return                  { label: '★',       color: '#d3357c' }
 }
 
 function InfoTooltip({ text }) {
@@ -126,260 +79,6 @@ function InfoTooltip({ text }) {
   )
 }
 
-function GanttChart({ ganttRows, weatherRows, days, certByDay, onDayClick, dateIdx, isLocations, effectiveTimeStart, effectiveTimeEnd, wingsConfig, wingModelName, bestWingByDay }) {
-  const COLOR         = { good: C.good, cross: C.cross, good_gusty: C.gusty, cross_gusty: C.crossGusty, no: 'transparent' }
-  const WEATHER_COLOR = { fog: C.fog, rain: C.rain }
-
-  // Measure container so all sizes are in real pixels — no viewBox shrinkage on mobile
-  const containerRef = useRef(null)
-  const [W, setW] = useState(700)
-  useEffect(() => {
-    if (!containerRef.current) return
-    const ro = new ResizeObserver(entries => {
-      const w = entries[0]?.contentRect?.width
-      if (w > 0) setW(w)
-    })
-    ro.observe(containerRef.current)
-    return () => ro.disconnect()
-  }, [])
-
-  // All layout values scale with W
-  const RIGHT  = 8
-  const DAY_H  = Math.round(Math.max(46, Math.min(58, W * 0.115)))
-  const BAR_Y  = Math.round(DAY_H * 0.27)   // top of coloured bar within row
-  const BAR_H  = Math.round(DAY_H * 0.46)   // height of coloured bar
-  const FS_HR  = Math.round(Math.max(9,  Math.min(11, W * 0.018)))   // hour labels
-  const FS_DAY = Math.round(Math.max(11, Math.min(14, W * 0.024)))   // day name
-  const FS_PT  = Math.round(Math.max(9,  Math.min(11, W * 0.019)))   // point name
-  const FS_CRT = Math.round(Math.max(8,  Math.min(10, W * 0.016)))   // certainty
-  const TYPE_LABEL = { good: 'Good', cross: 'Crosswind', good_gusty: 'Gusty', cross_gusty: 'Crosswind, Gusty', fog: 'Fog', rain: 'Rain' }
-  const fmtH = (iso) => { const d = new Date(iso); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
-  const [tooltip, setTooltip] = useState(null)
-  const tooltipRef = useRef(null)
-  useLayoutEffect(() => {
-    if (!tooltip || !tooltipRef.current || !containerRef.current) return
-    const ttEl = tooltipRef.current
-    const cW = containerRef.current.clientWidth
-    const ttW = ttEl.offsetWidth
-    const ttH = ttEl.offsetHeight
-    let left = parseFloat(ttEl.style.left) || 0
-    let top = parseFloat(ttEl.style.top) || 0
-    if (left + ttW > cW) left = Math.max(0, cW - ttW - 4)
-    if (top < 0) top = tooltip.y + 20
-    ttEl.style.left = `${left}px`
-    ttEl.style.top = `${top}px`
-  }, [tooltip])
-
-  const grouped = {}
-  for (const r of ganttRows) { if (!grouped[r.day]) grouped[r.day] = []; grouped[r.day].push(r) }
-  const weatherGrouped = {}
-  for (const r of (weatherRows || [])) { if (!weatherGrouped[r.day]) weatherGrouped[r.day] = []; weatherGrouped[r.day].push(r) }
-  const dayKeys = [...new Set(ganttRows.map(r => r.day))]
-
-  // LEFT must be wide enough to fit the longest label (day name or point name)
-  let LEFT
-  if (isLocations) {
-    // Canvas measurement for accurate location-name widths
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-    ctx.font = `600 ${FS_DAY}px ${T.font}`
-    const maxDayW = Math.max(0, ...dayKeys.map(d => ctx.measureText(d || '').width))
-    LEFT = Math.round(maxDayW + 10)
-  } else {
-    const longestPtChars  = Math.max(0, ...ganttRows.map(r => (r.point || '').length))
-    const longestDayChars = Math.max(0, ...dayKeys.map(d => (d || '').length))
-    LEFT = Math.round(Math.max(
-      longestPtChars  * FS_PT  * 0.52 + 6,
-      longestDayChars * FS_DAY * 0.52 + 6,
-    ))
-  }
-
-  // Use effective time window for X-axis range when provided
-  const allTimes = [
-    ...ganttRows,
-    ...(weatherRows || []),
-  ].flatMap(r => [new Date(r.start), new Date(r.end)])
-  
-  let rawMinT, rawMaxT
-  if (effectiveTimeStart && effectiveTimeEnd) {
-    // Use effective time window for X-axis range
-    const effectiveStartDate = new Date(ganttRows[0]?.start || new Date())
-    effectiveStartDate.setHours(...effectiveTimeStart.split(':').map(Number))
-    effectiveStartDate.setMinutes(0, 0, 0)
-    
-    const effectiveEndDate = new Date(ganttRows[0]?.start || new Date())
-    effectiveEndDate.setHours(...effectiveTimeEnd.split(':').map(Number))
-    effectiveEndDate.setMinutes(0, 0, 0)
-    
-    rawMinT = effectiveStartDate.getTime()
-    rawMaxT = effectiveEndDate.getTime()
-  } else {
-    // Fallback to data-driven range
-    rawMinT = allTimes.length ? Math.min(...allTimes.map(t => t.getTime())) : 0
-    rawMaxT = allTimes.length ? Math.max(...allTimes.map(t => t.getTime())) : 1
-  }
-  
-  const minT    = rawMinT - 1800_000  // -30 min so first bar gets its left padding
-  const maxT    = rawMaxT             // bars shift 30 min left, providing natural right margin
-  const span = maxT - minT || 1
-  const scale = (t) => LEFT + ((new Date(t).getTime() - minT) / span) * (W - LEFT - RIGHT)
-
-  // Compute visual x/width for a half-open interval [start, end)
-  // Single-point bars (start===end) get centered ±30min; all bars clamp to LEFT
-  const barGeom = (start, end) => {
-    const sMs = new Date(start).getTime()
-    const eMs = new Date(end).getTime()
-    const visStart = sMs - 1800_000
-    const visEnd   = sMs === eMs ? sMs + 1800_000 : eMs - 1800_000
-    const x  = Math.max(LEFT, scale(visStart))
-    const x2 = scale(visEnd)
-    return { x, width: Math.max(x2 - x, 1) }
-  }
-  const barTime = (start, end) => {
-    const sMs = new Date(start).getTime()
-    const eMs = new Date(end).getTime()
-    if (sMs === eMs) return fmtH(start)
-    const startFmt = fmtH(start); const endFmt = fmtH(new Date(eMs - 3600_000))
-    return startFmt === endFmt ? startFmt : `${startFmt} – ${endFmt}`
-  }
-
-  const svgH = dayKeys.length * DAY_H + 30
-  const hourLabels = []
-  if (minT && maxT) {
-    const start = new Date(minT); start.setMinutes(0, 0, 0)
-    // On narrow screens show only even hours to avoid crowding
-    const step = W < 400 ? 7200_000 : 3600_000
-    for (let t = start.getTime(); t <= maxT; t += step) {
-      const x = scale(new Date(t))
-      if (x >= LEFT - FS_HR && x < W - RIGHT) hourLabels.push({ x, label: new Date(t).getHours() + ':00' })
-    }
-  }
-
-  return (
-    <div ref={containerRef} style={{ width: '100%', position: 'relative' }} onClick={() => setTooltip(null)}>
-      {tooltip && (() => {
-        const cW = containerRef.current?.clientWidth || 700
-        const left = Math.max(0, Math.min(tooltip.x, cW - 230))
-        const top = tooltip.y - 60 < 0 ? tooltip.y + 20 : tooltip.y - 60
-        return (
-          <div ref={tooltipRef} style={{
-            position: 'absolute', left, top,
-            background: T.card, border: `1px solid ${T.borderEm}`, borderRadius: 6,
-            padding: '6px 10px', fontSize: fs(12), color: T.text, fontFamily: T.font,
-            pointerEvents: 'none', zIndex: 10, whiteSpace: 'normal', maxWidth: 220,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-          }}>
-            <div style={{ fontWeight: 600, color: ({ good: C.good, cross: C.cross, good_gusty: C.gusty, cross_gusty: C.crossGusty, fog: C.fog, rain: C.rain })[tooltip.type] || T.text }}>{tooltip.label}</div>
-            {tooltip.wings?.length > 0 && (() => {
-              const maxTextW = 200
-              const ctx = _fitCanvas?.getContext('2d')
-              if (!ctx) return <div style={{ fontSize: fs(10), color: T.text2, marginTop: 1 }}>{tooltip.wings.join(', ')}</div>
-              ctx.font = `${fs(10)}px ${T.font}`
-              const lines = []
-              let cur = []
-              for (const w of tooltip.wings) {
-                const candidate = cur.length === 0 ? w : cur.join(', ') + ', ' + w
-                if (ctx.measureText(candidate).width <= maxTextW) {
-                  cur.push(w)
-                } else {
-                  if (cur.length > 0) lines.push(cur.join(', '))
-                  cur = [w]
-                }
-              }
-              if (cur.length > 0) lines.push(cur.join(', '))
-              return <div style={{ fontSize: fs(10), color: T.text2, marginTop: 1, lineHeight: 1.4 }}>{lines.map((l, i) => <div key={i}>{l}</div>)}</div>
-            })()}
-            <div style={{ color: T.text2, marginTop: 2 }}>{tooltip.time}</div>
-          </div>
-        )
-      })()}
-      <svg width={W} height={svgH} style={{ fontFamily: T.font, display: 'block' }}>
-        {hourLabels.map(h => (
-          <g key={h.label + h.x}>
-            <line x1={h.x} y1={20} x2={h.x} y2={svgH} stroke="#2a2a2a" strokeWidth={0.5} />
-            <text x={h.x} y={14} fontSize={fs(FS_HR)} fill={T.text3} textAnchor="middle">{h.label}</text>
-          </g>
-        ))}
-        {dayKeys.map((day, di) => {
-          const y    = 20 + di * DAY_H
-          const rows = grouped[day] || []
-          const flyableRows = rows.filter(r => r.type !== 'no')
-          const pointName   = flyableRows.length > 0 ? rows[0].point : null
-          const wRows = weatherGrouped[day] || []
-          const hasCert = flyableRows.length > 0 && certByDay?.[day]
-          const isSelectedDay = days.indexOf(day) === dateIdx
-          // Vertical layout within row: day name + optional point + optional cert
-          const lineCount = 1 + (pointName ? 1 : 0) + (hasCert ? 1 : 0)
-          const lineH = FS_DAY * 1.35
-          const blockH = lineCount * lineH
-          const textTop = y + (DAY_H - blockH) / 2 + FS_DAY * 0.85
-          return (
-            <g key={day}>
-              {isSelectedDay && (
-                <rect x={0} y={y} width={W} height={DAY_H} fill="#ffffff" opacity={0.1} rx={4} />
-              )}
-              <text x={LEFT - 5} y={textTop} fontSize={fs(FS_DAY)} fill={isSelectedDay ? T.text : T.text2} textAnchor="end" fontWeight={isSelectedDay ? 600 : 400}>{day}</text>
-              {pointName && (
-                <text x={LEFT - 5} y={textTop + lineH} fontSize={fs(FS_PT)} fill={isSelectedDay ? T.text2 : T.text3} textAnchor="end" fontStyle="italic" fontWeight={isSelectedDay ? 600 : 400}>
-                  {pointName}
-                </text>
-              )}
-              {hasCert && (() => {
-                const { label, color } = certLabel(certByDay[day].agree, certByDay[day].total)
-                const certY = textTop + lineH * (pointName ? 2 : 1)
-                return (
-                  <text x={LEFT - 5} y={certY} fontSize={fs(FS_CRT)} fill={color} textAnchor="end" fontWeight="600">
-                    {label.replace(' Confidence', '')}
-                  </text>
-                )
-              })()}
-              {flyableRows.map((r, i) => {
-                const geom = barGeom(r.start, r.end)
-                const sortedWings = (r.wings || []).filter(w => w.key !== 'custom').sort((a, b) => a.size - b.size)
-                const bw = bestWingByDay?.[r.day]
-                const bestIsFlyable = bw && sortedWings.some(w => w.key === bw.key && w.size === bw.size)
-                const wingLabel = bestIsFlyable ? `${bw.size}` : (sortedWings.length > 0 ? `${sortedWings[0].size}` : '')
-                const allWingNames = sortedWings.map(w => `${wingModelName ? wingModelName(w.key, w.size) : (wingsConfig?.[w.key]?.display_name || w.key)} ${w.size}m²`)
-                const wingNames = allWingNames.length > 1 ? [`${allWingNames[0]} - ${allWingNames[allWingNames.length - 1]}`] : allWingNames
-                return (
-                  <g key={i}>
-                    <rect {...geom} y={y + BAR_Y} height={BAR_H}
-                      fill={COLOR[r.type] || '#444'} rx={2} opacity={0.88} style={{ cursor: 'pointer' }}
-                      onClick={e => { e.stopPropagation(); const di = days.indexOf(day); if (onDayClick && di !== -1) onDayClick(di); setTooltip({ label: TYPE_LABEL[r.type] || r.type, type: r.type, wings: wingNames || '', time: barTime(r.start, r.end), x: geom.x, y: y + BAR_Y }) }}
-                    />
-                    {wingLabel && (() => {
-                      const sz = fitTextSize(wingLabel, geom.width - 4, fs(Math.min(W < 400 ? 9 : 11, BAR_H - 2)))
-                      if (!sz) return null
-                      return (
-                        <text
-                          x={geom.x + geom.width / 2}
-                          y={y + BAR_Y + BAR_H / 2 + 1}
-                          textAnchor="middle" dominantBaseline="central"
-                          fontSize={sz}
-                          fill="rgba(0,0,0,0.75)" fontWeight={700}
-                          style={{ pointerEvents: 'none' }}
-                        >
-                          {wingLabel}
-                        </text>
-                      )
-                    })()}
-                  </g>
-                )
-              })}
-              {wRows.map((r, i) => (
-                <rect key={'w' + i} {...barGeom(r.start, r.end)} y={y + BAR_Y} height={BAR_H}
-                  fill={WEATHER_COLOR[r.type] || '#666'} rx={2} opacity={0.6} style={{ cursor: 'pointer' }}
-                  onClick={e => { e.stopPropagation(); const di = days.indexOf(day); if (onDayClick && di !== -1) onDayClick(di); setTooltip({ label: TYPE_LABEL[r.type] || r.type, type: r.type, wings: [], time: barTime(r.start, r.end), x: barGeom(r.start, r.end).x, y: y + BAR_Y }) }}
-                />
-              ))}
-            </g>
-          )
-        })}
-      </svg>
-    </div>
-  )
-}
-
 const FLYABLE_DISCLAIMER = "The forecasts and flyability calculations are not infallible. Always verify that the actual conditions are appropriate for your exact wing model, skill level, physical ability and risk tolerance before attempting to fly. See the Info tab for details on how flyability is calculated."
 
 const Legend_ = ({ items }) => (
@@ -404,6 +103,13 @@ const Legendsmall_ = ({ items }) => (
   </div>
 )
 
+const QUALITIES = [
+  { key: 'good', name: 'Good wind', color: C.good },
+  { key: 'cross', name: 'Crosswind', color: C.cross },
+  { key: 'gusty', name: 'Gusty', color: C.gusty },
+  { key: 'cross_gusty', name: 'Crosswind, Gusty', color: C.crossGusty },
+]
+
 export default function MapForecast({ data, onNavigateToPoint }) {
   const { displayForecast, certainty, points, days, dateIdx, setDateIdx, ptIdx, timeStart, timeEnd, effectiveTimeStart, effectiveTimeEnd, wings, selectedWings } = data
 
@@ -424,17 +130,14 @@ export default function MapForecast({ data, onNavigateToPoint }) {
   const ptIdxRef   = useRef(ptIdx)
   ptIdxRef.current = ptIdx
 
-  // Smaller markers on narrow screens to reduce overlap in clusters
   const isMobile   = typeof window !== 'undefined' && window.innerWidth < 500
   const baseRadius = isMobile ? 3 : 5
   const selRadius  = isMobile ? 5 : 7
 
-  // Compute bounds from points so the map auto-fits any country
   const pointsBounds = useMemo(() => {
     if (!points.length) return null
     const lats = points.map(p => p.lat)
     const lons = points.map(p => p.lon)
-    // Pad bounds so wind slices aren't clipped at edges
     const PAD = 0.15
     return L.latLngBounds(
       [Math.min(...lats) - PAD, Math.min(...lons) - PAD],
@@ -457,42 +160,33 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     return () => { leafletRef.current?.remove(); leafletRef.current = null }
   }, [])
 
-  // Re-fit when points change (e.g. country switch)
   useEffect(() => {
     if (leafletRef.current && pointsBounds) {
       leafletRef.current.fitBounds(pointsBounds, { animate: true })
     }
   }, [pointsBounds])
 
-  // ── Rain radar overlay with animation (from server-cached measurements, Today only) ────
+  // ── Rain radar overlay with animation ────────────────────────────────────
   const isToday = days[dateIdx] === 'Today'
   const rainTiles = data.measurements?.rain_tiles
   const [animateRadar, setAnimateRadar] = useState(true)
   const [currentTileIndex, setCurrentTileIndex] = useState(0)
   const sortedTilesRef = useRef([])
-  
-  // Debug: Log rain tiles data
 
-
-  // Animation effect
   useEffect(() => {
     const map = leafletRef.current
     if (!map || !isToday || !rainTiles?.length) return
 
-    // Create radar pane if it doesn't exist
     if (!map.getPane('radarPane')) {
       map.createPane('radarPane')
       map.getPane('radarPane').style.zIndex = 250
     }
 
-    // Clean up existing overlay
     if (radarRef.current) { radarRef.current.remove(); radarRef.current = null }
 
-    // If animation is disabled or only one tile, show current tile
     if (!animateRadar || rainTiles.length <= 1) {
-      // Find the tile with the most recent timestamp (current tile)
-      const currentTile = rainTiles.reduce((latest, tile) => 
-        (tile.timestamp || 0) > (latest.timestamp || 0) ? tile : latest, 
+      const currentTile = rainTiles.reduce((latest, tile) =>
+        (tile.timestamp || 0) > (latest.timestamp || 0) ? tile : latest,
         rainTiles[0]
       ) || rainTiles[rainTiles.length - 1]
       if (currentTile?.image && currentTile?.bounds) {
@@ -506,78 +200,50 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       return
     }
 
-    // Sort tiles by timestamp (oldest to newest) for correct animation order
     const sortedTiles = [...rainTiles].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
-    
-    // Calculate dynamic age and timestamp for each tile based on current time
-    const now = Date.now()
-    const tilesWithDynamicAge = sortedTiles.map(tile => {
-      // Calculate timestamp if it's missing
-      const timestamp = tile.timestamp || now
-      return {
-        ...tile,
-        timestamp, // Ensure timestamp is always available
-        dynamicAge: Math.floor((now - timestamp) / 60000) // age in minutes
-      }
-    })
-    
-    // Store the sorted tiles in a ref for use in the overlay effect
+    const tilesWithDynamicAge = sortedTiles.map(tile => ({
+      ...tile,
+      timestamp: tile.timestamp || Date.now(),
+      dynamicAge: Math.floor((Date.now() - (tile.timestamp || Date.now())) / 60000)
+    }))
     sortedTilesRef.current = tilesWithDynamicAge
-    
-    // Animation logic with variable timing using setTimeout
+
     const sequence = tilesWithDynamicAge.map((_, index) => index)
-    // Newest/most recent tile (last index) gets 3000ms, older tiles get 500ms
     const timings = sequence.map((_, index) => index === sequence.length - 1 ? 3000 : 500)
-    
+
     let timeoutId = null
     let sequenceIndex = 0
-    
+
     const runAnimationStep = () => {
       setCurrentTileIndex(sequence[sequenceIndex])
-      
       const nextIndex = (sequenceIndex + 1) % sequence.length
       timeoutId = setTimeout(runAnimationStep, timings[sequenceIndex])
       sequenceIndex = nextIndex
     }
-    
-    // Start animation
+
     timeoutId = setTimeout(runAnimationStep, timings[0])
-    
+
     return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-      }
+      if (timeoutId) clearTimeout(timeoutId)
       if (radarRef.current) { radarRef.current.remove(); radarRef.current = null }
     }
   }, [isToday, rainTiles, animateRadar])
 
-  // Update overlay when tile index changes
   useEffect(() => {
     const map = leafletRef.current
     if (!map || !isToday || !rainTiles?.length || rainTiles.length <= 1) return
 
-
-    
     if (radarRef.current) { radarRef.current.remove(); radarRef.current = null }
 
-    // Use the sorted tiles from the ref to ensure consistency with the animation effect
     const tilesWithDynamicAge = sortedTilesRef.current
-    
     const tile = tilesWithDynamicAge[currentTileIndex]
     if (tile?.image && tile?.bounds) {
-      // Calculate timing for debug (don't need actual timings array here)
-      const isLastTile = currentTileIndex === tilesWithDynamicAge.length - 1
-      const displayTime = isLastTile ? 3000 : 500
-
-      
       const overlay = L.imageOverlay(tile.image, tile.bounds, {
         opacity: 0.55,
         pane: 'radarPane',
       })
       overlay.addTo(map)
       radarRef.current = overlay
-    } else {
-      // No logging needed for this case
     }
   }, [isToday, rainTiles, currentTileIndex])
 
@@ -589,7 +255,6 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     const map   = leafletRef.current
     const dayPf = displayForecast[dateIdx] || []
     const maxMag = Math.max(1, ...dayPf.map(pf => Math.max(...(pf.wind_pizza || [0]))))
-    // First pass: add wind-slice polygons (below markers)
     const markersByPi = []
     const pendingMarkers = []
     dayPf.forEach((pf, pi) => {
@@ -603,7 +268,6 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       })
       pendingMarkers.push({ pf, pi, point })
     })
-    // Second pass: add circle markers on top of polygons
     pendingMarkers.forEach(({ pf, pi, point }) => {
       const color = markerColor(pf)
       const spotLink = point.link
@@ -623,7 +287,6 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       markersRef.current.push({ marker, color })
       layersRef.current.push(marker)
     })
-    // Apply highlight to current selection after creating markers
     const curPt = ptIdxRef.current
     markersRef.current.forEach(({ marker, color }, i) => {
       const selected = i === curPt
@@ -633,7 +296,6 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     })
   }, [displayForecast, points, dateIdx])
 
-  // Highlight selected marker without recreating all markers
   useEffect(() => {
     markersRef.current.forEach(({ marker, color }, i) => {
       const selected = i === ptIdx
@@ -646,25 +308,13 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     })
   }, [ptIdx, baseRadius, selRadius])
 
-  const { barData, ganttRows, weatherRows, locGanttRows, locWeatherRows, locCertByDay, locDays, locPtMap, certByDay, weatherByDay, bestWingByDay, locBestWingByDay } = useMemo(() => {
-    if (!displayForecast || !points.length) return { barData: [], ganttRows: [], weatherRows: [], locGanttRows: [], locWeatherRows: [], locCertByDay: {}, locDays: [], locPtMap: [], certByDay: {}, weatherByDay: {}, bestWingByDay: {}, locBestWingByDay: {} }
-    // Clamp a gantt entry to the availability window; returns null if fully outside
-    const clampToWindow = (g) => {
-      const sDate = g.start.slice(0, 10) // "YYYY-MM-DD"
-      const winStart = effectiveTimeStart !== '00:00' ? new Date(`${sDate}T${effectiveTimeStart}`).getTime() : -Infinity
-      const winEnd   = effectiveTimeEnd !== '23:59'  ? new Date(`${sDate}T${effectiveTimeEnd}`).getTime()   :  Infinity
-      const gStart = new Date(g.start).getTime()
-      const gEnd   = new Date(g.end).getTime() || gStart // handle single-point
-      if (gEnd <= winStart || gStart > winEnd) return null
-      return {
-        ...g,
-        start: gStart < winStart          ? new Date(winStart).toISOString()              : g.start,
-        end:   gEnd > winEnd + 3600_000   ? new Date(winEnd + 3600_000).toISOString()     : g.end,
-      }
-    }
+  // ── Bar data memo ──────────────────────────────────────────────────────────
+  const { barData, certByDay, weatherByDay, bestWingByDay, ganttRows, weatherRows } = useMemo(() => {
+    if (!displayForecast || !points.length) return { barData: [], certByDay: {}, weatherByDay: {}, bestWingByDay: {}, ganttRows: [], weatherRows: [] }
+
     const bar = [], gantt = [], weather = [], certByDayMap = {}, weatherByDayMap = {}, bestWingByDayMap = {}
-    // di=0 is Yesterday, di=1 is Today; plotDays counts forward from Today
-    const maxDi = plotDays  // Today=1 … Today+plotDays-1 = plotDays
+    const maxDi = plotDays
+
     displayForecast.forEach((dayPf, di) => {
       if (di === 0 && !showYesterday) return
       if (di > maxDi) return
@@ -689,25 +339,30 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       if (certDi) certByDayMap[dayName] = { ...certDi, agree: bestAgree }
       weatherByDayMap[shortDay] = { has_fog: dayPf.some(pf => pf.has_fog), has_rain: dayPf.some(pf => pf.has_rain) }
       if (bpf?.gantt) bpf.gantt.forEach(g => {
-        const c = clampToWindow({ day: dayName, point: bpt?.name||'', type: g.type, start: g.start, end: g.end, wings: g.wings || [] })
+        const c = clampGanttToWindow({ ...g, day: dayName, point: bpt?.name||'' }, effectiveTimeStart, effectiveTimeEnd)
         if (c) gantt.push(c)
       })
       const bestFly = (bpf?.good_hours||0) + (bpf?.cross_hours||0) + (bpf?.gusty_hours||0) + (bpf?.cross_gusty_hours||0)
       if (bestFly > 0 && bpf?.fog_gantt) bpf.fog_gantt.forEach(g => {
-        const c = clampToWindow({ day: dayName, type: g.type, start: g.start, end: g.end })
+        const c = clampGanttToWindow({ ...g, day: dayName }, effectiveTimeStart, effectiveTimeEnd)
         if (c) weather.push(c)
       })
       if (bestFly > 0 && bpf?.rain_gantt) bpf.rain_gantt.forEach(g => {
-        const c = clampToWindow({ day: dayName, type: g.type, start: g.start, end: g.end })
+        const c = clampGanttToWindow({ ...g, day: dayName }, effectiveTimeStart, effectiveTimeEnd)
         if (c) weather.push(c)
       })
     })
 
-    // ── Locations mode: top 5 flyable locations for selected date ──────────
+    return { barData: bar, certByDay: certByDayMap, weatherByDay: weatherByDayMap, bestWingByDay: bestWingByDayMap, ganttRows: gantt, weatherRows: weather }
+  }, [displayForecast, points, days, certainty, plotDays, showYesterday, effectiveTimeStart, effectiveTimeEnd])
+
+  // ── Locations data memo ───────────────────────────────────────────────────
+  const { locGanttRows, locWeatherRows, locCertByDay, locDays, locPtMap, locBestWingByDay } = useMemo(() => {
+    if (!displayForecast || !points.length) return { locGanttRows: [], locWeatherRows: [], locCertByDay: {}, locDays: [], locPtMap: [], locBestWingByDay: {} }
+
     const locGantt = [], locWeather = [], locCertMap = {}, locDays = [], locPtMap = [], locBestWingMap = {}
     const dayPf = displayForecast[dateIdx] || []
     const certDay = certainty?.[dateIdx]
-    // Score each point: flyable total > 0, then rank by confidence desc, priority asc, quality (good+gusty) desc, total flyable desc
     const scored = dayPf.map((pf, pi) => {
       const fly = pf.good_hours + pf.cross_hours + pf.gusty_hours + pf.cross_gusty_hours
       const quality = pf.good_hours + pf.gusty_hours
@@ -726,51 +381,23 @@ export default function MapForecast({ data, onNavigateToPoint }) {
       if (certDay) locCertMap[ptName] = { agree, total: certDay.total }
       locBestWingMap[ptName] = pf.best_wing || null
       if (pf.gantt) pf.gantt.forEach(g => {
-        const c = clampToWindow({ day: ptName, point: '', type: g.type, start: g.start, end: g.end, wings: g.wings || [] })
+        const c = clampGanttToWindow({ ...g, day: ptName, point: '' }, effectiveTimeStart, effectiveTimeEnd)
         if (c) locGantt.push(c)
       })
       if (pf.fog_gantt) pf.fog_gantt.forEach(g => {
-        const c = clampToWindow({ day: ptName, type: g.type, start: g.start, end: g.end })
+        const c = clampGanttToWindow({ ...g, day: ptName }, effectiveTimeStart, effectiveTimeEnd)
         if (c) locWeather.push(c)
       })
       if (pf.rain_gantt) pf.rain_gantt.forEach(g => {
-        const c = clampToWindow({ day: ptName, type: g.type, start: g.start, end: g.end })
+        const c = clampGanttToWindow({ ...g, day: ptName }, effectiveTimeStart, effectiveTimeEnd)
         if (c) locWeather.push(c)
       })
     })
 
-    return { barData: bar, ganttRows: gantt, weatherRows: weather, locGanttRows: locGantt, locWeatherRows: locWeather, locCertByDay: locCertMap, locDays, locPtMap, certByDay: certByDayMap, weatherByDay: weatherByDayMap, bestWingByDay: bestWingByDayMap, locBestWingByDay: locBestWingMap }
-  }, [displayForecast, points, days, certainty, plotDays, showYesterday, effectiveTimeStart, effectiveTimeEnd, dateIdx])
+    return { locGanttRows: locGantt, locWeatherRows: locWeather, locCertByDay: locCertMap, locDays, locPtMap, locBestWingByDay: locBestWingMap }
+  }, [displayForecast, points, dateIdx, certainty, effectiveTimeStart, effectiveTimeEnd])
 
-  const QUALITIES = [
-    { key: 'good', name: 'Good wind', color: C.good },
-    { key: 'cross', name: 'Crosswind', color: C.cross },
-    { key: 'gusty', name: 'Gusty', color: C.gusty },
-    { key: 'cross_gusty', name: 'Crosswind, Gusty', color: C.crossGusty },
-  ]
-
-  const wingSetLabel = (wsKey) => {
-    const items = wsKey.split(',').map(ws => {
-      const colonIdx = ws.lastIndexOf(':')
-      const key = ws.slice(0, colonIdx)
-      const size = ws.slice(colonIdx + 1)
-      if (key === 'custom') return null
-      return { size: Number(size), label: `${size}` }
-    }).filter(Boolean).sort((a, b) => a.size - b.size)
-    return items.length > 0 ? items[0].label : ''
-  }
-
-  const wingSetFullName = (wsKey) => {
-    const arr = wsKey.split(',').map(ws => {
-      const colonIdx = ws.lastIndexOf(':')
-      const key = ws.slice(0, colonIdx)
-      const size = ws.slice(colonIdx + 1)
-      if (key === 'custom') return null
-      return { size: Number(size), label: `${wingModelName(key, Number(size))} ${size}m²` }
-    }).filter(Boolean).sort((a, b) => a.size - b.size).map(o => o.label)
-    return arr.length > 1 ? [`${arr[0]} - ${arr[arr.length - 1]}`] : arr
-  }
-
+  // ── Wing set keys ──────────────────────────────────────────────────────────
   const allWingSetKeys = useMemo(() => {
     const keys = new Set()
     barData.forEach(d => {
@@ -781,6 +408,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     return [...keys].sort()
   }, [barData])
 
+  // ── Flat bar data for wing-set mode ────────────────────────────────────────
   const flatBarData = useMemo(() => {
     return barData.map(d => {
       const flat = { ...d, _topLabel: 0 }
@@ -788,13 +416,14 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         const wsHours = d.wingSetHours?.[wsKey] || {}
         flat[`good__${wsKey}`] = wsHours.good || 0
         flat[`cross__${wsKey}`] = wsHours.cross || 0
-        flat[`gusty__${wsKey}`] = wsHours.gusty || 0
+        flat[`gusty__${wsKey}`] = wsHours.good_gusty || 0
         flat[`cross_gusty__${wsKey}`] = wsHours.cross_gusty || 0
       })
       return flat
     })
   }, [barData, allWingSetKeys])
 
+  // ── Bar metadata for tooltips ──────────────────────────────────────────────
   const barMeta = useMemo(() => {
     const map = {}
     QUALITIES.forEach(q => {
@@ -802,13 +431,12 @@ export default function MapForecast({ data, onNavigateToPoint }) {
         map[`${q.key}__${wsKey}`] = {
           qualityName: q.name,
           qualityColor: q.color,
-          wingLabel: wingSetFullName(wsKey),
+          wingLabel: wingSetFullLabel(wsKey, wingModelName),
         }
       })
     })
     return map
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allWingSetKeys, wings])
+  }, [allWingSetKeys, wings, selectedWings])
 
   const selectDay = (di) => { setDateIdx(di) }
 
@@ -832,7 +460,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
           <select
             value={plotDays}
             onChange={e => { const v = Number(e.target.value); setPlotDays(v); try { localStorage.setItem('plotDays', v) } catch {} }}
-            style={{ background: T.raised, color: T.text, border: `1px solid ${T.borderEm}`, borderRadius: 5, padding: '3px 7px', fontSize: fs(12), cursor: 'pointer', fontFamily: T.font }}
+            style={{ background: T.raised, color: T.text, border: `1px solid ${T.border}`, borderRadius: 5, padding: '3px 7px', fontSize: fs(12), cursor: 'pointer', fontFamily: T.font }}
           >
             <option value={3}>3</option>
             <option value={5}>5</option>
@@ -908,25 +536,11 @@ export default function MapForecast({ data, onNavigateToPoint }) {
                     {entries.map((e, i) => (
                       <div key={i} style={{ marginBottom: i < entries.length - 1 ? 4 : 0 }}>
                         <span style={{ color: e.qualityColor || T.text, fontWeight: 600 }}>{e.hours}h {e.qualityName}</span>
-                        {e.wingLabel?.length > 0 && (() => {
-                          const maxTextW = 250
-                          const ctx = _fitCanvas?.getContext('2d')
-                          if (!ctx) return <div style={{ fontSize: fs(10), color: T.text2 }}>{e.wingLabel.join(', ')}</div>
-                          ctx.font = `${fs(10)}px ${T.font}`
-                          const lines = []
-                          let cur = []
-                          for (const w of e.wingLabel) {
-                            const candidate = cur.length === 0 ? w : cur.join(', ') + ', ' + w
-                            if (ctx.measureText(candidate).width <= maxTextW) {
-                              cur.push(w)
-                            } else {
-                              if (cur.length > 0) lines.push(cur.join(', '))
-                              cur = [w]
-                            }
-                          }
-                          if (cur.length > 0) lines.push(cur.join(', '))
-                          return <div style={{ fontSize: fs(10), color: T.text2, lineHeight: 1.4 }}>{lines.map((l, i) => <div key={i}>{l}</div>)}</div>
-                        })()}
+                        {e.wingLabel?.length > 0 && (
+                          <div style={{ fontSize: fs(10), color: T.text2, lineHeight: 1.4, marginTop: 2 }}>
+                            {e.wingLabel.map((l, j) => <div key={j}>{l}</div>)}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -948,19 +562,13 @@ export default function MapForecast({ data, onNavigateToPoint }) {
                       label={(props) => {
                         const { x, y, width, height, value, index } = props
                         if (!value || height < 14) return null
+                        const items = parseWingSetKey(wsKey)
                         const bw = barData[index]?.bestWing
-                        const items = wsKey.split(',').map(ws => {
-                          const colonIdx = ws.lastIndexOf(':')
-                          const key = ws.slice(0, colonIdx)
-                          const size = Number(ws.slice(colonIdx + 1))
-                          if (key === 'custom') return null
-                          return { key, size }
-                        }).filter(Boolean).sort((a, b) => a.size - b.size)
-                        let label
+                        let label = ''
                         if (bw && items.some(item => item.key === bw.key && item.size === bw.size)) {
                           label = `${bw.size}`
-                        } else {
-                          label = items.length > 0 ? `${items[0].size}` : ''
+                        } else if (items.length > 0) {
+                          label = `${items[0].size}`
                         }
                         if (!label) return null
                         const sz = fitTextSize(label, width - 4, Math.min(11, height - 2))
@@ -1046,7 +654,7 @@ export default function MapForecast({ data, onNavigateToPoint }) {
           <select
             value={ganttMode}
             onChange={e => { const v = e.target.value; setGanttMode(v); try { localStorage.setItem('ganttMode', v) } catch {} }}
-            style={{ background: T.raised, color: T.text, border: `1px solid ${T.borderEm}`, borderRadius: 5, padding: '3px 7px', fontSize: fs(12), cursor: 'pointer', fontFamily: T.font }}
+            style={{ background: T.raised, color: T.text, border: `1px solid ${T.border}`, borderRadius: 5, padding: '3px 7px', fontSize: fs(12), cursor: 'pointer', fontFamily: T.font }}
           >
             <option value="locations">Locations</option>
             <option value="date">Date</option>
@@ -1056,8 +664,8 @@ export default function MapForecast({ data, onNavigateToPoint }) {
           ? <GanttChart ganttRows={locGanttRows} weatherRows={locWeatherRows} days={locDays} certByDay={locCertByDay} isLocations
               onDayClick={(idx) => { if (locPtMap[idx] != null) data.setPtIdx(locPtMap[idx]) }}
               dateIdx={locPtMap.indexOf(ptIdx)} effectiveTimeStart={effectiveTimeStart} effectiveTimeEnd={effectiveTimeEnd} wingsConfig={wings} wingModelName={wingModelName} bestWingByDay={locBestWingByDay} />
-          : <GanttChart ganttRows={ganttRows} weatherRows={weatherRows} days={days} certByDay={certByDay} onDayClick={selectDay} dateIdx={dateIdx} 
-                      effectiveTimeStart={effectiveTimeStart} effectiveTimeEnd={effectiveTimeEnd} wingsConfig={wings} wingModelName={wingModelName} bestWingByDay={bestWingByDay} />
+          : <GanttChart ganttRows={ganttRows} weatherRows={weatherRows} days={days} certByDay={certByDay} onDayClick={selectDay} dateIdx={dateIdx}
+              effectiveTimeStart={effectiveTimeStart} effectiveTimeEnd={effectiveTimeEnd} wingsConfig={wings} wingModelName={wingModelName} bestWingByDay={bestWingByDay} />
         }
         <div style={{ padding: '6px 12px 0' }}>
           <Legendsmall_ items={[
@@ -1082,3 +690,5 @@ export default function MapForecast({ data, onNavigateToPoint }) {
     </div>
   )
 }
+
+export { certLabel }
