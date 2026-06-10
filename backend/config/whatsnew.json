@@ -1,17 +1,13 @@
 {
-    "version": 1.15,
+    "version": 1.16,
     "features":[
         {
-            "feature": "Flyable Wings",
-            "message": "The <b>wings you can fly at each time of the day</b> are now displayed on the plots on the <b>Map tab</b>, prioritizing whichever size has the most flyable hours."
-        },
-        {
-            "feature": "Wing Names",
-            "message": "You can now specify your wings' <b>names or models</b>."
+            "feature": "Rijkswaterstaat API call fixed",
+            "message": "The <b>measurements</b> are back and Soaralarm is working normally again."
         },
         {
             "feature": "In case you missed it",
-            "message": "You current selection is now reflected in the URL, making it <b>easier to share</b> with fellow pilots."
+            "message": "You can now specify your wings' <b>names</b>. <b>Flyable wings</b> at each time of the day are now displayed on the plots on the <b>Map tab</b>."
         }
     ]
 }

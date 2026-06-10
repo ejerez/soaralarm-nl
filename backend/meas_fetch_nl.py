@@ -42,6 +42,80 @@ KNMI_BATCH_DELAY = 1.0    # seconds pause between batches
 #  RWS (Rijkswaterstaat) wind data
 # ═════════════════════════════════════════════════════════════════════════════
 
+_RWS_API_URL = (
+    "https://ddapi20-waterwebservices.rijkswaterstaat.nl"
+    "/ONLINEWAARNEMINGENSERVICES/OphalenWaarnemingen"
+)
+_RWS_TIMEOUT = 25
+
+
+def _rws_fetch_measurements(
+    station_code: str, grootheid: str, hoedanigheid: str,
+    start_date: datetime, end_date: datetime,
+) -> pd.DataFrame:
+    """Fetch measurements from RWS API using a minimal metadata request.
+
+    The RWS server started timing out (504) in June 2026 when the full
+    AquoMetadata is sent together.  We only send Grootheid + Hoedanigheid.
+    """
+    dfs = []
+    chunk_start = start_date
+    while chunk_start < end_date:
+        chunk_end = min(chunk_start + timedelta(days=7), end_date)
+        request = {
+            "AquoPlusWaarnemingMetadata": {
+                "AquoMetadata": {
+                    "Grootheid": {"Code": grootheid},
+                    "Hoedanigheid": {"Code": hoedanigheid},
+                },
+            },
+            "Locatie": {"Code": station_code},
+            "Periode": {
+                "Begindatumtijd": chunk_start.strftime(
+                    "%Y-%m-%dT%H:%M:%S.000+02:00"
+                ),
+                "Einddatumtijd": chunk_end.strftime(
+                    "%Y-%m-%dT%H:%M:%S.000+02:00"
+                ),
+            },
+        }
+        try:
+            resp = requests.post(
+                _RWS_API_URL, json=request, timeout=_RWS_TIMEOUT,
+            )
+        except requests.exceptions.ReadTimeout:
+            chunk_start = chunk_end
+            continue
+        if resp.status_code == 204:
+            chunk_start = chunk_end
+            continue
+        if resp.status_code != 200:
+            chunk_start = chunk_end
+            continue
+        try:
+            data = resp.json()
+        except Exception:
+            chunk_start = chunk_end
+            continue
+        for waarneming in data.get("WaarnemingenLijst", []):
+            for meting in waarneming.get("MetingenLijst", []):
+                ts = meting.get("Tijdstip")
+                val = meting.get("Meetwaarde", {}).get("Waarde_Numeriek")
+                qc = (
+                    meting.get("WaarnemingMetadata", {})
+                    .get("Kwaliteitswaardecode", "00")
+                )
+                if ts is not None and val is not None and qc != "99":
+                    dfs.append(
+                        {"time": pd.Timestamp(ts), "value": float(val)}
+                    )
+        chunk_start = chunk_end
+    if not dfs:
+        return pd.DataFrame()
+    df = pd.DataFrame(dfs).set_index("time")
+    return df
+
+
 def _fetch_rws(station_codes: List[str]) -> Dict[str, Dict]:
     """Fetch wind measurements from Rijkswaterstaat."""
     locations = ddlpy.locations()
@@ -53,14 +127,32 @@ def _fetch_rws(station_codes: List[str]) -> Dict[str, Dict]:
     now = datetime.now()
     start = dt.datetime.combine((now - timedelta(days=1)).date(), dt.time.min)
 
-    raw = {}
-    for index, row in selected.iterrows():
-        meas = ddlpy.measurements(row, start_date=start, end_date=now)
-        if meas.empty:
-            continue
-        if index not in raw:
-            raw[index] = {"name": row["Naam"], "lon": row["Lon"], "lat": row["Lat"]}
-        raw[index][row["Grootheid.Code"]] = meas[["Meetwaarde.Waarde_Numeriek"]]
+    station_meta: Dict[str, Dict] = {}
+    for idx, row in selected.iterrows():
+        if idx not in station_meta:
+            station_meta[idx] = {
+                "name": row["Naam"],
+                "lon": row["Lon"],
+                "lat": row["Lat"],
+                "grootheden": set(),
+            }
+        station_meta[idx]["grootheden"].add(row["Grootheid.Code"])
+
+    raw: Dict[str, Dict] = {}
+    for station_code, meta in station_meta.items():
+        entry = {
+            "name": meta["name"],
+            "lon": meta["lon"],
+            "lat": meta["lat"],
+        }
+        for grootheid in meta["grootheden"]:
+            hoedanigheid = "MSL" if grootheid == "WINDSHD" else "WARNDN"
+            df = _rws_fetch_measurements(
+                station_code, grootheid, hoedanigheid, start, now,
+            )
+            if not df.empty:
+                entry[grootheid] = df
+        raw[station_code] = entry
 
     result = {}
     for station_code, val in raw.items():
@@ -70,7 +162,7 @@ def _fetch_rws(station_codes: List[str]) -> Dict[str, Dict]:
             df: pd.DataFrame = val["WINDSHD"]
             grouped = defaultdict(list)
             for ts, row in df.iterrows():
-                v = row["Meetwaarde.Waarde_Numeriek"]
+                v = row["value"]
                 if pd.notna(v):
                     grouped[ts].append(v * 3.6)  # m/s → km/h
 
@@ -93,7 +185,7 @@ def _fetch_rws(station_codes: List[str]) -> Dict[str, Dict]:
             df: pd.DataFrame = val["WINDRTG"]
             timestamps, values = [], []
             for ts, row in df.iterrows():
-                v = row["Meetwaarde.Waarde_Numeriek"]
+                v = row["value"]
                 if pd.notna(v):
                     timestamps.append(ts.isoformat())
                     values.append(round(float(v), 1))
