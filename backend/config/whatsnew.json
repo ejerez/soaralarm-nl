@@ -1,13 +1,17 @@
 {
-    "version": 1.16,
+    "version": 1.17,
     "features":[
         {
             "feature": "Rijkswaterstaat API call fixed",
-            "message": "The <b>measurements</b> are back and Soaralarm is working normally again."
+            "message": "Fixed 2-hour delay on the <b>measurements</b>."
         },
         {
             "feature": "In case you missed it",
             "message": "You can now specify your wings' <b>names</b>. <b>Flyable wings</b> at each time of the day are now displayed on the plots on the <b>Map tab</b>."
+        },
+        {
+            "feature": "Want new locations?",
+            "message": "Do you have any new locations and/or countries that you would like to see on Soaralarm? Contact me at <b>requests@soaralarm.eu</b>."
         }
     ]
 }
