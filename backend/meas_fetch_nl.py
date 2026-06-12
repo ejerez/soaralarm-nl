@@ -71,11 +71,11 @@ def _rws_fetch_measurements(
             },
             "Locatie": {"Code": station_code},
             "Periode": {
-                "Begindatumtijd": chunk_start.strftime(
-                    "%Y-%m-%dT%H:%M:%S.000+02:00"
+                "Begindatumtijd": chunk_start.isoformat(
+                    timespec="milliseconds"
                 ),
-                "Einddatumtijd": chunk_end.strftime(
-                    "%Y-%m-%dT%H:%M:%S.000+02:00"
+                "Einddatumtijd": chunk_end.isoformat(
+                    timespec="milliseconds"
                 ),
             },
         }
@@ -124,8 +124,10 @@ def _fetch_rws(station_codes: List[str]) -> Dict[str, Dict]:
     bool_wind = locations["Grootheid.Code"].isin(["WINDSHD", "WINDRTG"])
     selected = locations.loc[bool_stations & bool_wind]
 
-    now = datetime.now()
-    start = dt.datetime.combine((now - timedelta(days=1)).date(), dt.time.min)
+    now = datetime.now(timezone.utc)
+    start = dt.datetime.combine(
+        (now - timedelta(days=1)).date(), dt.time.min, tzinfo=timezone.utc
+    )
 
     station_meta: Dict[str, Dict] = {}
     for idx, row in selected.iterrows():
