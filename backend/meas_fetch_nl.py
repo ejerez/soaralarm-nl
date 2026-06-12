@@ -1,8 +1,8 @@
 """
 Netherlands measurement fetch module.
 
-Consolidates RWS wind, KNMI radar rain tiles, and KNMI nowcast
-short-term precipitation into a single country-level fetch.
+Consolidates RWS wind, KNMI radar rain tiles, and pysteps-based
+short-term precipitation nowcasting into a single country-level fetch.
 
 Returns the standardised measurement format:
     {
@@ -14,18 +14,21 @@ Returns the standardised measurement format:
 
 import base64
 import datetime as dt
+import io
 import math
 import os
 import pickle
 import re
-import time as time_mod
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 import ddlpy
+import h5py
+import numpy as np
 import pandas as pd
+import pyproj
 import requests
 
 
@@ -34,8 +37,34 @@ KNMI_WMS_BASE = (
     "https://anonymous.api.dataplatform.knmi.nl/wms/adaguc-server"
     "?DATASET=radar_forecast_2.0&SERVICE=WMS&VERSION=1.3.0"
 )
-KNMI_BATCH_SIZE = 4       # concurrent nowcast requests per batch
-KNMI_BATCH_DELAY = 1.0    # seconds pause between batches
+
+# ── KNMI Open Data API (raw radar HDF5) ─────────────────────────────────────
+KNMI_OD_BASE = "https://api.dataplatform.knmi.nl/open-data/v1"
+KNMI_OD_KEY = (
+    "eyJvcmciOiI1ZTU1NGUxOTI3NGE5NjAwMDEyYTNlYjEiLCJpZCI6ImVlNDFjMWI0Mjlk"
+    "ODQ2MThiNWI4ZDViZDAyMTM2YTM3IiwiaCI6Im11cm11cjEyOCJ9"
+)
+KNMI_RADAR_DATASET = "nl_rdr_data_rtcor_5m"
+KNMI_RADAR_VERSION = "1.0"
+
+# ── Radar grid metadata (NL25 stereographic, 1 km) ─────────────────────────
+_RADAR_PROJ4 = (
+    "+proj=stere +lat_0=90 +lon_0=0 +lat_ts=60"
+    " +a=6378140 +b=6356750 +x_0=0 +y_0=0"
+)
+_RADAR_NROWS = 765
+_RADAR_NCOLS = 700
+_RADAR_X1 = 0.0
+_RADAR_Y1 = -4415003.0
+_RADAR_X2 = 700002.0
+_RADAR_Y2 = -3649999.0
+_RADAR_XPIX = abs(_RADAR_X2 - _RADAR_X1) / _RADAR_NCOLS
+_RADAR_YPIX = abs(_RADAR_Y2 - _RADAR_Y1) / _RADAR_NROWS
+_RADAR_PROJ = pyproj.Proj(_RADAR_PROJ4)
+
+# ── Nowcast config ──────────────────────────────────────────────────────────
+NOWCAST_LEADTIMES = 24     # 2 hours at 5-min steps
+NOWCAST_MIN_FRAMES = 3
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -71,11 +100,11 @@ def _rws_fetch_measurements(
             },
             "Locatie": {"Code": station_code},
             "Periode": {
-                "Begindatumtijd": chunk_start.strftime(
-                    "%Y-%m-%dT%H:%M:%S.000+02:00"
+                "Begindatumtijd": chunk_start.isoformat(
+                    timespec="milliseconds"
                 ),
-                "Einddatumtijd": chunk_end.strftime(
-                    "%Y-%m-%dT%H:%M:%S.000+02:00"
+                "Einddatumtijd": chunk_end.isoformat(
+                    timespec="milliseconds"
                 ),
             },
         }
@@ -124,8 +153,10 @@ def _fetch_rws(station_codes: List[str]) -> Dict[str, Dict]:
     bool_wind = locations["Grootheid.Code"].isin(["WINDSHD", "WINDRTG"])
     selected = locations.loc[bool_stations & bool_wind]
 
-    now = datetime.now()
-    start = dt.datetime.combine((now - timedelta(days=1)).date(), dt.time.min)
+    now = datetime.now(timezone.utc)
+    start = dt.datetime.combine(
+        (now - timedelta(days=1)).date(), dt.time.min, tzinfo=timezone.utc
+    )
 
     station_meta: Dict[str, Dict] = {}
     for idx, row in selected.iterrows():
@@ -206,6 +237,7 @@ CACHE_DIR = ".cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
 CACHE_FILE = os.path.join(CACHE_DIR, "radar_tiles_scheduled.pkl")
 SCHEDULE_FILE = os.path.join(CACHE_DIR, "radar_schedule_state.pkl")
+NOWCAST_CACHE_FILE = os.path.join(CACHE_DIR, "nowcast_cache.pkl")
 
 def _load_scheduled_cache():
     """Load scheduled radar tile cache."""
@@ -265,10 +297,70 @@ def _should_update_scheduled_tiles():
     
     return False
 
+def _fetch_radar_h5_bytes() -> Optional[bytes]:
+    """Download the latest raw radar HDF5 file from KNMI Open Data API."""
+    headers = {"Authorization": KNMI_OD_KEY}
+    try:
+        resp = requests.get(
+            f"{KNMI_OD_BASE}/datasets/{KNMI_RADAR_DATASET}"
+            f"/versions/{KNMI_RADAR_VERSION}/files",
+            headers=headers,
+            params={"maxKeys": 1, "sorting": "desc"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        files = resp.json().get("files", [])
+        if not files:
+            return None
+        filename = files[0]["filename"]
+
+        resp2 = requests.get(
+            f"{KNMI_OD_BASE}/datasets/{KNMI_RADAR_DATASET}"
+            f"/versions/{KNMI_RADAR_VERSION}/files/{filename}/url",
+            headers=headers,
+            timeout=15,
+        )
+        resp2.raise_for_status()
+        dl_url = resp2.json()["temporaryDownloadUrl"]
+
+        resp3 = requests.get(dl_url, timeout=20)
+        resp3.raise_for_status()
+        return resp3.content
+    except Exception:
+        return None
+
+
+def _parse_radar_h5(h5_bytes: bytes) -> Optional[Dict]:
+    """Parse raw radar HDF5 bytes into precipitation array + timestamp."""
+    try:
+        with h5py.File(io.BytesIO(h5_bytes), "r") as f:
+            raw = f["image1/image_data"][:]
+            nodata = int(
+                f["image1/calibration"].attrs["calibration_missing_data"][0]
+            )
+            outimg = int(
+                f["image1/calibration"].attrs["calibration_out_of_image"][0]
+            )
+            precip = np.where(
+                (raw == nodata) | (raw == outimg),
+                np.nan,
+                raw * 0.01 * 12.0,
+            )
+
+            dt_str = f["overview"].attrs["product_datetime_end"]
+            if isinstance(dt_str, bytes):
+                dt_str = dt_str.decode()
+            ts = datetime.strptime(dt_str, "%d-%b-%Y;%H:%M:%S.%f")
+            ts = ts.replace(tzinfo=timezone.utc)
+
+            return {"precip": precip, "timestamp": ts}
+    except Exception:
+        return None
+
+
 def _update_scheduled_tiles(soar_points: List[Dict]):
     """
-    Update scheduled radar tiles every 15 minutes.
-    This ensures we have consistent historical data for animation.
+    Update scheduled radar tiles + raw radar frames every 15 minutes.
     """
     if not _should_update_scheduled_tiles():
         return
@@ -280,24 +372,26 @@ def _update_scheduled_tiles(soar_points: List[Dict]):
         if not ref_time:
             return
         
-        # Fetch current tile
         current_tile = _fetch_rain_tile(soar_points, session, ref_time)
-        
         if not current_tile:
             return
         
-        # Load existing cache
+        # Fetch matching raw radar HDF5
+        radar_frame = None
+        h5_bytes = _fetch_radar_h5_bytes()
+        if h5_bytes:
+            radar_frame = _parse_radar_h5(h5_bytes)
+        
         cache = _load_scheduled_cache()
         now = datetime.now(timezone.utc)
         
-        # Add current tile with timestamp
         cache_entry = {
             "tile": current_tile,
             "timestamp": now,
-            "reference_time": ref_time
+            "reference_time": ref_time,
+            "radar_frame": radar_frame,
         }
         
-        # Keep tiles for the last 65 minutes (to ensure we keep 4 tiles: 45/30/15/0 min)
         recent_tiles = [entry for entry in cache.get("tiles", []) 
                        if (now - entry["timestamp"]).total_seconds() < 3900]
         recent_tiles.append(cache_entry)
@@ -306,15 +400,11 @@ def _update_scheduled_tiles(soar_points: List[Dict]):
         cache["last_update"] = now
         _save_scheduled_cache(cache)
         
-        # Update schedule state
         state = _load_schedule_state()
         state["last_run"] = now
         _save_schedule_state(state)
-        
 
-        
-    except Exception as exc:
-        # Error handling without printing
+    except Exception:
         pass
 
 def _get_animation_tiles(soar_points: List[Dict]) -> List[Dict]:
@@ -450,96 +540,136 @@ def _fetch_rain_tile(soar_points: List[Dict], session: requests.Session,
     return None
 
 
-def _fetch_point_nowcast(lat: float, lon: float, session: requests.Session,
-                         ref_time: str) -> Optional[Dict]:
+def _latlon_to_pixel(lat: float, lon: float):
+    """Convert lat/lon to (row, col) pixel indices in the NL25 radar grid."""
+    x, y = _RADAR_PROJ(lon, lat)
+    col = int((x - _RADAR_X1) / _RADAR_XPIX)
+    row = int((_RADAR_Y2 - y) / _RADAR_YPIX)
+    if 0 <= row < _RADAR_NROWS and 0 <= col < _RADAR_NCOLS:
+        return row, col
+    return None, None
+
+
+def _run_pysteps_nowcast(
+    frames: List[np.ndarray], timestamps: List[datetime],
+) -> Optional[Dict]:
     """
-    Fetch nowcast precipitation time series for a single lat/lon.
+    Run pysteps optical-flow extrapolation on the cached radar frames.
 
-    Requests every 5 min for the full 0–5 h range.  The KNMI ADAGUC server
-    returns data only for available time steps, giving ~5 min resolution for
-    the 0–2 h radar extrapolation and whatever coarser resolution the NWP
-    blend provides for 2–5 h.
-
-    Returns {"timestamps": [...], "values": [...]} or None.
+    Returns a dict with "precip" (leadtimes x rows x cols) and
+    "timestamps" (list of UTC datetimes for each leadtime), or None.
     """
-    ref_dt = datetime.fromisoformat(ref_time.replace("Z", "+00:00"))
+    from pysteps import motion, nowcasts
+    from pysteps.utils import transformation
 
-    # Request every 5 min for the 2 hours ahead.
-    times = [ref_dt + timedelta(minutes=m) for m in range(0, 125, 5)]
+    R_obs = np.stack(frames[-NOWCAST_MIN_FRAMES:])
+    R_obs = np.nan_to_num(R_obs, nan=0.0)
 
-    time_str = ",".join(t.strftime("%Y-%m-%dT%H:%M:%SZ") for t in times)
+    R_dbr, _ = transformation.dB_transform(
+        R_obs, None, threshold=0.1, zerovalue=-15.0,
+    )
+    R_dbr = np.nan_to_num(R_dbr, nan=-15.0)
+    R_dbr[~np.isfinite(R_dbr)] = -15.0
 
-    # GetFeatureInfo on a 1×1 pixel bbox centred on the point
-    delta = 0.01
-    bbox = f"{lat - delta},{lon - delta},{lat + delta},{lon + delta}"
-    params = {
-        "REQUEST":            "GetFeatureInfo",
-        "LAYERS":             "precipitation_nowcast",
-        "QUERY_LAYERS":       "precipitation_nowcast",
-        "CRS":                "EPSG:4326",
-        "BBOX":               bbox,
-        "WIDTH":              "1",
-        "HEIGHT":             "1",
-        "I":                  "0",
-        "J":                  "0",
-        "INFO_FORMAT":        "application/json",
-        "TIME":               time_str,
-        "DIM_reference_time": ref_time,
-        # Try different styles to get actual precipitation values
-        "STYLES":             "rainrate-blue-to-purple/nearest",
-    }
-    url = KNMI_WMS_BASE + "&" + "&".join(f"{k}={v}" for k, v in params.items())
+    V = motion.get_method("LK")(R_dbr[-NOWCAST_MIN_FRAMES:])
+    R_f = nowcasts.get_method("extrapolation")(R_dbr[-1], V, NOWCAST_LEADTIMES)
+    R_forecast, _ = transformation.dB_transform(
+        R_f, None, threshold=-10.0, inverse=True,
+    )
 
+    base_ts = timestamps[-1]
+    lead_ts = [base_ts + timedelta(minutes=5 * (i + 1))
+               for i in range(NOWCAST_LEADTIMES)]
+
+    return {"precip": R_forecast, "timestamps": lead_ts}
+
+
+def _extract_point_forecasts(
+    nowcast_result: Dict, soar_points: List[Dict],
+) -> List[Optional[Dict]]:
+    """Extract per-point precipitation time series from pysteps forecast grid."""
+    precip = nowcast_result["precip"]
+    lead_ts = nowcast_result["timestamps"]
+    ts_iso = [t.isoformat() for t in lead_ts]
+
+    results: List[Optional[Dict]] = []
+    for pt in soar_points:
+        row, col = _latlon_to_pixel(pt["lat"], pt["lon"])
+        if row is None:
+            results.append(None)
+            continue
+        values = [round(float(precip[i, row, col]), 2)
+                  for i in range(NOWCAST_LEADTIMES)]
+        results.append({"timestamps": ts_iso, "values": values})
+    return results
+
+
+def _load_nowcast_cache() -> Dict:
     try:
-        resp = session.get(url, timeout=20)
-        resp.raise_for_status()
-        result = resp.json()
-    except Exception as exc:
-        print(f"[nl:knmi] Nowcast error for ({lat:.3f},{lon:.3f}): {exc}")
-        return None
+        if os.path.exists(NOWCAST_CACHE_FILE):
+            with open(NOWCAST_CACHE_FILE, "rb") as f:
+                return pickle.load(f)
+    except Exception:
+        pass
+    return {"nowcast": None, "timestamp": None}
 
-    if not result or not isinstance(result, list):
-        print(f"[nl:knmi] Invalid response format for ({lat:.3f},{lon:.3f}): {result}")
-        return None
-    
-    if not result[0].get("data"):
-        print(f"[nl:knmi] No data field in response for ({lat:.3f},{lon:.3f}). Full response: {result}")
-        return None
-    
-    # Debug: log the structure of the data
-    data = result[0]["data"]
-    # Parse ADAGUC response: {reference_time: {time: value, ...}}
-    pairs = []
-    for _ref, steps in data.items():
-        for t, val in steps.items():
-            try:
-                # Convert to float and round to 2 decimal places
-                pairs.append((t, round(float(val), 2)))
-            except (ValueError, TypeError):
-                # Skip invalid values
-                continue
 
-    if not pairs:
-        return None
+def _save_nowcast_cache(cache: Dict):
+    try:
+        with open(NOWCAST_CACHE_FILE, "wb") as f:
+            pickle.dump(cache, f)
+    except Exception:
+        pass
 
-    # Sort by timestamp
-    pairs.sort(key=lambda x: x[0])
-    
-    return {
-        "timestamps": [p[0] for p in pairs],
-        "values": [p[1] for p in pairs],
-    }
+
+def _get_pysteps_nowcast(soar_points: List[Dict]) -> List[Optional[Dict]]:
+    """
+    Run pysteps nowcast if enough cached radar frames exist,
+    otherwise return the last cached nowcast result.
+    """
+    _update_scheduled_tiles(soar_points)
+
+    cache = _load_scheduled_cache()
+    tiles = cache.get("tiles", [])
+
+    frames, frame_ts = [], []
+    for entry in tiles:
+        rf = entry.get("radar_frame")
+        if rf and rf.get("precip") is not None:
+            frames.append(rf["precip"])
+            frame_ts.append(rf["timestamp"])
+
+    if len(frames) >= NOWCAST_MIN_FRAMES:
+        try:
+            nowcast_result = _run_pysteps_nowcast(frames, frame_ts)
+            if nowcast_result:
+                point_forecasts = _extract_point_forecasts(
+                    nowcast_result, soar_points,
+                )
+                nowcast_cache = {
+                    "nowcast": point_forecasts,
+                    "timestamp": datetime.now(timezone.utc),
+                }
+                _save_nowcast_cache(nowcast_cache)
+                return point_forecasts
+        except Exception:
+            pass
+
+    nc_cache = _load_nowcast_cache()
+    if nc_cache.get("nowcast") is not None:
+        return nc_cache["nowcast"]
+
+    return [None] * len(soar_points)
 
 
 def _fetch_knmi_all(soar_points: List[Dict]) -> Dict:
-    """Fetch rain tile images (current + historical) + per-point nowcast precipitation from KNMI."""
+    """Fetch rain tile images + pysteps nowcast precipitation from KNMI."""
     session = requests.Session()
     ref_time = _get_reference_time(session)
 
     # ── Rain tiles (current + historical for animation) ─────────────────────
     rain_tiles_list = []
     
-    # Fetch current tile
     current_tile = None
     try:
         current_tile = _fetch_rain_tile(soar_points, session, ref_time)
@@ -547,68 +677,33 @@ def _fetch_knmi_all(soar_points: List[Dict]) -> Dict:
             rain_tiles_list.append({
                 "image": current_tile["image"],
                 "bounds": current_tile["bounds"],
-                "time": current_tile["time"]
+                "time": current_tile["time"],
             })
-    except Exception as exc:
-        # Error handling without printing
+    except Exception:
         pass
 
-    # Use scheduled tile updates for consistent animation
-    # This ensures we have fresh tiles every 15 minutes regardless of user activity
     try:
         scheduled_tiles = _get_animation_tiles(soar_points)
-        
         if scheduled_tiles:
-            # Use scheduled tiles (already include current tile)
             rain_tiles_list = scheduled_tiles
-    
-        else:
-            # Fallback to current tile only
-            if current_tile:
-                rain_tiles_list.append({
-                    "image": current_tile["image"],
-                    "bounds": current_tile["bounds"],
-                    "time": current_tile["time"]
-                })
-
-    except Exception as exc:
-        # Error handling without printing
-        # Fallback to current tile
+        elif current_tile:
+            rain_tiles_list.append({
+                "image": current_tile["image"],
+                "bounds": current_tile["bounds"],
+                "time": current_tile["time"],
+            })
+    except Exception:
         if current_tile:
             rain_tiles_list.append({
                 "image": current_tile["image"],
                 "bounds": current_tile["bounds"],
-                "time": current_tile["time"]
+                "time": current_tile["time"],
             })
     
-    # Sort by age (oldest first) for animation
-    # Sort by timestamp (oldest first) for animation
-    # Tiles without timestamp (current tile) go last
-    rain_tiles_list.sort(key=lambda x: x.get("timestamp", float('inf')))
-    
+    rain_tiles_list.sort(key=lambda x: x.get("timestamp", float("inf")))
 
-    
-    # ── Nowcast per point (batched to respect rate limits) ───────────────────
-    short_term: List[Optional[Dict]] = [None] * len(soar_points)
-    if ref_time:
-        for batch_start in range(0, len(soar_points), KNMI_BATCH_SIZE):
-            batch_end = min(batch_start + KNMI_BATCH_SIZE, len(soar_points))
-            with ThreadPoolExecutor(max_workers=KNMI_BATCH_SIZE) as pool:
-                futures = {}
-                for i in range(batch_start, batch_end):
-                    pt = soar_points[i]
-                    futures[pool.submit(
-                        _fetch_point_nowcast, pt["lat"], pt["lon"],
-                        session, ref_time,
-                    )] = i
-                for future in as_completed(futures):
-                    idx = futures[future]
-                    try:
-                        short_term[idx] = future.result()
-                    except Exception as exc:
-                        print(f"[nl:knmi] Nowcast error for point {idx}: {exc}")
-            if batch_end < len(soar_points):
-                time_mod.sleep(KNMI_BATCH_DELAY)
+    # ── Nowcast per point via pysteps ────────────────────────────────────────
+    short_term = _get_pysteps_nowcast(soar_points)
 
     return {"rain_tiles": rain_tiles_list, "short_term_precipitation": short_term}
 

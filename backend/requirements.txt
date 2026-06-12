@@ -8,3 +8,6 @@ retry-requests
 rws-ddlpy
 scipy
 haversine
+h5py
+pyproj
+pysteps
